@@ -27,6 +27,13 @@ void agendarNaThreadPrincipal(void) {
       NSLog(@"IA de Bolso: reabrir não instalado em %@ (o delegate já tem o método)", NSStringFromClass(c));
     }
 
+    // O X da janela (HideWindowOnClose) vira [NSApp hide:], sem aviso ao Go:
+    // a notificação de app escondido é o jeito de saber que a janela fechou.
+    [[NSNotificationCenter defaultCenter] addObserverForName:NSApplicationDidHideNotification
+                                                      object:nil
+                                                       queue:nil
+                                                  usingBlock:^(NSNotification *n) { appEscondido(); }];
+
     bandejaNaThreadPrincipal();
   });
 }

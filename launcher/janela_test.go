@@ -21,7 +21,7 @@ func TestRotuloBandeja(t *testing.T) {
 		{sessao.Estado{Fase: sessao.Subindo, Pct: 95}, "IA de Bolso · carregando 95%"},
 		{sessao.Estado{Fase: sessao.Pronta, Pct: 100}, "IA de Bolso · acordada"},
 		{sessao.Estado{Fase: sessao.Dormindo}, "IA de Bolso"},
-		{sessao.Estado{Fase: sessao.Erro, Erro: "x"}, "IA de Bolso"},
+		{sessao.Estado{Fase: sessao.Erro, Erro: "x"}, "IA de Bolso · com problema"},
 	}
 	for _, c := range casos {
 		if got := rotuloBandeja(c.e); got != c.quer {
@@ -78,6 +78,50 @@ func TestParaTela(t *testing.T) {
 	}
 	if got, quer := string(b), `{"fase":"Subindo","pct":91,"aviso":"a","erro":"e"}`; got != quer {
 		t.Errorf("json = %s, quer %s", got, quer)
+	}
+}
+
+// Erro nunca fica escondido: a janela volta sozinha com o erro.
+func TestDeveMostrar(t *testing.T) {
+	casos := []struct {
+		e    sessao.Estado
+		quer bool
+	}{
+		{sessao.Estado{Fase: sessao.Lendo}, false},
+		{sessao.Estado{Fase: sessao.Subindo}, false},
+		{sessao.Estado{Fase: sessao.Pronta}, false},
+		{sessao.Estado{Fase: sessao.Dormindo}, false},
+		{sessao.Estado{Fase: sessao.Dormiu}, false},
+		{sessao.Estado{Fase: sessao.Erro, Erro: "x"}, true},
+	}
+	for _, c := range casos {
+		if got := deveMostrar(c.e); got != c.quer {
+			t.Errorf("deveMostrar(%v) = %v, quer %v", c.e, got, c.quer)
+		}
+	}
+}
+
+// Com o erro na tela, fechar a janela é o botão Fechar (a IA dorme e o app
+// sai); nas outras fases fechar só esconde.
+func TestFecharVaiDormir(t *testing.T) {
+	for _, f := range []sessao.Fase{sessao.Lendo, sessao.Subindo, sessao.Pronta, sessao.Dormindo, sessao.Dormiu} {
+		if fecharVaiDormir(f) {
+			t.Errorf("%s: fechar deveria só esconder", f)
+		}
+	}
+	if !fecharVaiDormir(sessao.Erro) {
+		t.Error("Erro: fechar deveria pôr a IA para dormir")
+	}
+}
+
+func TestIconeDoEstado(t *testing.T) {
+	for f, quer := range map[sessao.Fase]string{
+		sessao.Lendo: "carregando", sessao.Subindo: "carregando", sessao.Pronta: "acordada",
+		sessao.Erro: "carregando", sessao.Dormindo: "carregando", sessao.Dormiu: "carregando",
+	} {
+		if got := iconeDoEstado(sessao.Estado{Fase: f}); got != quer {
+			t.Errorf("%s: ícone %q, quer %q", f, got, quer)
+		}
 	}
 }
 

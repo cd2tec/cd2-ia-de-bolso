@@ -39,12 +39,15 @@ func rotuloBandeja(e sessao.Estado) string {
 		return fmt.Sprintf("%s · carregando %d%%", nomeBandeja, e.Pct)
 	case sessao.Pronta:
 		return nomeBandeja + " · acordada"
+	case sessao.Erro:
+		return nomeBandeja + " · com problema"
 	}
 	return nomeBandeja
 }
 
 // itensBandeja diz quais itens valem agora, na ordem do menu. Mostrar vale
-// sempre; a nova janela, só com a IA acordada; dormir, até ela começar a dormir.
+// sempre; a nova janela, só com a IA acordada; dormir, até ela começar a
+// dormir (no Erro, é o mesmo que o Fechar da janela).
 func itensBandeja(e sessao.Estado) []item {
 	indoDormir := e.Fase == sessao.Dormindo || e.Fase == sessao.Dormiu
 	return []item{
@@ -54,7 +57,8 @@ func itensBandeja(e sessao.Estado) []item {
 	}
 }
 
-// iconeDoEstado escolhe o desenho: o cérebro só fica cheio e acordado em Pronta.
+// iconeDoEstado escolhe o desenho: o cérebro só fica cheio e acordado em
+// Pronta. No Erro fica o meio cheio, dormindo; o rótulo diz que há problema.
 func iconeDoEstado(e sessao.Estado) string {
 	if e.Fase == sessao.Pronta {
 		return iconeAcorda

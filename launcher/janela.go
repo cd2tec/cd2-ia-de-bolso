@@ -49,6 +49,15 @@ func paraTela(e sessao.Estado) estadoTela {
 	return estadoTela{Fase: nomesFase[e.Fase], Pct: e.Pct, Aviso: e.Aviso, Erro: e.Erro}
 }
 
+// deveMostrar diz se o estado traz a janela de volta sozinho: um erro nunca
+// fica escondido, nem com a janela fechada.
+func deveMostrar(e sessao.Estado) bool { return e.Fase == sessao.Erro }
+
+// fecharVaiDormir diz se fechar a janela (o X) põe a IA para dormir, como o
+// botão Fechar. Com o erro na tela não há IA acordada para ficar no ícone, e
+// esconder deixaria o problema invisível.
+func fecharVaiDormir(f sessao.Fase) bool { return f == sessao.Erro }
+
 // deveChamar diz se mostrar a janela vale um "Me chamou?". Carregando, ela
 // só volta mostrando onde o carregamento está.
 func deveChamar(f sessao.Fase) bool { return f == sessao.Pronta }
@@ -76,6 +85,9 @@ func (a *App) aoMudar(e sessao.Estado) {
 		wruntime.EventsEmit(ctx, "estado", paraTela(e))
 	}
 	a.atualizarBandeja(e)
+	if deveMostrar(e) {
+		a.mostrar()
+	}
 	if e.Fase == sessao.Dormiu {
 		go func() {
 			time.Sleep(esperaSair)
@@ -104,7 +116,8 @@ func (a *App) iniciar(ctx context.Context) {
 
 // antesDeFechar é todo pedido de saída que não veio do Dormiu (Cmd+Q, logout,
 // o X da janela no Windows). A IA dorme antes; a saída de verdade vem pelo
-// aoMudar, 3 s depois do Dormiu.
+// aoMudar, 3 s depois do Dormiu. No Windows o X só esconde, menos com o erro
+// na tela: aí vale o Fechar, sem o balão de "Continuo acordada".
 func (a *App) antesDeFechar(ctx context.Context) (impedir bool) {
 	a.mu.Lock()
 	pode := a.podeSair
@@ -113,12 +126,24 @@ func (a *App) antesDeFechar(ctx context.Context) (impedir bool) {
 		return false
 	}
 	if escondePeloAntesDeFechar {
-		a.esconder()
+		if fecharVaiDormir(a.s.Atual().Fase) {
+			a.Fechar()
+		} else {
+			a.esconder()
+		}
 		return true
 	}
 	a.mostrar()
 	a.Dormir()
 	return true
+}
+
+// janelaFechada é o X da janela no Mac, que o Wails trata escondendo o app
+// (HideWindowOnClose): com o erro na tela, vale o Fechar.
+func (a *App) janelaFechada() {
+	if fecharVaiDormir(a.s.Atual().Fase) {
+		a.Fechar()
+	}
 }
 
 // esconder é fechar a janela sem parar a IA. No Windows, a primeira vez avisa

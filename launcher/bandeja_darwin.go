@@ -44,6 +44,16 @@ func appReaberto() {
 	}
 }
 
+// appEscondido é o NSApplicationDidHideNotification: com HideWindowOnClose,
+// o X da janela esconde o app inteiro, e só por aqui dá para saber.
+//
+//export appEscondido
+func appEscondido() {
+	if appBandeja != nil {
+		go appBandeja.janelaFechada() // fora da thread principal: pode falar com o Wails
+	}
+}
+
 // No Mac o clique no ícone abre o menu, que é o padrão do systray.
 func ligarCliqueSimples(*App) {}
 
