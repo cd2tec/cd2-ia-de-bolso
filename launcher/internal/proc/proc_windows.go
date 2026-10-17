@@ -14,6 +14,9 @@ func ajustar(c *exec.Cmd) {
 	c.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: criarSemJanela}
 }
 
+// No Windows o llamafile.exe é um PE de verdade: não há sh para cair.
+func pelaShell(error) (string, bool) { return "", false }
+
 // encerrar derruba a árvore inteira: o llamafile pode deixar filhos. Usa o
 // taskkill do System32 (não o do PATH) e, se ele falhar, mata só o processo.
 func encerrar(p *Processo) error {

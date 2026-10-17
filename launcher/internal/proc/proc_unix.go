@@ -3,6 +3,7 @@
 package proc
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"syscall"
@@ -10,6 +11,12 @@ import (
 )
 
 func ajustar(*exec.Cmd) {}
+
+// pelaShell diz se o erro do exec é o ENOEXEC de um arquivo sem "#!" e, se
+// for, qual sh roda o arquivo.
+func pelaShell(err error) (string, bool) {
+	return "/bin/sh", errors.Is(err, syscall.ENOEXEC)
+}
 
 // encerrar manda TERM, espera EsperaTerm e então KILL.
 func encerrar(p *Processo) error {

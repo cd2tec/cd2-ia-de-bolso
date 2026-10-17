@@ -60,13 +60,24 @@ func Iniciar(exe string, args, env []string, saida, erros string) (*Processo, er
 			f.Close()
 		}
 	}
-	cmd := exec.Command(exe, args...)
-	cmd.Stdout, cmd.Stderr = fs, fe
-	if env != nil {
-		cmd.Env = append(os.Environ(), env...)
+	montar := func(nome string, a []string) *exec.Cmd {
+		c := exec.Command(nome, a...)
+		c.Stdout, c.Stderr = fs, fe
+		if env != nil {
+			c.Env = append(os.Environ(), env...)
+		}
+		ajustar(c)
+		return c
 	}
-	ajustar(cmd)
-	if err := cmd.Start(); err != nil {
+	cmd := montar(exe, args)
+	err = cmd.Start()
+	// Sem "#!" (o llamafile é um APE) o kernel recusa o exec; o shell, nesse
+	// caso, roda o arquivo pelo sh, e é assim que o script de hoje funciona.
+	if sh, ok := pelaShell(err); ok {
+		cmd = montar(sh, append([]string{exe}, args...))
+		err = cmd.Start()
+	}
+	if err != nil {
 		fechar()
 		return nil, err
 	}
