@@ -52,6 +52,9 @@ func Args(c Config, gpu bool) []string {
 	return append(a, "--gpu", "disable", "-ngl", "0")
 }
 
+// iniciarFn é o Iniciar que o Subir usa; o teste troca para espiar os processos.
+var iniciarFn = Iniciar
+
 // Iniciar sobe o motor e zera o log. No Windows o stderr vai para
 // server.err.log; fora dele, junto com o stdout em server.log.
 func Iniciar(c Config, gpu bool) (*proc.Processo, error) {
@@ -96,9 +99,13 @@ func Esperar(ctx context.Context, url string, p *proc.Processo, prazo time.Durat
 // server-gpu.log e tenta só com CPU. Devolve o motor pronto, ou ErrNaoSubiu.
 func Subir(ctx context.Context, c Config, get func(string) (int, error), aviso func(string)) (*proc.Processo, error) {
 	url := "http://127.0.0.1:" + strconv.Itoa(c.Porta)
+	// Falha ao iniciar (exe ausente, pasta de logs inválida) não é GPU
+	// indisponível: não adianta avisar nem tentar de novo.
+	var falhaIniciar error
 	tentar := func(gpu bool) (*proc.Processo, error) {
-		p, err := Iniciar(c, gpu)
+		p, err := iniciarFn(c, gpu)
 		if err != nil {
+			falhaIniciar = err
 			return nil, err
 		}
 		if err := Esperar(ctx, url, p, Prazo, get); err != nil {
@@ -110,6 +117,9 @@ func Subir(ctx context.Context, c Config, get func(string) (int, error), aviso f
 	p, err := tentar(true)
 	if err == nil {
 		return p, nil
+	}
+	if falhaIniciar != nil {
+		return nil, fmt.Errorf("%w: %v", ErrNaoSubiu, falhaIniciar)
 	}
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -125,6 +135,9 @@ func Subir(ctx context.Context, c Config, get func(string) (int, error), aviso f
 	p, err = tentar(false)
 	if err == nil {
 		return p, nil
+	}
+	if falhaIniciar != nil {
+		return nil, fmt.Errorf("%w: %v", ErrNaoSubiu, falhaIniciar)
 	}
 	if ctx.Err() != nil {
 		return nil, ctx.Err()

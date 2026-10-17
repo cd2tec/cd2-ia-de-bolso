@@ -1,7 +1,9 @@
 package proc
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"syscall"
 )
@@ -12,17 +14,19 @@ func ajustar(c *exec.Cmd) {
 	c.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: criarSemJanela}
 }
 
-// encerrar derruba a árvore inteira: o llamafile pode deixar filhos.
+// encerrar derruba a árvore inteira: o llamafile pode deixar filhos. Usa o
+// taskkill do System32 (não o do PATH) e, se ele falhar, mata só o processo.
 func encerrar(p *Processo) error {
-	k := exec.Command("taskkill", "/PID", strconv.Itoa(p.Pid()), "/T", "/F")
+	exe := "taskkill"
+	if raiz := os.Getenv("SystemRoot"); raiz != "" {
+		exe = filepath.Join(raiz, "System32", "taskkill.exe")
+	}
+	k := exec.Command(exe, "/PID", strconv.Itoa(p.Pid()), "/T", "/F")
 	k.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: criarSemJanela}
 	if err := k.Run(); err != nil {
-		select {
-		case <-p.morreu: // já tinha saído
-			return nil
-		default:
+		if err := p.cmd.Process.Kill(); err != nil && err != os.ErrProcessDone {
+			return err
 		}
-		return err
 	}
 	return nil
 }

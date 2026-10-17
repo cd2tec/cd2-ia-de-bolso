@@ -1,6 +1,7 @@
 package proc
 
 import (
+	"errors"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -142,5 +143,36 @@ func TestPararMataQuemIgnoraTerm(t *testing.T) {
 	}
 	if !fechou(p, time.Second) {
 		t.Fatal("o processo teimoso continuou vivo")
+	}
+}
+
+func TestPararNaoTravaSeOEncerramentoFalha(t *testing.T) {
+	fim, fn := EsperaFim, encerrarFn
+	EsperaFim = 200 * time.Millisecond
+	encerrarFn = func(*Processo) error { return errors.New("falhou") }
+	p, _, _ := iniciar(t, "dorme")
+	ini := time.Now()
+	err := p.Parar()
+	EsperaFim, encerrarFn = fim, fn
+	if err == nil {
+		t.Fatal("esperava erro")
+	}
+	if time.Since(ini) > 5*time.Second {
+		t.Fatalf("Parar demorou %v", time.Since(ini))
+	}
+	// o mutex foi solto e o encerramento de verdade ainda funciona
+	if err := p.Parar(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestIniciarCriaPastaDosLogs(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "a", "b")
+	p, err := Iniciar(os.Args[0], []string{"-test.run=TestHelperProcess"}, []string{"PROC_FALSO=fala"}, filepath.Join(dir, "s.log"), filepath.Join(dir, "x", "e.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !fechou(p, 10*time.Second) {
+		t.Fatal("o processo não terminou")
 	}
 }

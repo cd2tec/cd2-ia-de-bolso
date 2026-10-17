@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/proc"
 )
 
 // TestMain faz o papel do llamafile: o próprio binário de teste é re-executado
@@ -32,6 +34,7 @@ func TestMain(m *testing.M) {
 		os.Stderr.WriteString("erro-gpu\n")
 		os.Exit(1)
 	default:
+		os.Stdout.WriteString("args=" + strings.Join(os.Args[1:], "|") + "\n")
 		os.Stdout.WriteString("no-ar cpu=" + map[bool]string{true: "sim", false: "nao"}[cpu] + "\n")
 		time.Sleep(time.Minute)
 	}
@@ -131,12 +134,72 @@ func TestSubirPrazoEstouraParaOProcesso(t *testing.T) {
 	rapido(t)
 	Prazo = 150 * time.Millisecond
 	t.Setenv("MOTOR_FALSO", "ok")
+	var iniciados []*proc.Processo
+	antes := iniciarFn
+	iniciarFn = func(c Config, gpu bool) (*proc.Processo, error) {
+		p, err := Iniciar(c, gpu)
+		if err == nil {
+			iniciados = append(iniciados, p)
+		}
+		return p, err
+	}
+	defer func() { iniciarFn = antes }()
 	c := cfg(t)
-	var pids []int
-	get := func(string) (int, error) { return 503, nil }
-	_, err := Subir(context.Background(), c, get, func(string) { pids = append(pids, 0) })
-	if !errors.Is(err, ErrNaoSubiu) || len(pids) != 1 {
-		t.Fatalf("err = %v, avisos = %d", err, len(pids))
+	avisos := 0
+	_, err := Subir(context.Background(), c, func(string) (int, error) { return 503, nil }, func(string) { avisos++ })
+	if !errors.Is(err, ErrNaoSubiu) || avisos != 1 {
+		t.Fatalf("err = %v, avisos = %d", err, avisos)
+	}
+	if len(iniciados) != 2 {
+		t.Fatalf("iniciados = %d, esperava 2 (GPU e CPU)", len(iniciados))
+	}
+	for i, p := range iniciados {
+		select {
+		case <-p.Morreu():
+		default:
+			t.Fatalf("o processo %d continuou vivo", i)
+		}
+	}
+}
+
+func TestSubirFalhaAoIniciarNaoAvisaNemTentaCPU(t *testing.T) {
+	rapido(t)
+	c := cfg(t)
+	c.Exe = filepath.Join(t.TempDir(), "nao-existe")
+	avisos := 0
+	p, err := Subir(context.Background(), c, func(string) (int, error) { return 200, nil }, func(string) { avisos++ })
+	if !errors.Is(err, ErrNaoSubiu) || p != nil || avisos != 0 {
+		t.Fatalf("p = %v, err = %v, avisos = %d", p, err, avisos)
+	}
+}
+
+func TestSubirCaminhosComEspaco(t *testing.T) {
+	rapido(t)
+	t.Setenv("MOTOR_FALSO", "ok")
+	raiz := filepath.Join(t.TempDir(), "pasta com espaço")
+	if err := os.MkdirAll(raiz, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	exe := filepath.Join(raiz, filepath.Base(os.Args[0]))
+	orig, err := os.ReadFile(os.Args[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(exe, orig, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	web := filepath.Join(raiz, "web ui")
+	c := Config{Exe: exe, Modelo: filepath.Join(raiz, "m 1.gguf"), Web: web, LogDir: filepath.Join(raiz, "logs"), Porta: 8081, Ctx: "8192", GOOS: "darwin"}
+	p, err := Subir(context.Background(), c, getLog(c.LogDir), func(string) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.Parar()
+	log, _ := os.ReadFile(filepath.Join(c.LogDir, "server.log"))
+	for _, quer := range []string{"-m|" + c.Modelo + "|", "--path|" + web + "|"} {
+		if !strings.Contains(string(log), quer) {
+			t.Fatalf("log = %q, faltou %q", log, quer)
+		}
 	}
 }
 
