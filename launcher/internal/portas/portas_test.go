@@ -20,10 +20,28 @@ func TestAcharDesisteDepoisDe20(t *testing.T) {
 	}
 }
 
+func trioLivre(p int) func(int) bool {
+	return func(x int) bool { return x == p || x == p+1000 || x == p+3000 }
+}
+
 func TestAcharTentaSoVinte(t *testing.T) {
-	// 8100 estaria livre, mas fica fora da janela de 20 tentativas (8080 a 8099).
-	if _, err := Achar(8080, func(p int) bool { return p == 8100 }); err == nil {
+	// O trio de 8100 está inteiro livre, mas fora da janela de 20 tentativas (8080 a 8099).
+	if _, err := Achar(8080, trioLivre(8100)); err == nil {
 		t.Fatal("esperava erro")
+	}
+}
+
+func TestAcharUltimaTentativa(t *testing.T) {
+	p, err := Achar(8080, trioLivre(8099))
+	if err != nil || p != 8099 {
+		t.Fatalf("p = %d, err = %v (esperava 8099)", p, err)
+	}
+}
+
+func TestAcharPulaQuandoMaisTresMilOcupada(t *testing.T) {
+	p, err := Achar(8080, func(x int) bool { return x != 11080 })
+	if err != nil || p != 8081 {
+		t.Fatalf("p = %d, err = %v (esperava 8081)", p, err)
 	}
 }
 
