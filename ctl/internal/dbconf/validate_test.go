@@ -22,6 +22,7 @@ func TestValidatePreencheOsPadroes(t *testing.T) {
 		{Input{Motor: "oracle", Host: "h", Base: "FREEPDB1", Usuario: "leitor"}, "1521", "LEITOR"},
 		{Input{Motor: "mariadb", Host: "h", Base: "loja", Usuario: "u"}, "3306", "loja"},
 		{Input{Motor: "sqlserver", Host: "h", Base: "d", Usuario: "u"}, "1433", "dbo"},
+		{Input{Motor: "firebird", Host: "h", Base: `C:\dados\erp.fdb`, Usuario: "LEITURA_RO"}, "3050", ""},
 		{Input{Motor: "postgres", Host: "h", Porta: json.RawMessage(`"6543"`), Base: "d", Usuario: "u", Schema: "vendas"}, "6543", "vendas"},
 		{Input{Motor: "postgres", Host: "h", Porta: json.RawMessage(`""`), Base: "d", Usuario: "u"}, "5432", "public"},
 		{Input{Motor: "postgres", Host: "h", Porta: json.RawMessage(`null`), Base: "d", Usuario: "u"}, "5432", "public"},
@@ -56,7 +57,7 @@ func TestValidateRecusaComMensagemPorCampo(t *testing.T) {
 		mut  func(*Input)
 		want string
 	}{
-		{func(i *Input) { i.Motor = "mysql" }, "motor: use postgres, oracle, mariadb ou sqlserver"},
+		{func(i *Input) { i.Motor = "mysql" }, "motor: use postgres, oracle, mariadb, sqlserver ou firebird"},
 		{func(i *Input) { i.Host = "" }, "host: obrigatório"},
 		{func(i *Input) { i.Host = strings.Repeat("a", 254) }, "host: até 253 caracteres"},
 		{func(i *Input) { i.Host = "db local" }, "host: não pode ter espaço"},
@@ -136,10 +137,10 @@ func TestPadroes(t *testing.T) {
 	if DefaultPort("oracle") != 1521 || DefaultPort("xpto") != 0 {
 		t.Error("DefaultPort")
 	}
-	if DefaultSchema("oracle", "leitor", "") != "LEITOR" || DefaultSchema("mariadb", "u", "loja") != "loja" || DefaultSchema("sqlserver", "", "") != "dbo" {
+	if DefaultSchema("oracle", "leitor", "") != "LEITOR" || DefaultSchema("mariadb", "u", "loja") != "loja" || DefaultSchema("sqlserver", "", "") != "dbo" || DefaultSchema("firebird", "SYSDBA", "x") != "" {
 		t.Error("DefaultSchema")
 	}
-	if len(Engines) != 4 {
+	if len(Engines) != 5 {
 		t.Error("Engines")
 	}
 }

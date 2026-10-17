@@ -329,6 +329,7 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
           <option value="oracle">Oracle</option>
           <option value="mariadb">MariaDB / MySQL</option>
           <option value="sqlserver">SQL Server</option>
+          <option value="firebird">Firebird</option>
         </select></div>
       <div><label for="dbHost">Host</label><input type="text" id="dbHost" spellcheck="false" autocomplete="off"></div>
       <div><label for="dbPorta">Porta</label><input type="text" id="dbPorta" inputmode="numeric" autocomplete="off"></div>
@@ -938,7 +939,7 @@ function syncDbForm(){
   $('#dbHost').placeholder = p.host; $('#dbBase').placeholder = p.base; $('#dbUsuario').placeholder = p.usuario;
   $('#dbPorta').placeholder = String(d.porta); $('#dbSchema').placeholder = p.schema;
   if(!st.dbSenhaSalva) $('#dbSenha').placeholder = p.senha;
-  $('#dbBaseLabel').textContent = (m === 'oracle') ? 'Service name' : 'Base de dados';
+  $('#dbBaseLabel').textContent = m === 'oracle' ? 'Service name' : (m === 'firebird' ? 'Arquivo do banco' : 'Base de dados');
 }
 function onDbMotorChange(){ $('#dbPorta').value = CD2Toolbox.portFor($('#dbMotor').value, $('#dbPorta').value); syncDbForm(); }
 // Preenche com o /status (ou limpa, com s nulo). A senha nunca vem: só o aviso de que há uma salva.

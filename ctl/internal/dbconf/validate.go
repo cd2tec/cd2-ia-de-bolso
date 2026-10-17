@@ -8,21 +8,21 @@ import (
 )
 
 // Engines aceitos, na ordem da tela.
-var Engines = []string{"postgres", "oracle", "mariadb", "sqlserver"}
+var Engines = []string{"postgres", "oracle", "mariadb", "sqlserver", "firebird"}
 
-var defaultPorts = map[string]int{"postgres": 5432, "oracle": 1521, "mariadb": 3306, "sqlserver": 1433}
+var defaultPorts = map[string]int{"postgres": 5432, "oracle": 1521, "mariadb": 3306, "sqlserver": 1433, "firebird": 3050}
 
 const (
 	msgControl = "não pode ter quebra de linha nem caractere de controle"
 	msgPort    = "use um número de 1 a 65535"
-	msgEngine  = "use postgres, oracle, mariadb ou sqlserver"
+	msgEngine  = "use postgres, oracle, mariadb, sqlserver ou firebird"
 )
 
 // DefaultPort devolve a porta padrão do motor (0 se o motor não existe).
 func DefaultPort(engine string) int { return defaultPorts[engine] }
 
 // DefaultSchema segue as regras da v0.5.0 (core/db-env.sh): Postgres public, Oracle o usuário
-// em maiúsculas, MariaDB o nome da base, SQL Server dbo.
+// em maiúsculas, MariaDB o nome da base, SQL Server dbo. Firebird não tem schema.
 func DefaultSchema(engine, user, name string) string {
 	switch engine {
 	case "postgres":
@@ -33,6 +33,8 @@ func DefaultSchema(engine, user, name string) string {
 		return name
 	case "sqlserver":
 		return "dbo"
+	case "firebird":
+		return ""
 	}
 	return ""
 }

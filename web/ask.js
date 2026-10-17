@@ -155,7 +155,8 @@ const DIALETO = {
   postgres:  { nome:'PostgreSQL', mes:c => "to_char(" + c + ", 'YYYY-MM')", top:(s, o) => s + ' ' + o + ' LIMIT 10' },
   mariadb:   { nome:'MariaDB/MySQL (crases em nomes reservados)', mes:c => "DATE_FORMAT(" + c + ", '%Y-%m')", top:(s, o) => s + ' ' + o + ' LIMIT 10' },
   sqlserver: { nome:'SQL Server (TOP em vez de LIMIT; sem WITH; use subconsulta)', mes:c => "FORMAT(" + c + ", 'yyyy-MM')", top:(s, o) => s.replace(/^SELECT /, 'SELECT TOP (10) ') + ' ' + o },
-  oracle:    { nome:'Oracle (sem LIMIT; nomes sem aspas)', mes:c => "TO_CHAR(" + c + ", 'YYYY-MM')", top:(s, o) => s + ' ' + o + ' FETCH FIRST 10 ROWS ONLY' }
+  oracle:    { nome:'Oracle (sem LIMIT; nomes sem aspas)', mes:c => "TO_CHAR(" + c + ", 'YYYY-MM')", top:(s, o) => s + ' ' + o + ' FETCH FIRST 10 ROWS ONLY' },
+  firebird:  { nome:'Firebird (ROWS em vez de LIMIT; sem WITH; nomes como o banco devolve)', mes:c => "EXTRACT(YEAR FROM " + c + ") || '-' || LPAD(EXTRACT(MONTH FROM " + c + "), 2, '0')", top:(s, o) => s + ' ' + o + ' ROWS 10' }
 };
 function exemplos(motor){
   const d = DIALETO[motor] || DIALETO.postgres, m = d.mes('data_venda');
@@ -169,7 +170,7 @@ function exemplos(motor){
 // PostgreSQL public, SQL Server dbo, Oracle o próprio usuário; MariaDB nunca (schema é a base).
 function schemaPrefix(motor, schema, usuario){
   const s = String(schema == null ? '' : schema).trim();
-  if(!s || motor === 'mariadb') return '';
+  if(!s || motor === 'mariadb' || motor === 'firebird') return '';
   const padrao = { postgres:'public', sqlserver:'dbo', oracle:String(usuario == null ? '' : usuario).trim() }[motor] || 'public';
   return s.toLowerCase() === padrao.toLowerCase() ? '' : s + '.';
 }
@@ -201,7 +202,7 @@ function buildMessages(o){
     tabs,
     lig.length ? 'Como as tabelas se ligam (use estes JOIN):\n' + lig.map(l => '- ' + pre + limpo(l.a) + '.' + limpo(l.col) + ' = ' + pre + limpo(l.b) + '.' + limpo(l.colB || l.col)).join('\n') : '',
     'Regras:',
-    o.motor === 'sqlserver' ? '- Um único SELECT, sem WITH e sem ponto e vírgula. Use subconsulta no lugar de WITH.' : '- Um único SELECT (ou WITH), sem ponto e vírgula.',
+    (o.motor === 'sqlserver' || o.motor === 'firebird') ? '- Um único SELECT, sem WITH e sem ponto e vírgula. Use subconsulta no lugar de WITH.' : '- Um único SELECT (ou WITH), sem ponto e vírgula.',
     '- Agregue no banco com GROUP BY e devolva no máximo 50 linhas.',
     '- Ao agrupar por uma entidade (loja, produto, departamento, cliente), mostre o nome ou a descrição com JOIN na tabela de cadastro, não o código.',
     "- Para filtrar por nome ou descrição, use comparação parcial sem diferenciar caixa (UPPER(coluna) LIKE '%TEXTO%').",
@@ -275,7 +276,7 @@ async function ask(o){
     checkAbort(o.signal);
     if(!r.ok){
       // SQL Server e Oracle não têm limite de tempo no servidor: só o front parou de esperar.
-      if(r.timeout) return { ok:false, motivo:(r.front && (o.motor === 'sqlserver' || o.motor === 'oracle')) ? 'timeout_front' : 'timeout', sql };
+      if(r.timeout) return { ok:false, motivo:(r.front && (o.motor === 'sqlserver' || o.motor === 'oracle' || o.motor === 'firebird')) ? 'timeout_front' : 'timeout', sql };
       falha = 'sql'; anterior = { sql, erro:r.error }; continue;
     }
     if(!r.rows.length || r.rows.every(l => Object.values(l).every(v => v == null || v === ''))) return { ok:false, motivo:'vazio', sql };
