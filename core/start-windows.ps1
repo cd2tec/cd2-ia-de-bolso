@@ -22,14 +22,63 @@ function PortFree([int]$p) {
         $l.Start(); $l.Stop(); return $true
     } catch { return $false }
 }
+function Stop-LeftoverLlamafile {
+    if (-not $Exe -or -not (Test-Path -LiteralPath $Exe)) { return }
+    $full = [System.IO.Path]::GetFullPath($Exe)
+    $procs = @(Get-CimInstance Win32_Process -Filter "Name = 'llamafile.exe'" -ErrorAction SilentlyContinue)
+    foreach ($leftover in $procs) {
+        $cmdLine = $leftover.CommandLine
+        $same = $false
+        if ($leftover.ExecutablePath) {
+            $same = [string]::Equals([System.IO.Path]::GetFullPath($leftover.ExecutablePath), $full, 'OrdinalIgnoreCase')
+        }
+        if (-not $same -and $cmdLine) {
+            $same = $cmdLine.Replace('"', '').StartsWith($full, [System.StringComparison]::OrdinalIgnoreCase)
+        }
+        if ($same) { & taskkill.exe /PID $leftover.ProcessId /T /F 2>&1 | Out-Null }
+    }
+}
+function Reset-ServerLogs {
+    foreach ($logPath in @($Log, $LogErr)) {
+        $opened = $false
+        for ($attempt = 0; $attempt -lt 25 -and -not $opened; $attempt++) {
+            try {
+                Set-Content -Path $logPath -Value '' -ErrorAction Stop
+                $opened = $true
+            } catch {
+                Start-Sleep -Milliseconds 200
+            }
+        }
+        if (-not $opened) { Fail 'A IA anterior ainda esta fechando. Espere alguns segundos e abra de novo.' }
+    }
+}
 function Stop-Server {
     if ($script:Proc -and -not $script:Proc.HasExited) {
         & taskkill.exe /PID $script:Proc.Id /T /F 2>&1 | Out-Null
     }
+    Stop-LeftoverLlamafile
+}
+function Install-CloseHandler {
+    if ($script:CloseHandler) { return }
+    try {
+    if (-not ('Cd2.ConsoleClose' -as [type])) {
+        Add-Type -Namespace Cd2 -Name ConsoleClose -MemberDefinition @'
+public delegate bool Handler(int ctrlType);
+[System.Runtime.InteropServices.DllImport("kernel32.dll")]
+public static extern bool SetConsoleCtrlHandler(Handler handler, bool add);
+'@
+    }
+    $script:CloseHandler = [Cd2.ConsoleClose+Handler] {
+        param($ctrlType)
+        try { Stop-Server } catch { }
+        return $false
+    }
+    [void][Cd2.ConsoleClose]::SetConsoleCtrlHandler($script:CloseHandler, $true)
+    } catch { }
 }
 function Start-Server([string[]]$extra) {
     Stop-Server
-    Set-Content -Path $Log -Value '' ; Set-Content -Path $LogErr -Value ''
+    Reset-ServerLogs
     $srvArgs = @('-m', "`"$Model`"", '--server', '--host', '127.0.0.1', '--port', "$Port",
               '--jinja', '-c', $Ctx, '--path', "`"$(Join-Path $Root 'web')`"") + $extra
     $script:Proc = Start-Process -FilePath $Exe -ArgumentList $srvArgs -WindowStyle Hidden -PassThru `
@@ -95,6 +144,8 @@ Write-Host ""
 
 $Exe = Join-Path $Root 'bin\llamafile.exe'
 if (-not (Test-Path $Exe)) { Fail "bin\llamafile.exe nao encontrado. Rode a preparacao do pen drive (core\prepare-windows.bat)." }
+Install-CloseHandler
+Stop-LeftoverLlamafile
 $ModelFile = Get-ChildItem -Path (Join-Path $Root 'models') -Filter *.gguf -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $ModelFile) { Fail "Nenhum modelo .gguf em models\. Rode a preparacao do pen drive." }
 $Model = $ModelFile.FullName
