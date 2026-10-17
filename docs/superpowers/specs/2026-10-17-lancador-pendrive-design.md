@@ -116,6 +116,45 @@ Janelinha pequena (por volta de 320 px de largura), fundo escuro `#0d1233`, tít
 
 **Se um risco der errado (decisão do Gabriel):** o lançador é entregue onde funciona, e o `.bat` ou o `.command` volta para a raiz do pen drive, ao lado do lançador, na plataforma com problema, até isso ser resolvido. Se o problema for só um aviso do sistema na primeira abertura, o caminho para passar por ele ("Executar assim mesmo" ou "Abrir mesmo assim") vai para o `docs/criar-pendrive.md` e para a página do projeto. O mesmo vale se o WebView2 puder faltar no Windows: o `.bat` fica na raiz como saída garantida.
 
+### Resultado do spike (17/10/2026)
+
+Protótipo descartável na branch local `spike-lancador` (nunca integrada), feito num Mac Apple Silicon com macOS 26.6.2. Não havia Windows nem pen drive físico na hora: o pen drive foi simulado por uma imagem exFAT.
+
+**Biblioteca escolhida: protótipo A, Wails v2.10.1 + `fyne.io/systray` v1.12.2**, compilado com Go 1.23.12 (`GOTOOLCHAIN=go1.23.12`; o CLI do Wails v2.10.1 não compila com Go mais novo). Como o A passou no Mac, o B (Wails v3) não foi montado.
+
+Como a bandeja e o Wails convivem:
+
+- **Mac:** o `NSApp` e a thread principal são do Wails. A bandeja entra no mesmo loop com `systray.RunWithExternalLoop(onReady, nil)`, que só registra. A função `start` que ele devolve cria o `NSStatusItem` e precisa rodar na thread principal. O `OnStartup` do Wails roda numa goroutine, então o `start` é agendado com `dispatch_async(dispatch_get_main_queue(), ...)`, num `.m` pequeno que chama de volta uma função Go exportada. O `systray.Run` não serve no Mac, porque troca o delegate do `NSApp` e roda um segundo `[NSApp run]`.
+- **Windows:** `systray.Run` numa goroutine com `runtime.LockOSThread()`, com o próprio laço de mensagens, sem disputar com o Wails.
+- **Os dois:** "Sair" chama `runtime.Quit(ctx)` do Wails. A função `end` do systray não é chamada no Mac, porque ela faz `[NSApp stop:]` e espera a thread principal. No Windows, a Task 9 deve chamar `systray.Quit()` no `OnShutdown`, para o ícone não ficar "fantasma" na bandeja.
+- Janela: `HideWindowOnClose: true` e `SingleInstanceLock` com `OnSecondInstanceLaunch` chamando `WindowShow`.
+
+**O que foi conferido no Mac (10 de 10 rodadas seguidas, sem falha):**
+
+| Ponto | Como foi conferido | Resultado |
+| --- | --- | --- |
+| A janela abre | `NSWindow` do Wails visível, 320×300 | ok |
+| Fechar esconde e o ícone fica | clique simulado no botão vermelho (`performClick`, que passa pelo `windowShouldClose:`); o processo continua e o `NSStatusItem` segue visível, com imagem, na barra de menus | ok |
+| "Mostrar" traz a janela | disparo do item do menu da bandeja pelo próprio `NSMenu` (`performActionForItemAtIndex:`), que chega ao Go pelo `ClickedCh` | ok |
+| Segundo duplo clique traz a janela | `open` do `.app` já aberto (o LaunchServices reabre o mesmo processo e o AppKit mostra a janela escondida) e `open -n` (segundo processo, que passa a vez pelo `SingleInstanceLock` e sai) | ok nos dois |
+| "Sair" fecha tudo | o processo some em cerca de 100 ms, com `OnShutdown` e retorno do `wails.Run` | ok |
+
+O que **não** foi conferido no Mac: o clique de verdade com o mouse no ícone da barra de menus, e ver a tela. Esta máquina não dá permissão de acessibilidade nem de gravação de tela para a sessão. Os disparos usaram o mesmo alvo e a mesma ação do AppKit que o clique usaria, mas falta o Gabriel abrir o menu com o mouse uma vez.
+
+**Windows: pendente de teste do Gabriel.** O `.exe` compila no Mac (`wails build -skipbindings -platform windows/amd64 -webview2 embed`, um PE32+ GUI de 10 MB), e o manifesto padrão do Wails não pede administrador. Ainda faltam os cinco pontos acima, o SmartScreen, e a janela num Windows 10 sem internet (e a mensagem, se o WebView2 faltar).
+
+**Gatekeeper no pen drive exFAT (imagem `hdiutil -fs ExFAT`, desmontada e montada de novo antes de abrir):**
+
+- `.app` assinado ad hoc e copiado sem atributos estendidos abre com dois cliques, sem aviso. Valeu para os dois jeitos de cópia: `cp -RX`, que é o que o `core/make-usb-unix.sh` faz, e a extração arquivo por arquivo de um ZIP, como o instalador faz. O `codesign --verify --deep --strict` passa nos dois. O `syspolicyd` registrou `GK evaluateScanResult: 2` (liberado, sem pergunta), e o app rodou do próprio volume, sem App Translocation.
+- `.app` com `com.apple.quarantine` **é bloqueado**: `spctl --assess` dá `rejected`, o `syspolicyd` registra `Prompt shown` e depois `Gatekeeper denial breadcrumb`, e o Go nem chega a rodar. Por isso a cópia para o pen drive **não pode levar atributos estendidos**. Num exFAT, um `cp -R` comum leva a quarentena junto, num arquivo `._IA de Bolso.app`. Os dois caminhos de hoje já copiam sem atributos, e a Task de gravação precisa manter isso. No macOS 15 ou mais novo, o jeito de passar pelo aviso é Ajustes do Sistema > Privacidade e Segurança > "Abrir Mesmo Assim" (o clique direito em "Abrir" não basta mais). Esse caminho vai para o `docs/criar-pendrive.md` como reserva.
+
+**Pendente de pen drive físico (Gabriel):** gravar pelo instalador e pelo `GRAVAR-PENDRIVE-Mac.command` num pen drive de verdade e abrir com dois cliques no Finder.
+
+**Recomendação por plataforma (a decisão é do Gabriel):**
+
+- **Mac: vai com o lançador** (Wails v2 + `fyne.io/systray`), sem plano B na raiz, desde que o teste com pen drive físico e o clique de verdade no ícone confirmem o que a imagem mostrou.
+- **Windows: pendente de teste do Gabriel.** A recomendação é seguir com a mesma combinação. Se algum ponto falhar, ou o WebView2 puder faltar, o `INICIAR-CD2-Windows.bat` fica na raiz (plano B).
+
 ### Entrega do lançador no pen drive
 
 - O lançador é compilado no CI, como o instalador e o `cd2-ctl`. Os dois caminhos de gravação (o instalador desktop e os scripts `GRAVAR-*`/`core/make-usb-*`/`core/prepare-*`) precisam colocar o lançador certo na raiz do pen drive, e ele entra no `CHECKSUMS.sha256` como o resto.
