@@ -8,7 +8,8 @@ const ENGINES = {
   postgres:  { label:'PostgreSQL',      port:5432 },
   oracle:    { label:'Oracle',          port:1521 },
   mariadb:   { label:'MariaDB / MySQL', port:3306 },
-  sqlserver: { label:'SQL Server',      port:1433 }
+  sqlserver: { label:'SQL Server',      port:1433 },
+  firebird:  { label:'Firebird',        port:3050 }
 };
 // Exemplos dos campos do formulário do banco. Só exemplos genéricos: nada de
 // host, usuário ou senha reais, que circulariam com o pen drive.
@@ -16,7 +17,8 @@ const PLACEHOLDERS = {
   postgres:  { host:'ex.: pg.empresa.local',    base:'ex.: erp',      usuario:'ex.: leitura_ro' },
   oracle:    { host:'ex.: ora.empresa.local',   base:'ex.: ORCLPDB1', usuario:'ex.: LEITURA_RO' },
   mariadb:   { host:'ex.: mysql.empresa.local', base:'ex.: erp',      usuario:'ex.: leitura_ro' },
-  sqlserver: { host:'ex.: mssql.empresa.local', base:'ex.: ERP',      usuario:'ex.: leitura_ro' }
+  sqlserver: { host:'ex.: mssql.empresa.local', base:'ex.: ERP',      usuario:'ex.: leitura_ro' },
+  firebird:  { host:'ex.: 192.168.0.10',        base:'ex.: C:\\dados\\erp.fdb', usuario:'ex.: LEITURA_RO' }
 };
 const TOOL_DESCRIPTIONS = {
   db_catalog:           'Lê o mapa do banco (tabelas e colunas) para o roteiro de relatórios.',
@@ -113,7 +115,7 @@ function readKeyFromHash(hash){
 function defaultsFor(motor, usuario, base){
   const e = ENGINES[motor];
   if(!e) return { porta:'', schema:'' };
-  const schema = { postgres:'public', oracle:String(usuario || '').toUpperCase(), mariadb:String(base || ''), sqlserver:'dbo' }[motor];
+  const schema = { postgres:'public', oracle:String(usuario || '').toUpperCase(), mariadb:String(base || ''), sqlserver:'dbo', firebird:'' }[motor];
   return { porta:e.port, schema };
 }
 // Exemplos do formulário para o motor. O schema repete a regra do defaultsFor e,
@@ -122,7 +124,7 @@ function placeholdersFor(motor, usuario, base){
   const p = PLACEHOLDERS[motor];
   if(!p) return { host:'', base:'', usuario:'', senha:'', schema:'' };
   const d = defaultsFor(motor, usuario, base);
-  const fallback = { oracle:'LEITURA_RO', mariadb:'erp' }[motor] || '';
+  const fallback = { oracle:'LEITURA_RO', mariadb:'erp', firebird:'nao usado' }[motor] || '';
   return { host:p.host, base:p.base, usuario:p.usuario, senha:'Senha da conta de leitura', schema:'ex.: ' + (d.schema || fallback) };
 }
 // Porta ao trocar de motor: vazia ou ainda na porta padrão de algum motor vira a

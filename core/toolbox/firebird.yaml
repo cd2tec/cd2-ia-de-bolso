@@ -1,0 +1,219 @@
+# CD2 Harness - receita do MCP Toolbox para Firebird.
+# Conexao vem do ambiente (db.env no cache do computador; nunca no pen drive).
+# Somente leitura em tres camadas: conta com so SELECT, excludedValues em
+# db_read_only_query e guarda de SELECT no front. O toolbox nao valida SQL.
+# Sem timeout no servidor (a fonte firebird do toolbox v1.14.0 nao tem
+# queryTimeout); o harness para de esperar em 15 s.
+# A base e o caminho do arquivo .fdb. Firebird nao tem schema.
+kind: source
+name: cd2-db
+type: firebird
+host: ${CD2_DB_HOST}
+port: ${CD2_DB_PORT}
+database: '${CD2_DB_NAME}'
+user: ${CD2_DB_USER}
+password: "${CD2_DB_PASSWORD}"
+
+---
+kind: tool
+name: db_connection_status
+type: firebird-sql
+source: cd2-db
+description: Verifica se o banco está acessível e se a conexão está pronta para uso. Devolve motor, versão, host, base, usuário, schema e quantas tabelas a conta enxerga. Use como primeiro passo.
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT 'firebird' AS engine,
+         r.RDB$GET_CONTEXT('SYSTEM', 'ENGINE_VERSION') AS db_version,
+         '${CD2_DB_HOST}' AS host,
+         '${CD2_DB_NAME}' AS "database",
+         CURRENT_USER AS "user",
+         '' AS "schema",
+         (SELECT COUNT(*) FROM RDB$RELATIONS x
+           WHERE COALESCE(x.RDB$SYSTEM_FLAG, 0) = 0 AND x.RDB$VIEW_BLR IS NULL) AS visible_tables
+    FROM RDB$DATABASE r
+
+---
+kind: tool
+name: db_list_tables
+type: firebird-sql
+source: cd2-db
+description: Lista as tabelas e views de usuário. Use pattern para filtrar pelo nome. num_rows não existe no catálogo do Firebird e vem vazio.
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT TRIM(r.RDB$RELATION_NAME) AS name,
+         CASE WHEN r.RDB$VIEW_BLR IS NULL THEN 'TABLE' ELSE 'VIEW' END AS type,
+         CAST(NULL AS INTEGER) AS num_rows,
+         CAST(r.RDB$DESCRIPTION AS VARCHAR(1000)) AS comments
+    FROM RDB$RELATIONS r
+   WHERE COALESCE(r.RDB$SYSTEM_FLAG, 0) = 0
+     AND (:include_views = 1 OR r.RDB$VIEW_BLR IS NULL)
+     AND (TRIM(:pattern) = '' OR UPPER(TRIM(r.RDB$RELATION_NAME)) LIKE
+          CASE WHEN POSITION('%', :pattern) > 0 THEN UPPER(:pattern) ELSE '%' || UPPER(:pattern) || '%' END)
+   ORDER BY 1
+   ROWS (:offset + 1) TO (:offset + :limit)
+parameters:
+  - { name: pattern, type: string, description: "Filtro por nome (insensível a caixa). Sem % vira %pattern%. Vazio = sem filtro.", required: false, default: "" }
+  - { name: include_views, type: integer, description: "1 para incluir views, 0 para só tabelas.", required: false, default: 1 }
+  - { name: limit, type: integer, description: "Máximo de resultados (1-500).", required: false, default: 50 }
+  - { name: offset, type: integer, description: "Deslocamento para paginação.", required: false, default: 0 }
+
+---
+kind: tool
+name: db_describe_table
+type: firebird-sql
+source: cd2-db
+description: Apresenta as colunas, os tipos e a estrutura de uma tabela. Mostra chave primária e, em foreign_key_references, para onde cada coluna aponta (use para montar JOIN). Nome insensível a caixa. Devolve vazio se a tabela não existir.
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT TRIM(rf.RDB$FIELD_NAME) AS column_name,
+         CASE f.RDB$FIELD_TYPE
+           WHEN 7 THEN 'SMALLINT'
+           WHEN 8 THEN 'INTEGER'
+           WHEN 10 THEN 'FLOAT'
+           WHEN 12 THEN 'DATE'
+           WHEN 13 THEN 'TIME'
+           WHEN 14 THEN 'CHAR'
+           WHEN 16 THEN 'BIGINT'
+           WHEN 27 THEN 'DOUBLE PRECISION'
+           WHEN 35 THEN 'TIMESTAMP'
+           WHEN 37 THEN 'VARCHAR'
+           WHEN 261 THEN 'BLOB'
+           ELSE 'OTHER'
+         END AS data_type,
+         CASE WHEN rf.RDB$NULL_FLAG = 1 THEN 0 ELSE 1 END AS nullable,
+         CAST(rf.RDB$DESCRIPTION AS VARCHAR(1000)) AS comments,
+         CASE WHEN pk.RDB$FIELD_NAME IS NULL THEN 0 ELSE 1 END AS is_primary_key,
+         fk.ref AS foreign_key_references,
+         TRIM(rf.RDB$RELATION_NAME) AS "table"
+    FROM RDB$RELATION_FIELDS rf
+    JOIN RDB$FIELDS f ON f.RDB$FIELD_NAME = rf.RDB$FIELD_SOURCE
+    JOIN RDB$RELATIONS r ON r.RDB$RELATION_NAME = rf.RDB$RELATION_NAME
+    LEFT JOIN (
+      SELECT seg.RDB$FIELD_NAME, rc.RDB$RELATION_NAME
+        FROM RDB$RELATION_CONSTRAINTS rc
+        JOIN RDB$INDEX_SEGMENTS seg ON seg.RDB$INDEX_NAME = rc.RDB$INDEX_NAME
+       WHERE rc.RDB$CONSTRAINT_TYPE = 'PRIMARY KEY'
+    ) pk ON pk.RDB$RELATION_NAME = rf.RDB$RELATION_NAME AND pk.RDB$FIELD_NAME = rf.RDB$FIELD_NAME
+    LEFT JOIN (
+      SELECT seg.RDB$FIELD_NAME AS src_field, rc.RDB$RELATION_NAME AS src_rel,
+             TRIM(uq.RDB$RELATION_NAME) || '(' || TRIM(seg2.RDB$FIELD_NAME) || ')' AS ref
+        FROM RDB$RELATION_CONSTRAINTS rc
+        JOIN RDB$REF_CONSTRAINTS refc ON refc.RDB$CONSTRAINT_NAME = rc.RDB$CONSTRAINT_NAME
+        JOIN RDB$RELATION_CONSTRAINTS uq ON uq.RDB$CONSTRAINT_NAME = refc.RDB$CONST_NAME_UQ
+        JOIN RDB$INDEX_SEGMENTS seg ON seg.RDB$INDEX_NAME = rc.RDB$INDEX_NAME
+        JOIN RDB$INDEX_SEGMENTS seg2 ON seg2.RDB$INDEX_NAME = uq.RDB$INDEX_NAME
+                                    AND seg2.RDB$FIELD_POSITION = seg.RDB$FIELD_POSITION
+       WHERE rc.RDB$CONSTRAINT_TYPE = 'FOREIGN KEY'
+    ) fk ON fk.src_rel = rf.RDB$RELATION_NAME AND fk.src_field = rf.RDB$FIELD_NAME
+   WHERE COALESCE(r.RDB$SYSTEM_FLAG, 0) = 0
+     AND UPPER(TRIM(r.RDB$RELATION_NAME)) = UPPER(TRIM(:table_name))
+   ORDER BY rf.RDB$FIELD_POSITION
+parameters:
+  - { name: table_name, type: string, description: "Nome da tabela ou view, como devolvido por db_list_tables." }
+
+---
+kind: tool
+name: db_search_columns
+type: firebird-sql
+source: cd2-db
+description: Encontra colunas pelo nome em todas as tabelas de usuário. Atalho para descobrir onde mora um dado (CNPJ, preço, código de loja) sem abrir tabela por tabela.
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT TRIM(r.RDB$RELATION_NAME) AS "table",
+         TRIM(rf.RDB$FIELD_NAME) AS "column",
+         CASE f.RDB$FIELD_TYPE
+           WHEN 7 THEN 'SMALLINT'
+           WHEN 8 THEN 'INTEGER'
+           WHEN 10 THEN 'FLOAT'
+           WHEN 12 THEN 'DATE'
+           WHEN 13 THEN 'TIME'
+           WHEN 14 THEN 'CHAR'
+           WHEN 16 THEN 'BIGINT'
+           WHEN 27 THEN 'DOUBLE PRECISION'
+           WHEN 35 THEN 'TIMESTAMP'
+           WHEN 37 THEN 'VARCHAR'
+           WHEN 261 THEN 'BLOB'
+           ELSE 'OTHER'
+         END AS data_type,
+         CAST(rf.RDB$DESCRIPTION AS VARCHAR(1000)) AS comments
+    FROM RDB$RELATION_FIELDS rf
+    JOIN RDB$FIELDS f ON f.RDB$FIELD_NAME = rf.RDB$FIELD_SOURCE
+    JOIN RDB$RELATIONS r ON r.RDB$RELATION_NAME = rf.RDB$RELATION_NAME
+   WHERE COALESCE(r.RDB$SYSTEM_FLAG, 0) = 0
+     AND UPPER(TRIM(rf.RDB$FIELD_NAME)) LIKE
+         CASE WHEN POSITION('%', :pattern) > 0 THEN UPPER(:pattern) ELSE '%' || UPPER(:pattern) || '%' END
+   ORDER BY 1, rf.RDB$FIELD_POSITION
+   ROWS (:offset + 1) TO (:offset + :limit)
+parameters:
+  - { name: pattern, type: string, description: "Trecho do nome da coluna (insensível a caixa). Ex.: cnpj, preco, %data%." }
+  - { name: limit, type: integer, description: "Máximo de resultados (1-500).", required: false, default: 50 }
+  - { name: offset, type: integer, description: "Deslocamento para paginação.", required: false, default: 0 }
+
+---
+kind: tool
+name: db_sample_table
+type: firebird-sql
+source: cd2-db
+description: Mostra uma amostra de até 20 linhas para entender o conteúdo de uma tabela. Informe só um nome devolvido por db_list_tables (letras, números e _).
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT FIRST 20 * FROM "{{.table_name}}"
+templateParameters:
+  - name: table_name
+    type: string
+    description: "Nome exato da tabela ou view, como devolvido por db_list_tables."
+    allowedValues: ["^[A-Za-z_][A-Za-z0-9_$#]*$"]
+
+---
+kind: tool
+name: db_catalog
+type: firebird-sql
+source: cd2-db
+description: Mapa do banco para o roteiro de relatórios. Uma linha por coluna das 300 tabelas e views de usuário, até 60 colunas por tabela. Views vêm primeiro.
+annotations: { readOnlyHint: true }
+statement: |
+  WITH t AS (
+    SELECT r.RDB$RELATION_NAME AS relname,
+           CASE WHEN r.RDB$VIEW_BLR IS NULL THEN 'TABLE' ELSE 'VIEW' END AS table_type
+      FROM RDB$RELATIONS r
+     WHERE COALESCE(r.RDB$SYSTEM_FLAG, 0) = 0
+     ORDER BY CASE WHEN r.RDB$VIEW_BLR IS NOT NULL THEN 0 ELSE 1 END, r.RDB$RELATION_NAME
+     ROWS 300)
+  SELECT TRIM(t.relname) AS table_name, t.table_type, CAST(NULL AS INTEGER) AS num_rows,
+         TRIM(rf.RDB$FIELD_NAME) AS column_name,
+         CASE f.RDB$FIELD_TYPE
+           WHEN 7 THEN 'SMALLINT'
+           WHEN 8 THEN 'INTEGER'
+           WHEN 10 THEN 'FLOAT'
+           WHEN 12 THEN 'DATE'
+           WHEN 13 THEN 'TIME'
+           WHEN 14 THEN 'CHAR'
+           WHEN 16 THEN 'BIGINT'
+           WHEN 27 THEN 'DOUBLE PRECISION'
+           WHEN 35 THEN 'TIMESTAMP'
+           WHEN 37 THEN 'VARCHAR'
+           WHEN 261 THEN 'BLOB'
+           ELSE 'OTHER'
+         END AS data_type,
+         rf.RDB$FIELD_POSITION + 1 AS ordinal
+    FROM t
+    JOIN RDB$RELATION_FIELDS rf ON rf.RDB$RELATION_NAME = t.relname
+    JOIN RDB$FIELDS f ON f.RDB$FIELD_NAME = rf.RDB$FIELD_SOURCE
+   WHERE rf.RDB$FIELD_POSITION < 60
+   ORDER BY CASE WHEN t.table_type = 'VIEW' THEN 0 ELSE 1 END, t.relname, rf.RDB$FIELD_POSITION
+
+---
+kind: tool
+name: db_read_only_query
+type: firebird-sql
+source: cd2-db
+description: Executa uma consulta SELECT avulsa em modo somente leitura. Dialeto Firebird. Um único SELECT, sem WITH e sem ponto e vírgula, sem DML. Devolve no máximo 200 linhas, então prefira filtros e agregações.
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT * FROM ({{.sql}}) q ROWS 200
+templateParameters:
+  - name: sql
+    type: string
+    description: "A consulta SELECT, no dialeto Firebird, sem ponto e vírgula e sem WITH."
+    allowedValues: ["(?is)^\\s*select\\b.*$"]
+    excludedValues: [";", "(?i)\\b(insert|update|delete|drop|alter|truncate|create|grant|revoke|merge|execute|recreate|with)\\b"]

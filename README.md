@@ -105,7 +105,7 @@ Windows e Mac modernos **não executam nada automaticamente** ao plugar o pen dr
 
 ## 3. Conectar a um banco de dados
 
-O pen drive leva o [MCP Toolbox for Databases](https://github.com/googleapis/mcp-toolbox) (v1.14.0, um binário por sistema em `bin/toolbox/`) e o `cd2-ctl`, um controle pequeno feito aqui (código em `ctl/`, um binário por sistema em `bin/ctl/`). A conexão é feita pela tela: botão **Configurações**, modo **MCP Nativo para Banco de dados**, preencha motor, host, porta, base (ou service name no Oracle), usuário, senha e schema, e clique em **Salvar e conectar**. O toolbox reinicia sozinho com a conexão nova. Se ela falhar, a anterior continua valendo e a tela mostra o motivo e o fim do log. **Desconectar do banco** apaga a conexão deste computador.
+O pen drive leva o [MCP Toolbox for Databases](https://github.com/googleapis/mcp-toolbox) (v1.14.0, um binário por sistema em `bin/toolbox/`) e o `cd2-ctl`, um controle pequeno feito aqui (código em `ctl/`, um binário por sistema em `bin/ctl/`). A conexão é feita pela tela: botão **Configurações**, modo **MCP Nativo para Banco de dados**, preencha motor, host, porta, base (service name no Oracle, caminho do arquivo `.fdb` no Firebird), usuário, senha e schema, e clique em **Salvar e conectar**. O toolbox reinicia sozinho com a conexão nova. Se ela falhar, a anterior continua valendo e a tela mostra o motivo e o fim do log. **Desconectar do banco** apaga a conexão deste computador.
 
 | Motor | Porta padrão | Schema padrão | Conta de leitura recomendada |
 |---|---|---|---|
@@ -113,6 +113,7 @@ O pen drive leva o [MCP Toolbox for Databases](https://github.com/googleapis/mcp
 | Oracle | 1521 | usuário em maiúsculas | `CREATE SESSION` + `SELECT` nas tabelas (ou `SELECT ANY TABLE`) |
 | MariaDB / MySQL | 3306 | nome da base | `GRANT SELECT ON base.* TO ...` |
 | SQL Server | 1433 | `dbo` | membro só de `db_datareader` |
+| Firebird | 3050 | não usa | conta com só `SELECT` nas tabelas; no campo da base vai o caminho do arquivo `.fdb` |
 
 A IA ganha sete ferramentas somente leitura: `db_connection_status`, `db_catalog` (o mapa do banco para os relatórios), `db_list_tables`, `db_describe_table`, `db_search_columns`, `db_sample_table` (até 20 linhas) e `db_read_only_query` (SELECT avulso, até 200 linhas). O botão **Configurações** mostra a conexão ativa e exporta em PDF o que a IA de Bolso entende do banco.
 
@@ -123,7 +124,7 @@ A IA ganha sete ferramentas somente leitura: `db_connection_status`, `db_catalog
 - **Portas.** O launcher usa um trio que avança junto: P para a IA de Bolso, P+1000 para o toolbox e P+3000 para o `cd2-ctl` (8080, 9080 e 11080 por padrão). Todos escutam só em `127.0.0.1`.
 - Se o banco não responder em 15 segundos (senha errada, firewall), a tela mostra Atenção com o motivo e as últimas linhas do log, já filtradas.
 - É preciso a variante certa em `bin/toolbox/` e `bin/ctl/` (`windows-amd64`, `darwin-arm64`, `darwin-amd64`, `linux-amd64`). O preparo baixa as quatro; `CD2_TOOLBOX_PLATFORMS` limita as duas pastas. Sem o `cd2-ctl` da plataforma, o launcher avisa e segue sem banco (Demonstração e Archeo continuam).
-- **Tempo máximo de 15 segundos por consulta.** PostgreSQL corta no servidor (`statement_timeout`), MariaDB/MySQL pelo `queryTimeout` da receita. No SQL Server e no Oracle, a IA de Bolso para de esperar aos 15 s, mas a consulta pode continuar no servidor: crie a conta de leitura com limite de recurso (Resource Governor no SQL Server, perfil com `CPU_PER_CALL` no Oracle).
+- **Tempo máximo de 15 segundos por consulta.** PostgreSQL corta no servidor (`statement_timeout`), MariaDB/MySQL pelo `queryTimeout` da receita. No SQL Server, no Oracle e no Firebird, a IA de Bolso para de esperar aos 15 s, mas a consulta pode continuar no servidor: crie a conta de leitura com limite de recurso (Resource Governor no SQL Server, perfil com `CPU_PER_CALL` no Oracle).
 
 Ao conectar, a IA de Bolso lê até 10 linhas de cada tabela (no máximo 2 consultas ao mesmo tempo, views por último e uma de cada vez) para entender o papel de cada uma: movimento, itens de movimento, cadastro, parâmetro ou vazia. Isso leva segundos e já melhora a escolha da tabela. Depois, em segundo plano, o modelo escreve uma frase sobre cada tabela, e uma faixa com o robô mostra o progresso; dá para ir perguntando enquanto isso. Nada disso é gravado: amostras, papéis e descrições ficam só na memória da janela e são refeitos a cada conexão. Em Configurações, o link **Exportar o que a IA de Bolso entende do banco (PDF)** gera um relatório com o papel, as colunas úteis e a descrição de cada tabela, pela janela de impressão do navegador.
 

@@ -3,7 +3,7 @@
 # Valida core/toolbox/ENGINE.yaml contra o banco de tests/toolbox/ENGINE.env com
 # `toolbox invoke`. Sai com 1 na primeira divergencia. Precisa de: toolbox, jq.
 set -u
-ENGINE="${1:?uso: check-recipe.sh postgres|oracle|mariadb|sqlserver}"
+ENGINE="${1:?uso: check-recipe.sh postgres|oracle|mariadb|sqlserver|firebird}"
 HERE="$(cd "$(dirname "$0")" && pwd)"; ROOT="$(cd "$HERE/../.." && pwd)"
 YAML="$ROOT/core/toolbox/$ENGINE.yaml"
 set -a; . "$HERE/$ENGINE.env"; set +a
