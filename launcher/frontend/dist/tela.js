@@ -38,7 +38,7 @@ function render(estado, modo){
 }
 
 // Trava dos botões: o primeiro clique vale e o resto espera o próximo estado (clique duplo não dispara
-// Dormir/AbrirConversa duas vezes). AbrirConversa não muda a fase, então destrava sozinha depois de um tempo.
+// Dormir/AbrirConversa duas vezes). AbrirConversa e AbrirRegistros não mudam a fase, então destravam sozinhas depois de um tempo.
 function criarTrava(aoMudar, esperar, ms){
   let travado = false, timer = null;
   const muda = v => { travado = v; if(aoMudar) aoMudar(v); };
@@ -48,7 +48,7 @@ function criarTrava(aoMudar, esperar, ms){
     clicar(acao){
       if(travado) return false;
       muda(true);
-      if(acao === 'AbrirConversa') timer = (esperar || setTimeout)(() => { timer = null; muda(false); }, ms || 1500);
+      if(acao !== 'Dormir' && acao !== 'Fechar') timer = (esperar || setTimeout)(() => { timer = null; muda(false); }, ms || 1500);
       return true;
     },
     liberar(){ limpa(); muda(false); }
@@ -122,9 +122,9 @@ function aoEstado(bruto){
   const novo = lerEstado(bruto);
   if(!novo) return;
   chegouEvento = true;
-  if(novo.fase !== estado.fase) modo = 'normal';
+  // Só uma troca de fase libera os botões: um estado repetido (o pct andando) não destrava.
+  if(novo.fase !== estado.fase){ modo = 'normal'; trava.liberar(); }
   estado = novo;
-  trava.liberar();
   desenhar();
 }
 function aoChamada(){ modo = 'chamada'; lista = undefined; trava.liberar(); desenhar(); }

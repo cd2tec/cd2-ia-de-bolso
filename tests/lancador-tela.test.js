@@ -98,3 +98,19 @@ test('lerEstado aceita objeto e texto JSON', () => {
   assert.equal(lerEstado('lixo'), null);
   assert.equal(lerEstado(null), null);
 });
+
+test('trava: AbrirRegistros destrava sozinha, Dormir e Fechar não', () => {
+  let fn = null;
+  const t = criarTrava(null, f => { fn = f; return 1; });
+  assert.equal(t.clicar('AbrirRegistros'), true);
+  assert.equal(t.clicar('Fechar'), false);
+  fn();
+  assert.equal(t.travado, false);
+  fn = null;
+  assert.equal(t.clicar('Fechar'), true);
+  assert.equal(fn, null);
+  t.liberar();
+  assert.equal(t.clicar('Dormir'), true);
+  assert.equal(fn, null);
+  assert.equal(t.travado, true);
+});
