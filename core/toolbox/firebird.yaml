@@ -23,11 +23,11 @@ description: Verifica se o banco está acessível e se a conexão está pronta p
 annotations: { readOnlyHint: true }
 statement: |
   SELECT 'firebird' AS engine,
-         r.RDB$GET_CONTEXT('SYSTEM', 'ENGINE_VERSION') AS db_version,
+         RDB$GET_CONTEXT('SYSTEM', 'ENGINE_VERSION') AS db_version,
          '${CD2_DB_HOST}' AS host,
          '${CD2_DB_NAME}' AS "database",
          CURRENT_USER AS "user",
-         '' AS "schema",
+         CAST('' AS VARCHAR(20)) AS "schema",
          (SELECT COUNT(*) FROM RDB$RELATIONS x
            WHERE COALESCE(x.RDB$SYSTEM_FLAG, 0) = 0 AND x.RDB$VIEW_BLR IS NULL) AS visible_tables
     FROM RDB$DATABASE r
