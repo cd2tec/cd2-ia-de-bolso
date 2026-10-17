@@ -467,15 +467,26 @@ func TestArrumarLancadoresComLancador(t *testing.T) {
 	if err := arrumarLancadores(stage); err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []string{"core/INICIAR-CD2-Windows.bat", "core/INICIAR-CD2-Mac.command", "iniciar-cd2-linux.sh", "IA de Bolso.exe"} {
+	// Até o teste no Windows, o .bat fica na raiz ao lado do .exe (alternativa).
+	for _, f := range []string{"INICIAR-CD2-Windows.bat", "core/INICIAR-CD2-Mac.command", "iniciar-cd2-linux.sh", "IA de Bolso.exe"} {
 		if !existe(filepath.Join(stage, filepath.FromSlash(f))) {
 			t.Errorf("faltou %s", f)
 		}
 	}
-	for _, f := range []string{"INICIAR-CD2-Windows.bat", "INICIAR-CD2-Mac.command"} {
-		if existe(filepath.Join(stage, f)) {
-			t.Errorf("%s deveria ter saído da raiz", f)
+	for _, f := range []string{"core/INICIAR-CD2-Windows.bat", "INICIAR-CD2-Mac.command"} {
+		if existe(filepath.Join(stage, filepath.FromSlash(f))) {
+			t.Errorf("%s não deveria existir", f)
 		}
+	}
+}
+
+func TestArrumarLancadoresSoWindowsBatFica(t *testing.T) {
+	stage := stageCom(t, "IA de Bolso.exe", "INICIAR-CD2-Windows.bat")
+	if err := arrumarLancadores(stage); err != nil {
+		t.Fatal(err)
+	}
+	if !existe(filepath.Join(stage, "INICIAR-CD2-Windows.bat")) || existe(filepath.Join(stage, "core", "INICIAR-CD2-Windows.bat")) {
+		t.Error(".bat deveria ficar na raiz")
 	}
 }
 
@@ -508,18 +519,18 @@ func TestArrumarLancadoresSoMac(t *testing.T) {
 }
 
 func TestArrumarLancadoresSobrescreveEIdempotente(t *testing.T) {
-	stage := stageCom(t, "IA de Bolso.exe", "INICIAR-CD2-Windows.bat", "core/INICIAR-CD2-Windows.bat")
+	stage := stageCom(t, "IA de Bolso.app/Contents/MacOS/IA de Bolso", "INICIAR-CD2-Mac.command", "core/INICIAR-CD2-Mac.command")
 	for i := 0; i < 2; i++ {
 		if err := arrumarLancadores(stage); err != nil {
 			t.Fatal(err)
 		}
 	}
-	b, err := os.ReadFile(filepath.Join(stage, "core", "INICIAR-CD2-Windows.bat"))
-	if err != nil || string(b) != "INICIAR-CD2-Windows.bat" {
+	b, err := os.ReadFile(filepath.Join(stage, "core", "INICIAR-CD2-Mac.command"))
+	if err != nil || string(b) != "INICIAR-CD2-Mac.command" {
 		t.Errorf("core/ deveria ter o da raiz: %q %v", b, err)
 	}
-	if existe(filepath.Join(stage, "INICIAR-CD2-Windows.bat")) {
-		t.Error("sobrou .bat na raiz")
+	if existe(filepath.Join(stage, "INICIAR-CD2-Mac.command")) {
+		t.Error("sobrou .command na raiz")
 	}
 }
 
@@ -529,13 +540,13 @@ func TestExtrairLevaOLancador(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []string{"IA de Bolso.exe", "IA de Bolso.app/Contents/MacOS/IA de Bolso", "IA de Bolso.app/Contents/Info.plist", "core/INICIAR-CD2-Windows.bat", "core/INICIAR-CD2-Mac.command"} {
+	for _, f := range []string{"IA de Bolso.exe", "IA de Bolso.app/Contents/MacOS/IA de Bolso", "IA de Bolso.app/Contents/Info.plist", "INICIAR-CD2-Windows.bat", "core/INICIAR-CD2-Mac.command"} {
 		if !existe(filepath.Join(stage, filepath.FromSlash(f))) {
 			t.Errorf("faltou %s", f)
 		}
 	}
-	if existe(filepath.Join(stage, "INICIAR-CD2-Windows.bat")) || existe(filepath.Join(stage, "INICIAR-CD2-Mac.command")) {
-		t.Error("INICIAR deveria estar só em core/")
+	if existe(filepath.Join(stage, "core", "INICIAR-CD2-Windows.bat")) || existe(filepath.Join(stage, "INICIAR-CD2-Mac.command")) {
+		t.Error("o .bat fica na raiz e o .command só em core/")
 	}
 	if existe(filepath.Join(stage, "IA de Bolso.app", "Contents", "._lixo")) {
 		t.Error("lixo ._ entrou no stage")

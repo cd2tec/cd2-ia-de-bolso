@@ -59,6 +59,7 @@ As cópias do checksum ficam na mesma pasta, uma por gravação, com data e hora
 ```
 CD2/   (a raiz do pen drive)
   IA de Bolso.exe        (o lançador do Windows)
+  INICIAR-CD2-Windows.bat (alternativa no Windows, pelo terminal)
   IA de Bolso.app        (o lançador do Mac)
   iniciar-cd2-linux.sh
   README.md  LICENSE  VERSION
@@ -75,10 +76,10 @@ CD2/   (a raiz do pen drive)
   bin/ctl/darwin-amd64/cd2-ctl            ~7 MB
   bin/ctl/linux-amd64/cd2-ctl             ~7 MB
   core/toolbox/                           receitas por motor
-  core/   web/           (em core/ ficam também INICIAR-CD2-Windows.bat e INICIAR-CD2-Mac.command, o plano B)
+  core/   web/           (em core/ fica também INICIAR-CD2-Mac.command, o plano B do Mac)
 ```
 
-O código do lançador (`launcher/`) fica só no repositório, como `installer/`. Se o lançador de um sistema não estiver na cópia que você gravou, o `INICIAR` desse sistema fica na raiz, no lugar dele.
+O código do lançador (`launcher/`) fica só no repositório, como `installer/`. O `INICIAR-CD2-Windows.bat` fica na raiz junto do `IA de Bolso.exe`, como alternativa enquanto o lançador não for testado num Windows de verdade. Se o lançador do Mac não estiver na cópia que você gravou, o `INICIAR-CD2-Mac.command` fica na raiz, no lugar dele.
 
 Os scripts de gravação (`GRAVAR-*`, `gravar-*` e `core/make-usb-*`) e a pasta `docs/` ficam de fora de propósito. Quem recebe o pen drive só precisa ver o `IA de Bolso`.
 
@@ -95,7 +96,7 @@ Se passou, está aprovado. Grave os outros com o mesmo script ou copie todo o co
 ## Se der problema
 
 - **`llamafile.exe` sumiu logo depois do download (Windows).** Foi o antivírus. Libere uma exceção para a pasta de cache e rode de novo.
-- **SmartScreen reclamou do `IA de Bolso.exe` (ou do `.bat`).** "Mais informações" e depois "Executar assim mesmo". Esse caminho e o WebView2 (que a janelinha usa no Windows) ainda não foram testados num Windows de verdade; se a janelinha não abrir, dê dois cliques em `core\INICIAR-CD2-Windows.bat`, que faz o mesmo pelo terminal.
+- **SmartScreen reclamou do `IA de Bolso.exe` (ou do `.bat`).** "Mais informações" e depois "Executar assim mesmo". Esse caminho e o WebView2 (que a janelinha usa no Windows) ainda não foram testados num Windows de verdade; se a janelinha não abrir, dê dois cliques no `INICIAR-CD2-Windows.bat`, ali mesmo na raiz, que faz o mesmo pelo terminal.
 - **Mac: o `IA de Bolso.app` abre sem aviso** quando foi gravado pelo instalador ou pelo `GRAVAR-PENDRIVE-Mac.command`, porque a cópia não leva quarentena. Se alguém copiar o `.app` à mão de um ZIP baixado, o Gatekeeper bloqueia. Aí o caminho é Ajustes do Sistema, Privacidade e Segurança, e o botão "Abrir mesmo assim". O plano B (`core/INICIAR-CD2-Mac.command`) pede botão direito, Abrir.
 - **Fechei a janelinha e a IA continua rodando.** É assim mesmo: ela fica no ícone perto do relógio (Windows) ou na barra de menus (Mac). Para encerrar, "Colocar a IA para dormir".
 - **Linux não achou `mkfs.exfat`.** Instale o `exfatprogs` (`sudo apt install exfatprogs` ou `sudo dnf install exfatprogs`). O script aceita também o `exfat-utils` mais antigo.

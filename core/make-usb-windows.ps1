@@ -92,9 +92,11 @@ foreach ($i in @('IA de Bolso.exe', 'IA de Bolso.app')) {
 }
 Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Stage 'core\make-usb-unix.sh'), (Join-Path $Stage 'core\make-usb-windows.ps1')
 
-# Com o lancador na copia, o INICIAR da plataforma vai para core\; sem ele, fica na raiz (plano B).
+# Com o lancador do Mac na copia, o INICIAR dele vai para core\; sem ele, fica na raiz (plano B).
+# O .bat do Windows fica na raiz junto do .exe, como alternativa: o par do Windows
+# volta para a regra depois do teste num Windows de verdade.
 New-Item -ItemType Directory -Force -Path (Join-Path $Stage 'core') | Out-Null
-foreach ($par in @(@('IA de Bolso.exe', 'INICIAR-CD2-Windows.bat'), @('IA de Bolso.app', 'INICIAR-CD2-Mac.command'))) {
+foreach ($par in @(,@('IA de Bolso.app', 'INICIAR-CD2-Mac.command'))) {
     $iniciar = Join-Path $Stage $par[1]
     if ((Test-Path -LiteralPath (Join-Path $Stage $par[0])) -and (Test-Path -LiteralPath $iniciar)) {
         Move-Item -LiteralPath $iniciar -Destination (Join-Path $Stage ('core\' + $par[1])) -Force

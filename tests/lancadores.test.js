@@ -27,9 +27,10 @@ test('lancadores.sh com os dois lançadores', () => {
   for (const f of ['IA de Bolso.exe', 'IA de Bolso.app/Contents/MacOS/IA de Bolso', 'INICIAR-CD2-Windows.bat',
     'INICIAR-CD2-Mac.command', 'iniciar-cd2-linux.sh', 'core/start-unix.sh']) touch(s, f);
   arrumar(s);
-  assert.ok(existe(s, 'core/INICIAR-CD2-Windows.bat'));
+  // Ate o teste no Windows, o .bat fica na raiz ao lado do .exe (alternativa).
+  assert.ok(existe(s, 'INICIAR-CD2-Windows.bat'));
+  assert.ok(!existe(s, 'core/INICIAR-CD2-Windows.bat'));
   assert.ok(existe(s, 'core/INICIAR-CD2-Mac.command'));
-  assert.ok(!existe(s, 'INICIAR-CD2-Windows.bat'));
   assert.ok(!existe(s, 'INICIAR-CD2-Mac.command'));
   assert.ok(existe(s, 'iniciar-cd2-linux.sh'));
   assert.ok(existe(s, 'IA de Bolso.exe'));
@@ -51,14 +52,21 @@ test('lancadores.sh so o .app: o .command vai, o .bat fica', () => {
   assert.ok(existe(s, 'INICIAR-CD2-Windows.bat') && !existe(s, 'core/INICIAR-CD2-Windows.bat'));
 });
 
+test('lancadores.sh so o .exe: o .bat fica na raiz', () => {
+  const s = tmp();
+  for (const f of ['IA de Bolso.exe', 'INICIAR-CD2-Windows.bat']) touch(s, f);
+  arrumar(s);
+  assert.ok(existe(s, 'INICIAR-CD2-Windows.bat') && !existe(s, 'core/INICIAR-CD2-Windows.bat'));
+});
+
 test('lancadores.sh sobrescreve o de core/ e roda duas vezes sem erro', () => {
   const s = tmp();
-  for (const f of ['IA de Bolso.exe']) touch(s, f);
-  touch(s, 'INICIAR-CD2-Windows.bat', 'novo');
-  touch(s, 'core/INICIAR-CD2-Windows.bat', 'velho');
+  for (const f of ['IA de Bolso.app/Contents/MacOS/IA de Bolso']) touch(s, f);
+  touch(s, 'INICIAR-CD2-Mac.command', 'novo');
+  touch(s, 'core/INICIAR-CD2-Mac.command', 'velho');
   arrumar(s); arrumar(s);
-  assert.equal(fs.readFileSync(path.join(s, 'core/INICIAR-CD2-Windows.bat'), 'utf8'), 'novo');
-  assert.ok(!existe(s, 'INICIAR-CD2-Windows.bat'));
+  assert.equal(fs.readFileSync(path.join(s, 'core/INICIAR-CD2-Mac.command'), 'utf8'), 'novo');
+  assert.ok(!existe(s, 'INICIAR-CD2-Mac.command'));
 });
 
 test('INICIAR-CD2-Mac.command roda de core/ e da raiz', () => {

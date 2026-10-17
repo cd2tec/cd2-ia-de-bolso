@@ -32,7 +32,7 @@ Feito para Windows e Mac, sem precisar entender de tecnologia. Você só precisa
 
 Na primeira vez ele baixa uns 3,9 GB, então leva alguns minutos, conforme a sua internet. No fim aparece "Pronto. Pode tirar o pen drive." Para usar, espete o pen drive em qualquer computador e dê dois cliques em **`IA de Bolso`**.
 
-> Se aparecer "O Windows protegeu o computador", clique em **Mais informações** e depois em **Executar assim mesmo**. Se a janelinha da IA de Bolso não abrir, use o plano B: dois cliques em `core\INICIAR-CD2-Windows.bat`.
+> Se aparecer "O Windows protegeu o computador", clique em **Mais informações** e depois em **Executar assim mesmo**. Se a janelinha da IA de Bolso não abrir, use a alternativa que fica ao lado dela na raiz: dois cliques em `INICIAR-CD2-Windows.bat`.
 
 No Mac, o passo 4 é dar dois cliques em `GRAVAR-PENDRIVE-Mac.command`; no Linux, rodar `sh gravar-pendrive-linux.sh`. Detalhes e problemas conhecidos em [docs/criar-pendrive.md](docs/criar-pendrive.md).
 
@@ -41,11 +41,12 @@ No Mac, o passo 4 é dar dois cliques em `GRAVAR-PENDRIVE-Mac.command`; no Linux
 ```
 raiz do pen drive (CD2)/
   IA de Bolso.exe             <- duplo clique no Windows (o lançador)
+  INICIAR-CD2-Windows.bat     <- alternativa no Windows, pelo terminal
   IA de Bolso.app             <- duplo clique no Mac (o lançador)
   iniciar-cd2-linux.sh        <- no Linux: sh iniciar-cd2-linux.sh
   web/                        <- a interface (index.html, config.json e fontes Manrope)
   core/                       <- scripts de preparo, de gravação e de inicialização
-                                 (aqui ficam também INICIAR-CD2-Windows.bat e INICIAR-CD2-Mac.command, o plano B)
+                                 (aqui fica também INICIAR-CD2-Mac.command, o plano B do Mac)
   bin/    (criado no preparo) <- llamafile
   bin/toolbox/ (criado no preparo) <- MCP Toolbox, um por sistema
   bin/ctl/ (criado no preparo) <- cd2-ctl, o controle do banco, um por sistema
@@ -105,7 +106,7 @@ A **IA de Bolso** (o lançador) abre uma janelinha com um robô carregando o mod
 
 Fechar a janelinha **não** encerra a IA: ela continua acordada no ícone perto do relógio (Windows) ou na barra de menus (Mac), e dali dá para trazer a janelinha de volta ou abrir outra janela da conversa. Para encerrar, use **Colocar a IA para dormir**, na janelinha ou no menu do ícone. Quando a IA dorme, a conversa mostra uma faixa avisando. Só depois de "Boa noite! Pode tirar o pen drive." é seguro ejetar. Há uma IA por computador: abrir o lançador de novo traz a janelinha da que já está rodando.
 
-**Plano B técnico.** O `INICIAR-CD2-Windows.bat` e o `INICIAR-CD2-Mac.command` ficam em `core/` e fazem a mesma coisa pelo terminal (para encerrar: ENTER na janela do Windows, Ctrl+C ou fechar o terminal no Mac). Se o pen drive foi gravado sem o lançador, eles ficam na raiz. No Linux não há lançador: use `sh iniciar-cd2-linux.sh`.
+**Plano B técnico.** O `INICIAR-CD2-Windows.bat` fica na raiz, ao lado do `IA de Bolso.exe`, e o `INICIAR-CD2-Mac.command` fica em `core/`. Os dois fazem a mesma coisa pelo terminal (para encerrar: ENTER na janela do Windows, Ctrl+C ou fechar o terminal no Mac). Se o pen drive foi gravado sem o lançador do Mac, o `.command` fica na raiz. No Linux não há lançador: use `sh iniciar-cd2-linux.sh`.
 
 Windows e Mac modernos **não executam nada automaticamente** ao plugar o pen drive. O "plugou e abriu" é, na prática, um duplo clique. Por isso o lançador fica na raiz, com nome grande e visível; o resto fica nas subpastas.
 

@@ -43,8 +43,8 @@ var itensDoZip = map[string]bool{
 	nomeLancadorWin: true,
 }
 
-// Lançadores da raiz do pen drive. Se estiverem na cópia, o INICIAR da mesma
-// plataforma vai para core/ (arrumarLancadores); senão ele fica na raiz.
+// Lançadores da raiz do pen drive. Com o do Mac na cópia, o INICIAR do Mac vai
+// para core/ (arrumarLancadores); o do Windows, por enquanto, fica na raiz.
 const (
 	nomeLancadorWin = "IA de Bolso.exe"
 	nomeLancadorMac = "IA de Bolso.app"
@@ -329,10 +329,11 @@ func aceitoNoZip(rel string) bool {
 // arrumarLancadores aplica a regra do pen drive (a mesma do core/lancadores.sh):
 // com o lançador na cópia, o INICIAR da plataforma sai da raiz e vai para core/,
 // sobrescrevendo o que já houver lá; sem ele, o INICIAR fica na raiz. O
-// iniciar-cd2-linux.sh nunca se move.
+// iniciar-cd2-linux.sh nunca se move. O INICIAR-CD2-Windows.bat fica na raiz
+// junto do .exe, como alternativa: o par do Windows volta para a regra depois do
+// teste num Windows de verdade.
 func arrumarLancadores(stage string) error {
 	for _, par := range [][2]string{
-		{nomeLancadorWin, "INICIAR-CD2-Windows.bat"},
 		{nomeLancadorMac, "INICIAR-CD2-Mac.command"},
 	} {
 		if _, err := os.Stat(filepath.Join(stage, par[0])); err != nil {

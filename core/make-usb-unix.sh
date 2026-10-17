@@ -104,7 +104,7 @@ for item in "IA de Bolso.exe" "IA de Bolso.app"; do
   if [ "$OS" = "Darwin" ]; then cp -RX "$ROOT/$item" "$STAGE/"; else cp -R "$ROOT/$item" "$STAGE/"; fi
 done
 rm -f "$STAGE/core/make-usb-unix.sh" "$STAGE/core/make-usb-windows.ps1"
-# Com o lancador na copia, o INICIAR da plataforma vai para core/; sem ele, fica na raiz (plano B).
+# Com o lancador do Mac na copia, o .command vai para core/; sem ele, fica na raiz (plano B). O .bat fica na raiz.
 . "$ROOT/core/lancadores.sh"
 arrumar_lancadores "$STAGE" || die "Nao consegui arrumar os lancadores na copia local."
 find "$STAGE" \( -name '.DS_Store' -o -name '._*' \) -delete 2>/dev/null || true
