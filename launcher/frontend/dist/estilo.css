@@ -1,0 +1,37 @@
+/* Janelinha do lançador: escura, pequena, com a cena em pixel art. Fontes locais: funciona offline. */
+@font-face{font-family:"Manrope";font-weight:500;font-style:normal;font-display:swap;src:url(fonts/manrope-medium.woff2) format("woff2")}
+@font-face{font-family:"Manrope";font-weight:600;font-style:normal;font-display:swap;src:url(fonts/manrope-semibold.woff2) format("woff2")}
+@font-face{font-family:"Manrope";font-weight:700;font-style:normal;font-display:swap;src:url(fonts/manrope-bold.woff2) format("woff2")}
+@font-face{font-family:"Manrope";font-weight:800;font-style:normal;font-display:swap;src:url(fonts/manrope-extrabold.woff2) format("woff2")}
+
+:root{
+  --fundo:#0d1233; --barra:#161c45; --vazio:#1b2050; --linha:#464a7a;
+  --amarelo:#dbff2a; --cinza:#a1a6ae; --azul:#0000ff; --texto:#ffffff; --sobre-amarelo:#011e80;
+  --sans:"Manrope","Segoe UI",Arial,sans-serif;
+  --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--fundo);color:var(--texto);font-family:var(--sans);overflow:hidden}
+body{display:flex;flex-direction:column;justify-content:center;padding:18px 22px}
+.cena{display:flex;justify-content:center;height:76px}
+.cena svg{height:100%;width:auto;image-rendering:pixelated;display:block}
+.cena.larga svg{width:100%}
+.titulo{font-weight:800;font-size:16px;line-height:22px;margin:10px 0 0;text-align:center}
+.trilho{height:8px;border-radius:999px;overflow:hidden;background:var(--vazio);margin-top:12px}
+.preenche{height:100%;width:0;background:var(--amarelo);transition:width .4s ease}
+.linha{font:11px/17px var(--mono);color:var(--cinza);margin-top:8px}
+.piada{font-size:12px;line-height:18px;color:var(--amarelo);margin-top:10px;min-height:36px}
+.piada::before{content:"> ";color:var(--cinza);font-family:var(--mono)}
+.botoes{margin-top:6px}
+.btn{appearance:none;display:block;width:100%;text-align:center;border-radius:999px;padding:8px 14px;margin-top:8px;font:700 12px/18px var(--sans);cursor:pointer;border:1px solid transparent}
+.btn.primario{background:var(--amarelo);color:var(--sobre-amarelo)}
+.btn.primario:hover{filter:brightness(1.08)}
+.btn.secundario{background:transparent;border-color:var(--linha);color:var(--texto)}
+.btn.secundario:hover{border-color:var(--texto)}
+.btn:focus-visible{outline:2px solid var(--amarelo);outline-offset:2px}
+.demo{position:fixed;top:4px;right:8px;font:10px var(--mono);color:var(--cinza)}
+[hidden]{display:none!important}
+@keyframes piscar{0%,90%,100%{opacity:1}93%,97%{opacity:0}}
+.rosto.acordado{animation:piscar 3s steps(1) infinite}
+@media (prefers-reduced-motion:reduce){.rosto.acordado{animation:none}.preenche{transition:none}}
+.linha.centro{text-align:center;margin-top:4px}
