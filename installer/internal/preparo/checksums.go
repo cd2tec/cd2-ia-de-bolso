@@ -45,12 +45,18 @@ func LerChecksums(caminho string) ([]Linha, error) {
 	return ls, sc.Err()
 }
 
-// GerarChecksums escreve <stage>/CHECKSUMS.sha256 com bin/llamafile,
+// GerarChecksums escreve <stage>/CHECKSUMS.sha256 com os lançadores (se existirem), bin/llamafile,
 // models/<modeloNome>, cada toolbox e cada cd2-ctl, em ordem alfabética.
 // Outros arquivos de models/ (um .DS_Store, por exemplo) ficam de fora, como
 // no script: o Copiar pula lixo e a conferência no pen drive falharia.
 func GerarChecksums(stage, modeloNome string) error {
 	var caminhos []string
+	// Os lançadores da raiz entram só se estiverem na cópia.
+	for _, l := range []string{nomeLancadorWin, exeLancadorMac} {
+		if st, err := os.Stat(filepath.Join(stage, filepath.FromSlash(l))); err == nil && st.Mode().IsRegular() {
+			caminhos = append(caminhos, l)
+		}
+	}
 	if _, err := os.Stat(filepath.Join(stage, "bin", "llamafile")); err == nil {
 		caminhos = append(caminhos, "bin/llamafile")
 	}

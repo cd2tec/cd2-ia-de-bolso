@@ -40,7 +40,17 @@ const prefixoZip = "cd2tech-iadebolso/"
 var itensDoZip = map[string]bool{
 	"INICIAR-CD2-Windows.bat": true, "INICIAR-CD2-Mac.command": true, "iniciar-cd2-linux.sh": true,
 	"README.md": true, "LICENSE": true, "VERSION": true,
+	nomeLancadorWin: true,
 }
+
+// Lançadores da raiz do pen drive. Se estiverem na cópia, o INICIAR da mesma
+// plataforma vai para core/ (arrumarLancadores); senão ele fica na raiz.
+const (
+	nomeLancadorWin = "IA de Bolso.exe"
+	nomeLancadorMac = "IA de Bolso.app"
+	// exeLancadorMac é o executável do .app, o único do lançador que entra no CHECKSUMS.
+	exeLancadorMac = nomeLancadorMac + "/Contents/MacOS/IA de Bolso"
+)
 
 func nomeDoZip(m *manifesto.Manifesto, cache string) string {
 	return filepath.Join(cache, "cd2tech-iadebolso-"+m.Versao+".zip")
@@ -103,6 +113,9 @@ func Montar(ctx context.Context, c *http.Client, m *manifesto.Manifesto, cache s
 		return "", err
 	}
 	if err := extrair(zipPath, stage); err != nil {
+		return "", err
+	}
+	if err := arrumarLancadores(stage); err != nil {
 		return "", err
 	}
 
@@ -309,7 +322,34 @@ func aceitoNoZip(rel string) bool {
 	case "core/make-usb-unix.sh", "core/make-usb-windows.ps1":
 		return false
 	}
-	return itensDoZip[rel] || strings.HasPrefix(rel, "web/") || strings.HasPrefix(rel, "core/")
+	return itensDoZip[rel] || strings.HasPrefix(rel, "web/") || strings.HasPrefix(rel, "core/") ||
+		strings.HasPrefix(rel, nomeLancadorMac+"/")
+}
+
+// arrumarLancadores aplica a regra do pen drive (a mesma do core/lancadores.sh):
+// com o lançador na cópia, o INICIAR da plataforma sai da raiz e vai para core/,
+// sobrescrevendo o que já houver lá; sem ele, o INICIAR fica na raiz. O
+// iniciar-cd2-linux.sh nunca se move.
+func arrumarLancadores(stage string) error {
+	for _, par := range [][2]string{
+		{nomeLancadorWin, "INICIAR-CD2-Windows.bat"},
+		{nomeLancadorMac, "INICIAR-CD2-Mac.command"},
+	} {
+		if _, err := os.Stat(filepath.Join(stage, par[0])); err != nil {
+			continue
+		}
+		origem := filepath.Join(stage, par[1])
+		if _, err := os.Stat(origem); err != nil {
+			continue // já está só em core/, ou nem veio no zip
+		}
+		if err := os.MkdirAll(filepath.Join(stage, "core"), 0o755); err != nil {
+			return err
+		}
+		if err := os.Rename(origem, filepath.Join(stage, "core", par[1])); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // extrair tira do ZIP só o que vai para o pen drive, sem o prefixo cd2tech-iadebolso/.
@@ -337,14 +377,14 @@ func extrair(zipPath, stage string) error {
 		if !f.Mode().IsRegular() {
 			continue
 		}
-		if err := extrairUm(f, destino); err != nil {
+		if err := extrairUm(f, destino, stage); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func extrairUm(f *zip.File, destino string) error {
+func extrairUm(f *zip.File, destino, stage string) error {
 	if err := os.MkdirAll(filepath.Dir(destino), 0o755); err != nil {
 		return err
 	}
@@ -358,6 +398,10 @@ func extrairUm(f *zip.File, destino string) error {
 		modo = 0o644
 	}
 	modo |= 0o600
+	// O .app só abre se o executável dele tiver o bit de execução.
+	if strings.HasPrefix(destino, filepath.Join(stage, nomeLancadorMac, "Contents", "MacOS")+string(filepath.Separator)) {
+		modo = 0o755
+	}
 	out, err := os.OpenFile(destino, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, modo)
 	if err != nil {
 		return err

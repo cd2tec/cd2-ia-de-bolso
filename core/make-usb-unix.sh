@@ -97,7 +97,16 @@ for item in INICIAR-CD2-Windows.bat INICIAR-CD2-Mac.command iniciar-cd2-linux.sh
   [ -e "$ROOT/$item" ] || die "Nao achei '$item' em $ROOT. Rode este script de dentro da pasta do repositorio."
   if [ "$OS" = "Darwin" ]; then cp -RX "$ROOT/$item" "$STAGE/"; else cp -R "$ROOT/$item" "$STAGE/"; fi
 done
+# Lancadores da raiz ("IA de Bolso.exe" e "IA de Bolso.app"): entram so se existirem na copia.
+# No Mac e sem atributos estendidos (-X): a quarentena iria para o ._ do exFAT e o Gatekeeper bloquearia o .app.
+for item in "IA de Bolso.exe" "IA de Bolso.app"; do
+  [ -e "$ROOT/$item" ] || continue
+  if [ "$OS" = "Darwin" ]; then cp -RX "$ROOT/$item" "$STAGE/"; else cp -R "$ROOT/$item" "$STAGE/"; fi
+done
 rm -f "$STAGE/core/make-usb-unix.sh" "$STAGE/core/make-usb-windows.ps1"
+# Com o lancador na copia, o INICIAR da plataforma vai para core/; sem ele, fica na raiz (plano B).
+. "$ROOT/core/lancadores.sh"
+arrumar_lancadores "$STAGE" || die "Nao consegui arrumar os lancadores na copia local."
 find "$STAGE" \( -name '.DS_Store' -o -name '._*' \) -delete 2>/dev/null || true
 
 say ""
