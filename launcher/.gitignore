@@ -1,0 +1,6 @@
+# Gerados pelo wails build (a tela chama window.go direto)
+frontend/wailsjs/
+# Recursos do Windows gerados pelo wails build
+*.syso
+build/windows/icon.ico
+build/windows/info.json
