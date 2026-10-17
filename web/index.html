@@ -92,6 +92,11 @@ body{background:var(--surface-100);color:var(--ink);font:400 15px/24px var(--fon
 /* Leitor de tela: só a troca de fase é anunciada, não cada tabela. Fora da faixa, que some. */
 .oculto{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
+/* ---------- faixa "IA dormindo" (o lançador pôs o modelo para dormir) ---------- */
+.sono{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-6);background:var(--status-atencao);color:var(--status-ink-escuro);font:700 14px/20px var(--font-sans)}
+.sono[hidden]{display:none}
+@media (max-width:640px){.sono{padding:var(--space-3) var(--space-4)}}
+
 /* ---------- tags (StatusTag) ---------- */
 .tag{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 var(--space-3);border-radius:var(--radius-sm);font:700 13px/16px var(--font-sans);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .tag i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8;flex:none}
@@ -295,6 +300,7 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
     <button class="sm" id="bCfg" title="Configurar o banco de dados e as ferramentas">Configurações</button>
   </div>
 </header>
+<div class="sono" id="sono" role="status" aria-live="polite" hidden></div>
 <div class="analise" id="analise" hidden>
   <svg class="robo" id="analiseRobo" viewBox="0 0 12 10" shape-rendering="crispEdges" aria-hidden="true"></svg>
   <span id="analiseTxt"></span>
@@ -399,6 +405,7 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
 <script src="report.js?v=0.13.1"></script>
 <script src="demo.js?v=0.13.1"></script>
 <script src="momento.js?v=0.13.1"></script>
+<script src="sono.js?v=0.13.1"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -1075,6 +1082,16 @@ async function pingModel(){
   }
   setPill('#pModel', 'err', 'modelo de IA offline'); return false;
 }
+// Depois que o modelo respondeu uma vez, vigia o /health: se o lançador puser a IA para dormir, avisa na faixa.
+const TEXTO_SONO = 'A IA está dormindo. Abra o lançador do pen drive para acordá-la.';
+function vigiarSono(){
+  if(st.sono || !window.CD2Sono) return;
+  const faixa = $('#sono');
+  st.sono = CD2Sono.vigiar({
+    aoDormir: () => { faixa.textContent = TEXTO_SONO; faixa.hidden = false; setPill('#pModel', 'err', 'modelo de IA dormindo'); },
+    aoAcordar: () => { faixa.hidden = true; faixa.textContent = ''; setPill('#pModel', 'ok', 'modelo de IA pronto'); }
+  });
+}
 // A janela ocupa a área útil da tela em que abriu (inclusive num segundo monitor). Com o Chrome já
 // aberto, ele ignora o tamanho pedido pelo launcher; a página resolve. Numa aba comum o navegador ignora.
 function ocuparTela(){
@@ -1117,7 +1134,7 @@ async function boot(){
   document.title = (st.cfg.brand || 'CD2 Tech') + ' · ' + (st.cfg.product || 'IA de Bolso');
   $('#tagline').textContent = st.cfg.tagline || '';
   if(window.matchMedia && matchMedia('(max-width:640px)').matches) $('#input').placeholder = 'Pergunte alguma coisa…';
-  renderHero(); await handleOAuthReturn(); connectTools(); pingModel();
+  renderHero(); await handleOAuthReturn(); connectTools(); pingModel().then(ok => { if(ok) vigiarSono(); });
 }
 $('#bSend').onclick = () => send();
 $('#bStop').onclick = () => st.ctl && st.ctl.abort();
