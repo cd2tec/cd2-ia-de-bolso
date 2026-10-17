@@ -21,7 +21,7 @@ function render(estado, modo){
   switch(e.fase){
     case 'Lendo':
     case 'Subindo':
-      return { titulo: 'Acordando a IA de Bolso...', linha: e.aviso || 'carregando o modelo de IA ... ' + (e.pct || 0) + '%',
+      return { titulo: '', linha: e.aviso || 'carregando o modelo de IA ... ' + (e.pct || 0) + '%',
         piadaLista: Mascote.PIADAS, botoes: [] };
     case 'Pronta':
       return { titulo: modo === 'chamada' ? 'Me chamou?' : 'Acordei! A conversa abriu no navegador.', linha: e.aviso || '',
@@ -37,7 +37,31 @@ function render(estado, modo){
   }
 }
 
-const api = { render };
+// Trava dos botões: o primeiro clique vale e o resto espera o próximo estado (clique duplo não dispara
+// Dormir/AbrirConversa duas vezes). AbrirConversa não muda a fase, então destrava sozinha depois de um tempo.
+function criarTrava(aoMudar, esperar, ms){
+  let travado = false, timer = null;
+  const muda = v => { travado = v; if(aoMudar) aoMudar(v); };
+  const limpa = () => { if(timer !== null){ (clearTimeout)(timer); timer = null; } };
+  return {
+    get travado(){ return travado; },
+    clicar(acao){
+      if(travado) return false;
+      muda(true);
+      if(acao === 'AbrirConversa') timer = (esperar || setTimeout)(() => { timer = null; muda(false); }, ms || 1500);
+      return true;
+    },
+    liberar(){ limpa(); muda(false); }
+  };
+}
+
+// O estado pode chegar como objeto ou como texto JSON.
+function lerEstado(v){
+  if(typeof v === 'string'){ try { return JSON.parse(v); } catch(_){ return null; } }
+  return v && typeof v === 'object' ? v : null;
+}
+
+const api = { render, criarTrava, lerEstado };
 if(nodo){ module.exports = api; return; }
 root.CD2Tela = api;
 if(typeof document === 'undefined') return;
@@ -45,15 +69,19 @@ if(typeof document === 'undefined') return;
 // ---------- DOM ----------
 const $ = id => document.getElementById(id);
 let estado = { fase: 'Lendo', pct: 0 }, modo = 'normal';
-let passo = 0, lista = null, ultimaPiada = -1;
+let passo = 0, lista = null, ultimaPiada = -1, relogioPiada = null, chegouEvento = false;
+const trava = criarTrava(v => document.querySelectorAll('#botoes .btn').forEach(b => { b.disabled = v; }));
 
 function ponte(){ return root.go && root.go.main && root.go.main.App; }
 
 function sortearPiada(){
-  if(!lista){ $('piada').hidden = true; return; }
+  if(!lista){ $('piada').hidden = true; clearInterval(relogioPiada); return; }
   ultimaPiada = Piadas.proxima(lista, ultimaPiada);
   $('piada').textContent = lista[ultimaPiada];
   $('piada').hidden = false;
+  // Piada nova (por troca de fase, chamada ou pelo relógio) recomeça os 6 s.
+  clearInterval(relogioPiada);
+  relogioPiada = setInterval(sortearPiada, 6000);
 }
 
 function cena(){
@@ -66,12 +94,13 @@ function desenhar(){
   const r = render(estado, modo), carregando = estado.fase === 'Lendo' || estado.fase === 'Subindo';
   cena();
   $('titulo').textContent = r.titulo;
+  $('titulo').hidden = !r.titulo;
   $('trilho').hidden = !carregando;
   $('preenche').style.width = Math.max(0, Math.min(100, estado.pct || 0)) + '%';
   $('linha').textContent = r.linha;
   $('linha').hidden = !r.linha;
   $('linha').className = 'linha' + (carregando ? '' : ' centro');
-  if(r.piadaLista !== lista){ lista = r.piadaLista; sortearPiada(); }
+  if(r.piadaLista !== lista){ lista = r.piadaLista; ultimaPiada = -1; sortearPiada(); }
   const caixa = $('botoes');
   caixa.textContent = '';
   r.botoes.forEach((rotulo, i) => {
@@ -79,19 +108,26 @@ function desenhar(){
     b.type = 'button';
     b.className = 'btn ' + (i === 0 ? 'primario' : 'secundario');
     b.textContent = rotulo;
-    b.addEventListener('click', () => { const A = ponte(); if(A && A[ACAO[rotulo]]) A[ACAO[rotulo]](); });
+    b.addEventListener('click', () => {
+      const A = ponte(), nome = ACAO[rotulo];
+      if(trava.clicar(nome) && A && A[nome]) A[nome]();
+    });
+    b.disabled = trava.travado;
     caixa.appendChild(b);
   });
 }
 
 // O modo "chamada" vale até o próximo estado que mude de fase.
-function aoEstado(novo){
+function aoEstado(bruto){
+  const novo = lerEstado(bruto);
   if(!novo) return;
+  chegouEvento = true;
   if(novo.fase !== estado.fase) modo = 'normal';
   estado = novo;
+  trava.liberar();
   desenhar();
 }
-function aoChamada(){ modo = 'chamada'; lista = undefined; desenhar(); }
+function aoChamada(){ modo = 'chamada'; lista = undefined; trava.liberar(); desenhar(); }
 
 function noWails(){
   return !!root.runtime || location.protocol === 'wails:' || location.hostname === 'wails.localhost';
@@ -102,6 +138,10 @@ function iniciar(){
   if(A && root.runtime){
     root.runtime.EventsOn('estado', aoEstado);
     root.runtime.EventsOn('chamada', aoChamada);
+    // O estado de agora, antes de esperar eventos (um evento que já chegou é mais novo e vale mais).
+    try {
+      Promise.resolve(A.Estado()).then(v => { if(!chegouEvento) aoEstado(v); }).catch(() => {});
+    } catch(_){}
   } else {
     // Sem Wails: um estado de exemplo (?fase=Pronta, Erro, Dormiu...), sem tocar em nada.
     $('demo').hidden = false;
@@ -111,7 +151,6 @@ function iniciar(){
   }
   desenhar();
   setInterval(() => { passo++; if(estado.fase === 'Lendo' || estado.fase === 'Subindo') cena(); }, 300);
-  setInterval(sortearPiada, 6000);
 }
 
 // Dentro do Wails a ponte pode chegar um instante depois da página: espera por ela e nunca cai no exemplo.
