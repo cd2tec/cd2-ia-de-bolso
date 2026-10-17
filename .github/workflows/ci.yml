@@ -1,4 +1,4 @@
-# Testes do cd2-ctl (Go), do instalador (Go) e do front (node --test) em todo pull request e push na main.
+# Testes do cd2-ctl (Go), do instalador (Go), do lançador (Go) e do front (node --test) em todo pull request e push na main.
 name: CI
 on:
   pull_request:
@@ -23,6 +23,25 @@ jobs:
           GOOS=windows go vet ./internal/... ./cmd/...
           GOOS=darwin go vet ./internal/... ./cmd/...
           go test ./internal/... ./cmd/...
+  launcher:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: launcher/go.mod
+          cache: false
+      - name: gofmt, go vet e go test (launcher/)
+        working-directory: launcher
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./internal/...
+          GOOS=windows go vet ./internal/...
+          GOOS=darwin go vet ./internal/...
+          # O pacote main (janela e bandeja) no Windows passa sem cgo; no Mac a
+          # bandeja usa cgo e no Linux o Wails pede o GTK, então ficam de fora.
+          GOOS=windows go vet .
+          go test ./internal/...
   test:
     runs-on: ubuntu-latest
     steps:

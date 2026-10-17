@@ -37,10 +37,10 @@ Daí ele faz, nesta ordem:
 
 1. **Monta uma cópia local** da IA de Bolso e baixa o llamafile e o modelo para uma pasta de cache do seu computador. Se a conexão cair, rode de novo: o download retoma de onde parou, e o que já estiver completo é pulado.
 2. **Formata** o pen drive em exFAT com tabela MBR e nome `CD2`. É o formato que Windows, Mac e Linux leem e que aceita arquivo acima de 4 GB (FAT32 não aceita).
-3. **Copia** tudo direto para a raiz do pen drive, com `bin/` e `models/` já preenchidos. Como o pen drive acabou de ser formatado, não precisa de subpasta: quem abre o pen drive já vê o `INICIAR`.
+3. **Copia** tudo direto para a raiz do pen drive, com `bin/` e `models/` já preenchidos. Como o pen drive acabou de ser formatado, não precisa de subpasta: quem abre o pen drive já vê o `IA de Bolso`.
 4. **Confere** os checksums lendo direto do pen drive, guarda uma cópia do `CHECKSUMS.sha256` fora dele e ejeta.
 
-Pen drives gravados antes da v0.10.4 têm tudo dentro da pasta `CD2-HARNESS`. Eles continuam funcionando: é só abrir essa pasta e dar dois cliques no `INICIAR`. Para deixá-los no formato novo, com tudo na raiz, grave de novo.
+Pen drives gravados antes da v0.10.4 têm tudo dentro da pasta `CD2-HARNESS`. Eles continuam funcionando: é só abrir essa pasta e dar dois cliques no `INICIAR` (ou no `IA de Bolso`, se o pen drive já tiver o lançador). Para deixá-los no formato novo, com tudo na raiz, grave de novo.
 
 No fim, a mensagem "Pronto. Pode tirar o pen drive." Para gravar o próximo, plugue e rode de novo. Leva só o tempo da cópia.
 
@@ -58,8 +58,9 @@ As cópias do checksum ficam na mesma pasta, uma por gravação, com data e hora
 
 ```
 CD2/   (a raiz do pen drive)
-  INICIAR-CD2-Windows.bat
-  INICIAR-CD2-Mac.command
+  IA de Bolso.exe        (o lançador do Windows)
+  INICIAR-CD2-Windows.bat (alternativa no Windows, pelo terminal)
+  IA de Bolso.app        (o lançador do Mac)
   iniciar-cd2-linux.sh
   README.md  LICENSE  VERSION
   CHECKSUMS.sha256
@@ -75,26 +76,29 @@ CD2/   (a raiz do pen drive)
   bin/ctl/darwin-amd64/cd2-ctl            ~7 MB
   bin/ctl/linux-amd64/cd2-ctl             ~7 MB
   core/toolbox/                           receitas por motor
-  core/   web/
+  core/   web/           (em core/ fica também INICIAR-CD2-Mac.command, o plano B do Mac)
 ```
 
-Os scripts de gravação (`GRAVAR-*`, `gravar-*` e `core/make-usb-*`) e a pasta `docs/` ficam de fora de propósito. Quem recebe o pen drive só precisa ver o `INICIAR`.
+O código do lançador (`launcher/`) fica só no repositório, como `installer/`. O `INICIAR-CD2-Windows.bat` fica na raiz junto do `IA de Bolso.exe`, como alternativa enquanto o lançador não for testado num Windows de verdade. Se o lançador do Mac não estiver na cópia que você gravou, o `INICIAR-CD2-Mac.command` fica na raiz, no lugar dele.
+
+Os scripts de gravação (`GRAVAR-*`, `gravar-*` e `core/make-usb-*`) e a pasta `docs/` ficam de fora de propósito. Quem recebe o pen drive só precisa ver o `IA de Bolso`.
 
 ## Teste de fumaça (faça no primeiro pen drive, antes de duplicar)
 
 1. Tire e plugue de novo o pen drive.
-2. Abra pelo launcher do seu sistema (`INICIAR-CD2-...`).
-3. Espere a janela abrir e mande uma pergunta qualquer. Na primeira vez, o modelo leva de 20 a 90 segundos para carregar; o robô no terminal mostra quanto do modelo já foi lido do pen drive.
+2. Dê dois cliques em `IA de Bolso` (`.exe` no Windows, `.app` no Mac). No Linux, `sh iniciar-cd2-linux.sh`.
+3. Espere a janela abrir e mande uma pergunta qualquer. Na primeira vez, o modelo leva de 20 a 90 segundos para carregar; o robô da janelinha mostra quanto do modelo já foi lido do pen drive.
 4. Se for usar banco: Configurações, modo MCP Nativo para Banco de dados, preencha a conexão e clique em Salvar e conectar. A lista com motor, versão e tabelas tem de aparecer.
-5. Feche e ejete com segurança.
+5. Clique em **Colocar a IA para dormir**, espere "Boa noite! Pode tirar o pen drive." e ejete com segurança.
 
 Se passou, está aprovado. Grave os outros com o mesmo script ou copie todo o conteúdo da raiz de um pen drive para a raiz de outro já formatado em exFAT, e compare o `CHECKSUMS.sha256` no final.
 
 ## Se der problema
 
 - **`llamafile.exe` sumiu logo depois do download (Windows).** Foi o antivírus. Libere uma exceção para a pasta de cache e rode de novo.
-- **SmartScreen reclamou do `.bat`.** "Mais informações" e depois "Executar assim mesmo".
-- **Mac disse "desenvolvedor não verificado" ao abrir o `.command`.** Botão direito, Abrir. Ou libere em Ajustes do Sistema, Privacidade e Segurança.
+- **SmartScreen reclamou do `IA de Bolso.exe` (ou do `.bat`).** "Mais informações" e depois "Executar assim mesmo". Esse caminho e o WebView2 (que a janelinha usa no Windows) ainda não foram testados num Windows de verdade; se a janelinha não abrir, dê dois cliques no `INICIAR-CD2-Windows.bat`, ali mesmo na raiz, que faz o mesmo pelo terminal.
+- **Mac: o `IA de Bolso.app` pediu confirmação para abrir.** Gravado pelo instalador ou pelo `GRAVAR-PENDRIVE-Mac.command`, ele não deve pedir aviso, porque a cópia não leva quarentena (até agora isso só foi conferido numa imagem de disco em exFAT, não num pen drive de verdade). Se pedir, ou se alguém copiou o `.app` à mão de um ZIP baixado e o Gatekeeper bloqueou, o caminho é Ajustes do Sistema, Privacidade e Segurança, e o botão "Abrir mesmo assim". O plano B (`core/INICIAR-CD2-Mac.command`) pede botão direito, Abrir.
+- **Fechei a janelinha e a IA continua rodando.** É assim mesmo: ela fica no ícone perto do relógio (Windows) ou na barra de menus (Mac). Para encerrar, "Colocar a IA para dormir".
 - **Linux não achou `mkfs.exfat`.** Instale o `exfatprogs` (`sudo apt install exfatprogs` ou `sudo dnf install exfatprogs`). O script aceita também o `exfat-utils` mais antigo.
 - **No Windows aparecem arquivos `._alguma-coisa`.** É resíduo de cópia feita no Mac pelo Finder. O script já limpa isso; se copiou na mão, apague-os, são inofensivos.
 - **O download parou no meio.** Rode o mesmo script de novo. Ele retoma.

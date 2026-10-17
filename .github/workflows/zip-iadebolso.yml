@@ -1,5 +1,6 @@
-# ZIP da IA de Bolso para download fácil: a cada push no main, monta cd2tech-iadebolso.zip (pasta
-# cd2tech-iadebolso, fins de linha do .gitattributes, sem testes nem specs) e troca o arquivo da
+# ZIP da IA de Bolso para download fácil: a cada push no main, compila o lançador (IA de Bolso.exe
+# no Windows e IA de Bolso.app no Mac), monta cd2tech-iadebolso.zip (pasta cd2tech-iadebolso, fins
+# de linha do .gitattributes, sem testes nem specs, com os dois lançadores dentro) e troca o arquivo da
 # release fixa "iadebolso" e publica o manifesto.json (versões, URLs e SHA-256) que o instalador
 # desktop lê. O link de download nunca muda. A release não vira "latest", para não
 # disputar com as releases do cd2-ctl.
@@ -14,14 +15,91 @@ concurrency:
   group: zip-iadebolso
   cancel-in-progress: true
 jobs:
+  # Lançador do pen drive (Wails, em launcher/). Entra no ZIP antes do manifesto, que calcula o SHA do ZIP.
+  # Go fixado em 1.23.x pelo mesmo motivo dos instaladores (o CLI do Wails 2.10.1 não compila com o Go mais novo).
+  lancador-mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+          cache: false
+      - name: Instalar o Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+      - name: Compilar o app universal
+        working-directory: launcher
+        run: |
+          VERSAO="$(tr -d ' \r\n' < ../VERSION)"
+          wails build -clean -trimpath -platform darwin/universal -ldflags "-X main.versao=$VERSAO"
+      - name: Assinar (ad hoc) e empacotar com o ditto
+        working-directory: launcher/build/bin
+        run: |
+          # O Apple Silicon exige ao menos a assinatura ad hoc. O ditto guarda permissões e links do .app,
+          # que um zip comum perderia. Sem atributos estendidos nem resource fork: senão entram ._ no
+          # ZIP, que viram lixo no pen drive (e a quarentena iria junto).
+          codesign --force --deep -s - "IA de Bolso.app"
+          codesign --verify --deep --strict "IA de Bolso.app"
+          ditto -c -k --norsrc --noextattr --keepParent "IA de Bolso.app" lancador-mac.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lancador-mac
+          path: launcher/build/bin/lancador-mac.zip
+          if-no-files-found: error
+
+  lancador-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+          cache: false
+      - name: Instalar o Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.10.1
+      - name: Compilar o exe
+        working-directory: launcher
+        run: |
+          VERSAO="$(tr -d ' \r\n' < ../VERSION)"
+          # WebView2 pela estratégia padrão do Wails (o bootstrapper baixa se faltar), sem -webview2 embed.
+          wails build -clean -trimpath -platform windows/amd64 -ldflags "-X main.versao=$VERSAO"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lancador-windows
+          path: launcher/build/bin/IA de Bolso.exe
+          if-no-files-found: error
+
   zip:
+    needs: [lancador-mac, lancador-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Montar o ZIP
         run: |
-          git archive --format=zip --prefix=cd2tech-iadebolso/ -o cd2tech-iadebolso.zip HEAD -- . ':!tests' ':!docs/superpowers' ':!.github' ':!installer'
+          git archive --format=zip --prefix=cd2tech-iadebolso/ -o cd2tech-iadebolso.zip HEAD -- . ':!tests' ':!docs/superpowers' ':!.github' ':!installer' ':!launcher'
           unzip -l cd2tech-iadebolso.zip | tail -1
+      # Os dois lançadores entram aqui, antes do manifesto. O ditto guardou o .app com permissões e links;
+      # o unzip e o zip -y os preservam (-y guarda os links como links, não como cópias).
+      - uses: actions/download-artifact@v4
+        with:
+          name: lancador-mac
+          path: lancador-mac
+      - uses: actions/download-artifact@v4
+        with:
+          name: lancador-windows
+          path: lancador-windows
+      - name: Pôr os lançadores no ZIP
+        run: |
+          unzip -q lancador-mac/lancador-mac.zip -d cd2tech-iadebolso/
+          cp "lancador-windows/IA de Bolso.exe" cd2tech-iadebolso/
+          zip -qry cd2tech-iadebolso.zip "cd2tech-iadebolso/IA de Bolso.app" "cd2tech-iadebolso/IA de Bolso.exe"
+          LISTA="$(unzip -l cd2tech-iadebolso.zip)"
+          printf '%s\n' "$LISTA" | grep -F "cd2tech-iadebolso/IA de Bolso.exe" >/dev/null || { echo "Faltou o IA de Bolso.exe no ZIP."; exit 1; }
+          printf '%s\n' "$LISTA" | grep -F "cd2tech-iadebolso/IA de Bolso.app/Contents/MacOS/IA de Bolso" >/dev/null || { echo "Faltou o executável do IA de Bolso.app no ZIP."; exit 1; }
+          printf '%s\n' "$LISTA" | tail -1
       # Tudo o que pode falhar (API, HEAD, go run) roda antes de qualquer upload: falha aborta sem tocar na release.
       - uses: actions/setup-go@v5
         with:
@@ -77,7 +155,7 @@ jobs:
           VERSAO="$(tr -d ' \r\n' < VERSION)"
           if ! gh release view iadebolso -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create iadebolso --latest=false --title "IA de Bolso" \
-              --notes "Baixe o instalador (CD2-IA-de-Bolso-Windows.exe ou CD2-IA-de-Bolso-Mac.dmg), abra, espete um pen drive de 16 GB e siga as quatro telas. Prefere o jeito técnico? Baixe cd2tech-iadebolso.zip, extraia e dê dois cliques em GRAVAR-PENDRIVE-Windows.bat. Passo a passo: https://cd2tec.github.io/cd2-ia-de-bolso/#pendrive" \
+              --notes "Baixe o instalador (CD2-IA-de-Bolso-Windows.exe ou CD2-IA-de-Bolso-Mac.dmg), abra, espete um pen drive de 16 GB e siga as quatro telas. Prefere o jeito técnico? Baixe cd2tech-iadebolso.zip, extraia e dê dois cliques em GRAVAR-PENDRIVE-Windows.bat. Para usar o pen drive pronto, dê dois cliques em IA de Bolso no pen drive. Passo a passo: https://cd2tec.github.io/cd2-ia-de-bolso/#pendrive" \
               -R "$GITHUB_REPOSITORY"
           fi
           gh release upload iadebolso cd2tech-iadebolso.zip --clobber -R "$GITHUB_REPOSITORY"

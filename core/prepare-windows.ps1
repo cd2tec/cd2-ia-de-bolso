@@ -142,10 +142,14 @@ foreach ($plat in $ToolboxPlatforms) {
 Write-Host ''
 Write-Host '== Checksums (anote para conferir depois)'
 # Mesmo formato do Mac/Linux (caminhos relativos com /), para o mesmo arquivo valer nos tres sistemas.
-$lines = @(
-    "$((Get-FileHash -Algorithm SHA256 $bin).Hash.ToLower())  bin/llamafile",
-    "$((Get-FileHash -Algorithm SHA256 $model).Hash.ToLower())  models/$ModelFile"
-)
+$lines = @()
+# Os lancadores da raiz entram so se estiverem na copia (os nomes tem espaco: -LiteralPath).
+foreach ($rel in @('IA de Bolso.app/Contents/MacOS/IA de Bolso', 'IA de Bolso.exe')) {
+    $p = Join-Path $Root ($rel -replace '/', '\')
+    if (Test-Path -LiteralPath $p -PathType Leaf) { $lines += "$((Get-FileHash -Algorithm SHA256 -LiteralPath $p).Hash.ToLower())  $rel" }
+}
+$lines += "$((Get-FileHash -Algorithm SHA256 $bin).Hash.ToLower())  bin/llamafile"
+$lines += "$((Get-FileHash -Algorithm SHA256 $model).Hash.ToLower())  models/$ModelFile"
 foreach ($f in $toolboxFiles) { $lines += "$((Get-FileHash -Algorithm SHA256 $f.Path).Hash.ToLower())  $($f.Rel)" }
 foreach ($f in $ctlFiles) { $lines += "$((Get-FileHash -Algorithm SHA256 $f.Path).Hash.ToLower())  $($f.Rel)" }
 $lines | ForEach-Object { Write-Host $_ }

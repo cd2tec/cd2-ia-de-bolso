@@ -136,7 +136,14 @@ if [ -n "$CTL_SUMS" ]; then rm -f "$CTL_SUMS"; fi
 
 echo ""
 echo "== Checksums (anote para conferir depois)"
-( cd "$ROOT" && $SUM bin/llamafile "models/$MODEL_FILE" $(ls bin/toolbox/*/toolbox bin/toolbox/*/toolbox.exe bin/ctl/*/cd2-ctl bin/ctl/*/cd2-ctl.exe 2>/dev/null) | tee CHECKSUMS.sha256 )
+# Os lancadores da raiz entram so se estiverem na copia. Os nomes tem espaco, entao vao por "$@".
+LAUNCHERS=""
+[ -f "$ROOT/IA de Bolso.app/Contents/MacOS/IA de Bolso" ] && LAUNCHERS="app"
+[ -f "$ROOT/IA de Bolso.exe" ] && LAUNCHERS="$LAUNCHERS exe"
+set --
+case "$LAUNCHERS" in *app*) set -- "$@" "IA de Bolso.app/Contents/MacOS/IA de Bolso" ;; esac
+case "$LAUNCHERS" in *exe*) set -- "$@" "IA de Bolso.exe" ;; esac
+( cd "$ROOT" && $SUM "$@" bin/llamafile "models/$MODEL_FILE" $(ls bin/toolbox/*/toolbox bin/toolbox/*/toolbox.exe bin/ctl/*/cd2-ctl bin/ctl/*/cd2-ctl.exe 2>/dev/null) | tee CHECKSUMS.sha256 )
 echo ""
 echo "Pronto. Pen drive preparado em: $ROOT"
 echo "Dica: formate o pen drive em exFAT (FAT32 nao aceita arquivos acima de 4 GB)."

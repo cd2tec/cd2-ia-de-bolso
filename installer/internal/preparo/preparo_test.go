@@ -44,7 +44,7 @@ func (a *ambiente) contar(p string) int {
 	return a.gets[p]
 }
 
-func criarZip(t *testing.T) []byte {
+func criarZip(t *testing.T, comLancador bool) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
@@ -78,20 +78,28 @@ func criarZip(t *testing.T) []byte {
 	add("gravar-pendrive-linux.sh", "no", 0o755)
 	add(".DS_Store", "no", 0o644)
 	add("._README.md", "no", 0o644)
+	if comLancador {
+		add("IA de Bolso.exe", "exe", 0o644)
+		add("IA de Bolso.app/Contents/MacOS/IA de Bolso", "macho", 0o644)
+		add("IA de Bolso.app/Contents/Info.plist", "plist", 0o644)
+		add("IA de Bolso.app/Contents/._lixo", "no", 0o644)
+	}
 	if err := zw.Close(); err != nil {
 		t.Fatal(err)
 	}
 	return buf.Bytes()
 }
 
-func novoAmbiente(t *testing.T) *ambiente {
+func novoAmbiente(t *testing.T) *ambiente { return novoAmbienteCom(t, false) }
+
+func novoAmbienteCom(t *testing.T, comLancador bool) *ambiente {
 	t.Helper()
 	old := minimos
 	minimos.Modelo, minimos.Toolbox = 10, 10
 	t.Cleanup(func() { minimos = old })
 
 	a := &ambiente{cache: t.TempDir(), gets: map[string]int{}}
-	zipB := criarZip(t)
+	zipB := criarZip(t, comLancador)
 	modelo := []byte("modelo-conteudo-grande")
 	motor := []byte("llamafile-conteudo")
 	a.arquivos = map[string][]byte{
@@ -434,5 +442,150 @@ func TestLerChecksums(t *testing.T) {
 	}
 	if len(ls) != 2 || ls[0] != (Linha{"aa", "bin/x"}) || ls[1] != (Linha{"bb", "bin/y"}) {
 		t.Fatalf("%v", ls)
+	}
+}
+
+// monta um stage com os arquivos dados (conteúdo = nome) para o arrumarLancadores.
+func stageCom(t *testing.T, arquivos ...string) string {
+	t.Helper()
+	stage := t.TempDir()
+	for _, f := range arquivos {
+		p := filepath.Join(stage, filepath.FromSlash(f))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(f), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return stage
+}
+
+func TestArrumarLancadoresComLancador(t *testing.T) {
+	stage := stageCom(t, "IA de Bolso.exe", "IA de Bolso.app/Contents/MacOS/IA de Bolso",
+		"INICIAR-CD2-Windows.bat", "INICIAR-CD2-Mac.command", "iniciar-cd2-linux.sh", "core/start-unix.sh")
+	if err := arrumarLancadores(stage); err != nil {
+		t.Fatal(err)
+	}
+	// Até o teste no Windows, o .bat fica na raiz ao lado do .exe (alternativa).
+	for _, f := range []string{"INICIAR-CD2-Windows.bat", "core/INICIAR-CD2-Mac.command", "iniciar-cd2-linux.sh", "IA de Bolso.exe"} {
+		if !existe(filepath.Join(stage, filepath.FromSlash(f))) {
+			t.Errorf("faltou %s", f)
+		}
+	}
+	for _, f := range []string{"core/INICIAR-CD2-Windows.bat", "INICIAR-CD2-Mac.command"} {
+		if existe(filepath.Join(stage, filepath.FromSlash(f))) {
+			t.Errorf("%s não deveria existir", f)
+		}
+	}
+}
+
+func TestArrumarLancadoresSoWindowsBatFica(t *testing.T) {
+	stage := stageCom(t, "IA de Bolso.exe", "INICIAR-CD2-Windows.bat")
+	if err := arrumarLancadores(stage); err != nil {
+		t.Fatal(err)
+	}
+	if !existe(filepath.Join(stage, "INICIAR-CD2-Windows.bat")) || existe(filepath.Join(stage, "core", "INICIAR-CD2-Windows.bat")) {
+		t.Error(".bat deveria ficar na raiz")
+	}
+}
+
+func TestArrumarLancadoresSemLancador(t *testing.T) {
+	stage := stageCom(t, "INICIAR-CD2-Windows.bat", "INICIAR-CD2-Mac.command", "iniciar-cd2-linux.sh")
+	if err := arrumarLancadores(stage); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"INICIAR-CD2-Windows.bat", "INICIAR-CD2-Mac.command", "iniciar-cd2-linux.sh"} {
+		if !existe(filepath.Join(stage, f)) {
+			t.Errorf("%s deveria continuar na raiz", f)
+		}
+	}
+	if existe(filepath.Join(stage, "core")) {
+		t.Error("não deveria criar core/")
+	}
+}
+
+func TestArrumarLancadoresSoMac(t *testing.T) {
+	stage := stageCom(t, "IA de Bolso.app/Contents/MacOS/IA de Bolso", "INICIAR-CD2-Windows.bat", "INICIAR-CD2-Mac.command")
+	if err := arrumarLancadores(stage); err != nil {
+		t.Fatal(err)
+	}
+	if !existe(filepath.Join(stage, "core", "INICIAR-CD2-Mac.command")) || existe(filepath.Join(stage, "INICIAR-CD2-Mac.command")) {
+		t.Error(".command deveria estar só em core/")
+	}
+	if !existe(filepath.Join(stage, "INICIAR-CD2-Windows.bat")) || existe(filepath.Join(stage, "core", "INICIAR-CD2-Windows.bat")) {
+		t.Error(".bat deveria ficar na raiz")
+	}
+}
+
+func TestArrumarLancadoresSobrescreveEIdempotente(t *testing.T) {
+	stage := stageCom(t, "IA de Bolso.app/Contents/MacOS/IA de Bolso", "INICIAR-CD2-Mac.command", "core/INICIAR-CD2-Mac.command")
+	for i := 0; i < 2; i++ {
+		if err := arrumarLancadores(stage); err != nil {
+			t.Fatal(err)
+		}
+	}
+	b, err := os.ReadFile(filepath.Join(stage, "core", "INICIAR-CD2-Mac.command"))
+	if err != nil || string(b) != "INICIAR-CD2-Mac.command" {
+		t.Errorf("core/ deveria ter o da raiz: %q %v", b, err)
+	}
+	if existe(filepath.Join(stage, "INICIAR-CD2-Mac.command")) {
+		t.Error("sobrou .command na raiz")
+	}
+}
+
+func TestExtrairLevaOLancador(t *testing.T) {
+	a := novoAmbienteCom(t, true)
+	stage, err := a.montar(t, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"IA de Bolso.exe", "IA de Bolso.app/Contents/MacOS/IA de Bolso", "IA de Bolso.app/Contents/Info.plist", "INICIAR-CD2-Windows.bat", "core/INICIAR-CD2-Mac.command"} {
+		if !existe(filepath.Join(stage, filepath.FromSlash(f))) {
+			t.Errorf("faltou %s", f)
+		}
+	}
+	if existe(filepath.Join(stage, "core", "INICIAR-CD2-Windows.bat")) || existe(filepath.Join(stage, "INICIAR-CD2-Mac.command")) {
+		t.Error("o .bat fica na raiz e o .command só em core/")
+	}
+	if existe(filepath.Join(stage, "IA de Bolso.app", "Contents", "._lixo")) {
+		t.Error("lixo ._ entrou no stage")
+	}
+	if runtime.GOOS != "windows" {
+		st, err := os.Stat(filepath.Join(stage, "IA de Bolso.app", "Contents", "MacOS", "IA de Bolso"))
+		if err != nil || st.Mode().Perm() != 0o755 {
+			t.Errorf("executável do .app deveria ser 0755: %v %v", st, err)
+		}
+	}
+}
+
+func TestChecksumsComLancador(t *testing.T) {
+	a := novoAmbienteCom(t, true)
+	stage, err := a.montar(t, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ls, err := LerChecksums(filepath.Join(stage, "CHECKSUMS.sha256"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var caminhos []string
+	for _, l := range ls {
+		caminhos = append(caminhos, l.Caminho)
+	}
+	if !sort.StringsAreSorted(caminhos) {
+		t.Errorf("fora de ordem: %v", caminhos)
+	}
+	tem := map[string]bool{}
+	for _, c := range caminhos {
+		tem[c] = true
+	}
+	for _, c := range []string{"IA de Bolso.exe", "IA de Bolso.app/Contents/MacOS/IA de Bolso"} {
+		if !tem[c] {
+			t.Errorf("CHECKSUMS sem %q: %v", c, caminhos)
+		}
+	}
+	if tem["IA de Bolso.app/Contents/Info.plist"] {
+		t.Error("só o executável do .app entra")
 	}
 }

@@ -27,9 +27,13 @@ function Find-Cd2Starter {
         $parts = @(Get-Partition -DiskNumber $d.Number -ErrorAction SilentlyContinue | Where-Object { $_.DriveLetter })
         foreach ($p in $parts) {
             $volume = "$($p.DriveLetter):\"
-            $bat = Join-Path $volume 'INICIAR-CD2-Windows.bat'
-            $exe = Join-Path $volume 'bin\llamafile.exe'
-            if ((Test-Path -LiteralPath $bat) -and (Test-Path -LiteralPath $exe)) { return $bat }
+            $motor = Join-Path $volume 'bin\llamafile.exe'
+            if (-not (Test-Path -LiteralPath $motor)) { continue }
+            # Com lancador, ele e o que abre; sem, o .bat (em core\ ou, no plano B, na raiz).
+            foreach ($cand in @('IA de Bolso.exe', 'core\INICIAR-CD2-Windows.bat', 'INICIAR-CD2-Windows.bat')) {
+                $achado = Join-Path $volume $cand
+                if (Test-Path -LiteralPath $achado -PathType Leaf) { return $achado }
+            }
         }
     }
     return $null
@@ -79,9 +83,25 @@ $items = @('INICIAR-CD2-Windows.bat', 'INICIAR-CD2-Mac.command', 'iniciar-cd2-li
 foreach ($i in $items) {
     $src = Join-Path $Root $i
     if (-not (Test-Path $src)) { Die "Nao achei '$i' em $Root. Rode de dentro da pasta do repositorio." }
-    Copy-Item -Recurse -Force $src $Stage
+    Copy-Item -Recurse -Force -LiteralPath $src -Destination $Stage
+}
+# Lancadores da raiz: entram so se existirem na copia.
+foreach ($i in @('IA de Bolso.exe', 'IA de Bolso.app')) {
+    $src = Join-Path $Root $i
+    if (Test-Path -LiteralPath $src) { Copy-Item -Recurse -Force -LiteralPath $src -Destination $Stage }
 }
 Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Stage 'core\make-usb-unix.sh'), (Join-Path $Stage 'core\make-usb-windows.ps1')
+
+# Com o lancador do Mac na copia, o INICIAR dele vai para core\; sem ele, fica na raiz (plano B).
+# O .bat do Windows fica na raiz junto do .exe, como alternativa: o par do Windows
+# volta para a regra depois do teste num Windows de verdade.
+New-Item -ItemType Directory -Force -Path (Join-Path $Stage 'core') | Out-Null
+foreach ($par in @(,@('IA de Bolso.app', 'INICIAR-CD2-Mac.command'))) {
+    $iniciar = Join-Path $Stage $par[1]
+    if ((Test-Path -LiteralPath (Join-Path $Stage $par[0])) -and (Test-Path -LiteralPath $iniciar)) {
+        Move-Item -LiteralPath $iniciar -Destination (Join-Path $Stage ('core\' + $par[1])) -Force
+    }
+}
 
 Write-Host ''
 Write-Host 'Baixando motor e modelo (uns 3,9 GB na primeira vez: motor, modelo, toolbox e cd2-ctl; depois fica em cache)...'
@@ -131,7 +151,7 @@ if (-not (Test-Path $sums)) { Die 'CHECKSUMS.sha256 nao foi copiado.' }
 foreach ($line in Get-Content $sums) {
     if ($line -match '^([0-9a-fA-F]{64})\s+\*?(.+)$') {
         $want = $matches[1].ToLower(); $rel = $matches[2].Trim() -replace '/', '\'
-        $got = (Get-FileHash -Algorithm SHA256 (Join-Path $Dest $rel)).Hash.ToLower()
+        $got = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $Dest $rel)).Hash.ToLower()
         if ($got -ne $want) { Die "Checksum diferente em $rel. Nao use este pen drive; grave de novo." }
         Write-Host "  OK  $rel"
     }
