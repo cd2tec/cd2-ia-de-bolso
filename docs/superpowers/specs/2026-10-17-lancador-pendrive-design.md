@@ -120,7 +120,7 @@ Janelinha pequena (por volta de 320 px de largura), fundo escuro `#0d1233`, tít
 
 Protótipo descartável na branch local `spike-lancador` (nunca integrada), feito num Mac Apple Silicon com macOS 26.6.2. Não havia Windows nem pen drive físico na hora: o pen drive foi simulado por uma imagem exFAT.
 
-**Biblioteca escolhida: protótipo A, Wails v2.10.1 + `fyne.io/systray` v1.12.2**, compilado com Go 1.23.12 (`GOTOOLCHAIN=go1.23.12`; o CLI do Wails v2.10.1 não compila com Go mais novo). Como o A passou no Mac, o B (Wails v3) não foi montado.
+**Biblioteca escolhida: protótipo A, Wails v2.10.1 + `fyne.io/systray` v1.12.2**, compilado com Go 1.23.12 (`GOTOOLCHAIN=go1.23.12`; o CLI do Wails v2.10.1 não compila com Go mais novo). Como o A passou no Mac, o B (Wails v3) não foi montado. **Essa escolha só foi validada no Mac.** Se o A falhar no Windows, o protótipo B continua aberto como alternativa. O lançador do Windows só é entregue depois que o checkpoint do Gabriel confirmar o A no Windows, com o `.exe` do artefato do CI.
 
 Como a bandeja e o Wails convivem:
 
@@ -141,11 +141,11 @@ Como a bandeja e o Wails convivem:
 
 O que **não** foi conferido no Mac: o clique de verdade com o mouse no ícone da barra de menus, e ver a tela. Esta máquina não dá permissão de acessibilidade nem de gravação de tela para a sessão. Os disparos usaram o mesmo alvo e a mesma ação do AppKit que o clique usaria, mas falta o Gabriel abrir o menu com o mouse uma vez.
 
-**Windows: pendente de teste do Gabriel.** O `.exe` compila no Mac (`wails build -skipbindings -platform windows/amd64 -webview2 embed`, um PE32+ GUI de 10 MB), e o manifesto padrão do Wails não pede administrador. Ainda faltam os cinco pontos acima, o SmartScreen, e a janela num Windows 10 sem internet (e a mensagem, se o WebView2 faltar).
+**Windows: pendente de teste do Gabriel.** O `.exe` compila no Mac (`wails build -skipbindings -platform windows/amd64 -webview2 embed`, um PE32+ GUI de 10 MB), e o manifesto padrão do Wails não pede administrador. O `-skipbindings` é necessário só nessa compilação cruzada local: sem ele, o Wails compila o gerador de bindings para Windows e tenta rodá-lo no Mac, o que dá "exec format error". O CI compila num runner Windows e não precisa dele. Ainda faltam os pontos da tabela acima, o SmartScreen, e a janela num Windows 10 sem internet (e a mensagem, se o WebView2 faltar).
 
 **Gatekeeper no pen drive exFAT (imagem `hdiutil -fs ExFAT`, desmontada e montada de novo antes de abrir):**
 
-- `.app` assinado ad hoc e copiado sem atributos estendidos abre com dois cliques, sem aviso. Valeu para os dois jeitos de cópia: `cp -RX`, que é o que o `core/make-usb-unix.sh` faz, e a extração arquivo por arquivo de um ZIP, como o instalador faz. O `codesign --verify --deep --strict` passa nos dois. O `syspolicyd` registrou `GK evaluateScanResult: 2` (liberado, sem pergunta), e o app rodou do próprio volume, sem App Translocation.
+- `.app` assinado ad hoc e copiado sem atributos estendidos abre com dois cliques, sem aviso. Valeu para os dois jeitos de cópia: `cp -RX`, que é o que o `core/make-usb-unix.sh` faz, e a extração arquivo por arquivo de um ZIP. Essa extração foi uma simulação em Python do `io.Copy` do instalador, não o código Go do instalador. O `codesign --verify --deep --strict` passa nos dois. O `syspolicyd` registrou `GK evaluateScanResult: 2` (liberado, sem pergunta), e o app rodou do próprio volume, sem App Translocation.
 - `.app` com `com.apple.quarantine` **é bloqueado**: `spctl --assess` dá `rejected`, o `syspolicyd` registra `Prompt shown` e depois `Gatekeeper denial breadcrumb`, e o Go nem chega a rodar. Por isso a cópia para o pen drive **não pode levar atributos estendidos**. Num exFAT, um `cp -R` comum leva a quarentena junto, num arquivo `._IA de Bolso.app`. Os dois caminhos de hoje já copiam sem atributos, e a Task de gravação precisa manter isso. No macOS 15 ou mais novo, o jeito de passar pelo aviso é Ajustes do Sistema > Privacidade e Segurança > "Abrir Mesmo Assim" (o clique direito em "Abrir" não basta mais). Esse caminho vai para o `docs/criar-pendrive.md` como reserva.
 
 **Pendente de pen drive físico (Gabriel):** gravar pelo instalador e pelo `GRAVAR-PENDRIVE-Mac.command` num pen drive de verdade e abrir com dois cliques no Finder.
@@ -153,7 +153,7 @@ O que **não** foi conferido no Mac: o clique de verdade com o mouse no ícone d
 **Recomendação por plataforma (a decisão é do Gabriel):**
 
 - **Mac: vai com o lançador** (Wails v2 + `fyne.io/systray`), sem plano B na raiz, desde que o teste com pen drive físico e o clique de verdade no ícone confirmem o que a imagem mostrou.
-- **Windows: pendente de teste do Gabriel.** A recomendação é seguir com a mesma combinação. Se algum ponto falhar, ou o WebView2 puder faltar, o `INICIAR-CD2-Windows.bat` fica na raiz (plano B).
+- **Windows: pendente de teste do Gabriel.** A recomendação é seguir com a mesma combinação, mas só depois do checkpoint dele com o `.exe` do CI. Se o A falhar lá, entra o protótipo B (Wails v3). Se algum ponto falhar, ou o WebView2 puder faltar, o `INICIAR-CD2-Windows.bat` fica na raiz (plano B).
 
 ### Entrega do lançador no pen drive
 
