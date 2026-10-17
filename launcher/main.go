@@ -17,7 +17,9 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/cache"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/raiz"
 )
 
@@ -94,6 +96,7 @@ func main() {
 		OnBeforeClose:     app.antesDeFechar,
 		OnShutdown:        app.encerrar,
 		Bind:              []interface{}{app},
+		Windows:           &windows.Options{Messages: mensagensWebView2()},
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId:               idUnico,
 			OnSecondInstanceLaunch: func(options.SecondInstanceData) { go app.chamar() },
@@ -102,6 +105,11 @@ func main() {
 	if err != nil {
 		// Sem janela a IA nem chegou a subir; o Dormir garante que nada fique para trás.
 		app.s.Dormir()
-		log.Fatalf("lançador %s: %v", lerVersao(versao, r), err)
+		home, _ := os.UserHomeDir()
+		v := lerVersao(versao, r)
+		if errLog := registrarFalha(cache.PastaLogs(runtime.GOOS, os.Getenv, home), v, err); errLog != nil {
+			log.Printf("não consegui registrar a falha: %v", errLog)
+		}
+		log.Fatalf("lançador %s: %v", v, err)
 	}
 }
