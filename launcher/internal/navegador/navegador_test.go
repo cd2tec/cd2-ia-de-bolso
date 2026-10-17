@@ -89,3 +89,14 @@ func TestSemNavegadorConhecido(t *testing.T) {
 		t.Fatalf("windows: %q %q", n, a)
 	}
 }
+
+func TestMacPrioridade(t *testing.T) {
+	_, a := Comando("darwin", "U", so("/Applications/Microsoft Edge.app", "/Applications/Google Chrome.app"), nil, "")
+	if a[1] != "Google Chrome" {
+		t.Fatalf("esperava Chrome, veio %q", a[1])
+	}
+	_, a = Comando("darwin", "U", so("/Applications/Chromium.app", "/Applications/Brave Browser.app"), nil, "")
+	if a[1] != "Brave Browser" {
+		t.Fatalf("esperava Brave, veio %q", a[1])
+	}
+}

@@ -70,9 +70,10 @@ func Abrir(url string) error {
 	existe := func(p string) bool { _, err := os.Stat(p); return err == nil }
 	nome, args := Comando(runtime.GOOS, url, existe, os.Getenv, AreaUtil())
 	c := exec.Command(nome, args...)
-	ajustar(c)
 	if err := c.Start(); err != nil {
 		return err
 	}
-	return c.Process.Release()
+	// Wait em segundo plano só colhe o processo (evita zumbi do open).
+	go func() { _ = c.Wait() }()
+	return nil
 }
