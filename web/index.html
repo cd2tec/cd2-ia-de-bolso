@@ -135,10 +135,10 @@ main{flex:1;overflow-y:auto;padding:var(--space-8) 0}
 @keyframes avSobe{0%,100%{transform:translateY(0)}50%{transform:translateY(-1px)}}
 @keyframes avBoca{0%,49%{opacity:0}50%,100%{opacity:1}}
 @keyframes avAntena{0%,49%{fill:#dbff2a}50%,100%{fill:#ffffff}}
-.msg.falando .avatar{border-color:var(--accent);box-shadow:0 0 0 2px var(--brand)}
-.msg.falando .avatar .rob{animation:avSobe .6s steps(2) infinite}
-.msg.falando .avatar .boca{animation:avBoca .3s steps(1) infinite}
-.msg.falando .avatar .ponta{animation:avAntena .5s steps(1) infinite}
+.msg.falando .avatar,.welcome__warn.falando .avatar{border-color:var(--accent);box-shadow:0 0 0 2px var(--brand)}
+.msg.falando .avatar .rob,.welcome__warn.falando .avatar .rob{animation:avSobe .6s steps(2) infinite}
+.msg.falando .avatar .boca,.welcome__warn.falando .avatar .boca{animation:avBoca .3s steps(1) infinite}
+.msg.falando .avatar .ponta,.welcome__warn.falando .avatar .ponta{animation:avAntena .5s steps(1) infinite}
 @media (prefers-reduced-motion:reduce){.avatar .lente,.avatar .ponta,.msg.falando .avatar .rob,.msg.falando .avatar .boca,.msg.falando .avatar .ponta{animation:none}.msg.falando .avatar .rob{transform:none}}
 .msg.user .who{align-self:flex-end}
 .msg.user .body{align-self:flex-end;background:var(--surface-brand);color:var(--on-brand);border-radius:var(--radius-md);border-bottom-right-radius:0;padding:var(--space-3) var(--space-4);max-width:85%;white-space:pre-wrap}
@@ -202,8 +202,18 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
 /* boas-vindas: abre toda vez que o harness inicia */
 .welcome p{margin:0 0 var(--space-4);font:400 15px/24px var(--font-sans);color:var(--ink)}
 .welcome__warn{margin:var(--space-6) 0;padding:var(--space-4);border-radius:var(--radius-md);background:var(--surface-100);border:1px solid var(--border)}
-.welcome__warn .tag{margin-bottom:var(--space-2)}
+.welcome__logo{display:inline-block}
+.welcome__logo .logo{height:24px;margin-bottom:var(--space-6)}
+/* O aviso chega como fala do robô: o texto é digitado; o fantasma reserva a altura final para nada pular. */
+.welcome__head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3)}
+.welcome__warn .tag{margin:0}
 .welcome__warn p{margin:0}
+.welcome__fala{display:grid}
+.welcome__fala .fantasma,.welcome__fala .digitado{grid-area:1/1}
+.welcome__fala .fantasma{visibility:hidden}
+.welcome__warn.falando .digitado::after{content:'';display:inline-block;width:2px;height:1.1em;margin-left:2px;vertical-align:text-bottom;background:var(--brand);animation:wCursor .8s steps(1) infinite}
+@keyframes wCursor{50%{opacity:0}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .welcome p.welcome__req{font-size:14px;line-height:22px;color:var(--ink-muted)}
 .welcome__req b{color:var(--ink)}
 .welcome__sub{margin-top:var(--space-6)}
@@ -354,17 +364,19 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
 </dialog>
 
 <dialog id="welcome" class="welcome" aria-labelledby="wTitle">
+  <a class="welcome__logo" id="wLogo" href="https://www.cd2.com.br" target="_blank" rel="noopener" aria-label="Site da CD2" tabindex="-1"></a>
   <span class="eyebrow">Boas-vindas</span>
   <h2 id="wTitle">Que bom ter você por aqui.</h2>
   <p>Esta é a IA da CD2 rodando inteirinha no seu computador. Sem nuvem, sem instalar nada, direto do pen drive.</p>
-  <div class="welcome__warn">
-    <span class="tag tag--melhoria">Experimental</span>
-    <p>Um combinado honesto antes de começar: é um modelo pequeno, e ele erra... às vezes com bastante confiança. Por isso não é indicado para uso comercial nem para decisão importante sem alguém conferir.</p>
+  <div class="welcome__warn" id="wWarn">
+    <div class="welcome__head"><div class="who" id="wWho">CD2</div><span class="tag tag--melhoria">Experimental</span></div>
+    <p class="welcome__fala"><span class="sr" id="wFalaTxt">Um combinado honesto antes de começar: sou um modelo pequeno rodando na sua máquina. Atenção aos números e um pouco de paciência são duas virtudes importantes para me usar com responsabilidade.</span><span class="fantasma" aria-hidden="true"></span><span class="digitado" aria-hidden="true"></span></p>
   </div>
   <p class="welcome__req"><b>Para rodar bem:</b> 16 GB de memória (8 GB no mínimo), processador de 64 bits de 2015 para cá ou Mac M1 em diante, e porta USB 3. Com placa de vídeo fica bem mais rápido; só no processador, cada resposta leva uns 9 segundos.</p>
   <p>Montamos este conjunto para mostrar, na prática, como uma IA específica, pequena e perto do seu dado já consegue ser útil. Se isso acender uma ideia aí, a CD2 pode ajudar no seu projeto de IA.</p>
   <span class="eyebrow welcome__sub">Siga a CD2</span>
   <ul class="welcome__social">
+    <li><a href="https://www.cd2.com.br" target="_blank" rel="noopener">cd2.com.br</a></li>
     <li><a href="https://br.linkedin.com/company/cd2tech" target="_blank" rel="noopener">LinkedIn</a></li>
     <li><a href="https://www.instagram.com/cd2tech/" target="_blank" rel="noopener">Instagram</a></li>
     <li><a href="https://github.com/cd2tec" target="_blank" rel="noopener">GitHub</a></li>
@@ -376,17 +388,17 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
 </dialog>
 
 <div id="printArea" aria-hidden="true"></div>
-<script src="mcp.js?v=0.13.0"></script>
-<script src="oauth.js?v=0.13.0"></script>
-<script src="toolbox.js?v=0.13.0"></script>
-<script src="chart.js?v=0.13.0"></script>
-<script src="catalog.js?v=0.13.0"></script>
-<script src="perfil.js?v=0.13.0"></script>
-<script src="descricao.js?v=0.13.0"></script>
-<script src="ask.js?v=0.13.0"></script>
-<script src="report.js?v=0.13.0"></script>
-<script src="demo.js?v=0.13.0"></script>
-<script src="momento.js?v=0.13.0"></script>
+<script src="mcp.js?v=0.13.1"></script>
+<script src="oauth.js?v=0.13.1"></script>
+<script src="toolbox.js?v=0.13.1"></script>
+<script src="chart.js?v=0.13.1"></script>
+<script src="catalog.js?v=0.13.1"></script>
+<script src="perfil.js?v=0.13.1"></script>
+<script src="descricao.js?v=0.13.1"></script>
+<script src="ask.js?v=0.13.1"></script>
+<script src="report.js?v=0.13.1"></script>
+<script src="demo.js?v=0.13.1"></script>
+<script src="momento.js?v=0.13.1"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -1068,7 +1080,31 @@ async function pingModel(){
 function ocuparTela(){
   try{ window.moveTo(screen.availLeft || 0, screen.availTop || 0); window.resizeTo(screen.availWidth, screen.availHeight); }catch(e){}
 }
-function openWelcome(){ const w = $('#welcome'); w.showModal(); w.scrollTop = 0; }
+// Boas-vindas: o aviso experimental chega "digitado" pelo robô, como se fosse o modelo falando.
+// Não é o modelo: é texto fixo, para abrir na hora mesmo com o modelo ainda carregando.
+function openWelcome(){
+  const w = $('#welcome');
+  if(!$('#wLogo').firstChild) $('#wLogo').innerHTML = $('.topbar .logo').outerHTML;
+  if(!$('#wWho .avatar')) $('#wWho').insertAdjacentHTML('afterbegin', avatarSvg());
+  w.showModal(); w.scrollTop = 0;
+  digitarAviso();
+}
+function digitarAviso(){
+  const card = $('#wWarn'), txt = $('#wFalaTxt').textContent, alvo = card.querySelector('.digitado');
+  card.querySelector('.fantasma').textContent = txt;
+  clearTimeout(st.avisoTimer);
+  if(window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches){ alvo.textContent = txt; return; }
+  alvo.textContent = ''; card.classList.add('falando');
+  let i = 0;
+  const passo = () => {
+    if(!$('#welcome').open){ alvo.textContent = txt; card.classList.remove('falando'); return; }
+    i++; alvo.textContent = txt.slice(0, i);
+    if(i >= txt.length){ card.classList.remove('falando'); return; }
+    // pausa curta na pontuação, como quem pensa antes de seguir
+    st.avisoTimer = setTimeout(passo, /[.:,]/.test(txt[i - 1]) ? 320 : 18 + Math.random() * 22);
+  };
+  st.avisoTimer = setTimeout(passo, 700);
+}
 async function boot(){
   ocuparTela();
   openWelcome();
