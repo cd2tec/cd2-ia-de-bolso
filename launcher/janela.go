@@ -15,7 +15,12 @@ import (
 )
 
 // esperaSair é quanto a janela mostra o "Boa noite!" antes de o app sair.
-const esperaSair = 3 * time.Second
+// esperaSairFalha é o mesmo para o aviso de reiniciar, que é mais longo e
+// não pode passar batido.
+const (
+	esperaSair      = 3 * time.Second
+	esperaSairFalha = 15 * time.Second
+)
 
 // App é a ponte entre a sessão, a janelinha e o ícone da bandeja. Os métodos
 // exportados são os que a tela chama (window.go.main.App).
@@ -50,8 +55,19 @@ func paraTela(e sessao.Estado) estadoTela {
 }
 
 // deveMostrar diz se o estado traz a janela de volta sozinho: um erro nunca
-// fica escondido, nem com a janela fechada.
-func deveMostrar(e sessao.Estado) bool { return e.Fase == sessao.Erro }
+// fica escondido, nem com a janela fechada. Vale também para o Dormiu que
+// não conseguiu desligar tudo.
+func deveMostrar(e sessao.Estado) bool {
+	return e.Fase == sessao.Erro || (e.Fase == sessao.Dormiu && e.Erro != "")
+}
+
+// esperaAntesDeSair é quanto o Dormiu fica na tela antes de o app sair.
+func esperaAntesDeSair(e sessao.Estado) time.Duration {
+	if e.Erro != "" {
+		return esperaSairFalha
+	}
+	return esperaSair
+}
 
 // fecharVaiDormir diz se fechar a janela (o X) põe a IA para dormir, como o
 // botão Fechar. Com o erro na tela não há IA acordada para ficar no ícone, e
@@ -89,8 +105,9 @@ func (a *App) aoMudar(e sessao.Estado) {
 		a.mostrar()
 	}
 	if e.Fase == sessao.Dormiu {
+		espera := esperaAntesDeSair(e)
 		go func() {
-			time.Sleep(esperaSair)
+			time.Sleep(espera)
 			a.sair()
 		}()
 	}

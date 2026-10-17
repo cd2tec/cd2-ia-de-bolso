@@ -23,6 +23,7 @@ type procFalso struct {
 	morreu chan struct{}
 	once   sync.Once
 	ordem  *registro
+	falha  error // o que o Parar devolve (nil: parou bem)
 }
 
 func novoProc(nome string, r *registro) *procFalso {
@@ -36,7 +37,7 @@ func (p *procFalso) Parar() error {
 		p.ordem.anotar("parou " + p.nome)
 		close(p.morreu)
 	})
-	return nil
+	return p.falha
 }
 
 // morrer simula o processo saindo sozinho, sem Parar.
@@ -525,6 +526,49 @@ func TestDormirDepoisDePronta(t *testing.T) {
 		t.Fatalf("a 2a chamada emitiu estados: %+v", esp.todos())
 	}
 	if got := s.Atual(); got.Fase != Dormiu {
+		t.Fatalf("Atual = %+v", got)
+	}
+}
+
+// Se algum processo não parou, o Dormiu não pode dizer "pode tirar o pen
+// drive": carrega o aviso de reiniciar. O outro processo é parado assim mesmo.
+func TestDormirComFalhaAoParar(t *testing.T) {
+	for _, quem := range []string{"motor", "ctl"} {
+		t.Run(quem, func(t *testing.T) {
+			c := novoCenario()
+			if quem == "motor" {
+				c.motor.falha = errors.New("não saiu")
+			} else {
+				c.ctl.falha = errors.New("não saiu")
+			}
+			esp := novoEspiao(c.ordem)
+			s := Nova(c.deps, "0.14.0", esp.aoMudar)
+			fim := rodar(t, s)
+			esp.esperar(t, "Pronta", fase(Pronta))
+			s.Dormir()
+			<-fim
+			esp.esperar(t, "Dormiu", fase(Dormiu))
+			if got := s.Atual(); got != (Estado{Fase: Dormiu, Erro: TextoNaoDesligou}) {
+				t.Fatalf("Atual = %+v", got)
+			}
+			ordem := c.ordem.lista()
+			if indice(ordem, "parou ctl") < 0 || indice(ordem, "parou motor") < 0 {
+				t.Fatalf("os dois tinham de ser parados: %q", ordem)
+			}
+		})
+	}
+}
+
+func TestDormirSemFalhaNaoAvisa(t *testing.T) {
+	c := novoCenario()
+	esp := novoEspiao(c.ordem)
+	s := Nova(c.deps, "0.14.0", esp.aoMudar)
+	fim := rodar(t, s)
+	esp.esperar(t, "Pronta", fase(Pronta))
+	s.Dormir()
+	<-fim
+	esp.esperar(t, "Dormiu", fase(Dormiu))
+	if got := s.Atual(); got != (Estado{Fase: Dormiu}) {
 		t.Fatalf("Atual = %+v", got)
 	}
 }

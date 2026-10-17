@@ -81,7 +81,8 @@ func TestParaTela(t *testing.T) {
 	}
 }
 
-// Erro nunca fica escondido: a janela volta sozinha com o erro.
+// Erro nunca fica escondido: a janela volta sozinha com o erro, e também no
+// Dormiu que não conseguiu desligar tudo.
 func TestDeveMostrar(t *testing.T) {
 	casos := []struct {
 		e    sessao.Estado
@@ -93,6 +94,7 @@ func TestDeveMostrar(t *testing.T) {
 		{sessao.Estado{Fase: sessao.Dormindo}, false},
 		{sessao.Estado{Fase: sessao.Dormiu}, false},
 		{sessao.Estado{Fase: sessao.Erro, Erro: "x"}, true},
+		{sessao.Estado{Fase: sessao.Dormiu, Erro: sessao.TextoNaoDesligou}, true},
 	}
 	for _, c := range casos {
 		if got := deveMostrar(c.e); got != c.quer {
@@ -111,6 +113,19 @@ func TestFecharVaiDormir(t *testing.T) {
 	}
 	if !fecharVaiDormir(sessao.Erro) {
 		t.Error("Erro: fechar deveria pôr a IA para dormir")
+	}
+}
+
+// O Dormiu que não desligou tudo fica mais tempo na tela: dá para ler o aviso.
+func TestEsperaAntesDeSair(t *testing.T) {
+	if got := esperaAntesDeSair(sessao.Estado{Fase: sessao.Dormiu}); got != esperaSair {
+		t.Errorf("Dormiu: %v, quer %v", got, esperaSair)
+	}
+	if got := esperaAntesDeSair(sessao.Estado{Fase: sessao.Dormiu, Erro: sessao.TextoNaoDesligou}); got != esperaSairFalha {
+		t.Errorf("Dormiu com falha: %v, quer %v", got, esperaSairFalha)
+	}
+	if esperaSairFalha <= esperaSair {
+		t.Errorf("esperaSairFalha (%v) deveria ser maior que esperaSair (%v)", esperaSairFalha, esperaSair)
 	}
 }
 

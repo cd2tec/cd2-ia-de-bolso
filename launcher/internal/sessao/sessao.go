@@ -339,8 +339,9 @@ func (s *Sessao) AbrirConversa() error {
 }
 
 // Dormir cancela o carregamento, para o cd2-ctl e depois o motor, e anuncia
-// Dormindo e, com tudo parado, Dormiu. Pode ser chamado mais de uma vez e
-// antes do Rodar; volta só quando tudo parou.
+// Dormindo e, com tudo parado, Dormiu. Se algum não parou, o Dormiu leva
+// TextoNaoDesligou no Erro. Pode ser chamado mais de uma vez e antes do
+// Rodar; volta só quando tudo parou (ou desistiu de parar).
 func (s *Sessao) Dormir() {
 	s.dormir.Do(func() {
 		s.mu.Lock()
@@ -361,14 +362,20 @@ func (s *Sessao) Dormir() {
 		m, c := s.motor, s.ctl
 		s.mu.Unlock()
 		// O cd2-ctl antes: ele derruba o toolbox e não fica falando com um motor morto.
-		if c != nil {
-			_ = c.Parar()
+		// Um que não pare não impede de tentar o outro.
+		falhou := false
+		for _, p := range []Processo{c, m} {
+			if p != nil && p.Parar() != nil {
+				falhou = true
+			}
 		}
-		if m != nil {
-			_ = m.Parar()
+		fim := Estado{Fase: Dormiu}
+		if falhou {
+			// Algo pode estar segurando o pen drive: nada de "pode tirar".
+			fim.Erro = TextoNaoDesligou
 		}
 		s.mu.Lock()
-		s.publicar(Estado{Fase: Dormiu})
+		s.publicar(fim)
 		s.mu.Unlock()
 	})
 }

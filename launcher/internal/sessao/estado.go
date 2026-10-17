@@ -14,7 +14,8 @@ const (
 	Erro     Fase = "erro"
 )
 
-// Estado é o que a sessão anuncia a cada mudança. URL só vem em Pronta. Pct
+// Estado é o que a sessão anuncia a cada mudança. URL só vem em Pronta. Erro
+// vem em Erro e, no Dormiu, só se algo não parou (TextoNaoDesligou). Pct
 // vai de 0 a 100: a leitura do modelo ocupa de 0 a 90 e a espera pelo motor
 // de 90 a 99.
 type Estado struct {
@@ -32,9 +33,12 @@ const (
 	TextoNaoAcordou = "A IA não conseguiu acordar."
 	TextoParou      = "A IA parou de responder."
 	TextoSemBanco   = "O controle do banco não subiu. Seguindo sem banco de dados (Demonstração e Archeo continuam)."
-	pctFimLeitura   = 90
-	pctTetoEspera   = 99
-	pctPronta       = 100
+	// TextoNaoDesligou vai no Erro do Dormiu quando algum processo não parou:
+	// aí não é seguro tirar o pen drive.
+	TextoNaoDesligou = "Não consegui desligar tudo. Reinicie o computador antes de tirar o pen drive."
+	pctFimLeitura    = 90
+	pctTetoEspera    = 99
+	pctPronta        = 100
 )
 
 // ErrSemMotor é o que PrepararCache devolve quando o motor não está no pen drive.

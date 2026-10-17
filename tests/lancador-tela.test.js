@@ -59,6 +59,14 @@ test('render Dormiu', () => {
   assert.deepEqual(r.botoes, []);
 });
 
+test('render Dormiu sem conseguir desligar tudo', () => {
+  const erro = 'Não consegui desligar tudo. Reinicie o computador antes de tirar o pen drive.';
+  const r = render({ fase: 'Dormiu', erro }, 'normal');
+  assert.equal(r.titulo, erro);
+  assert.equal(r.piadaLista, null);
+  assert.deepEqual(r.botoes, []);
+});
+
 test('render Erro', () => {
   const r = render({ fase: 'Erro', erro: 'Não achei o modelo.' }, 'normal');
   assert.equal(r.titulo, 'Não achei o modelo.');

@@ -29,6 +29,8 @@ function render(estado, modo){
     case 'Dormindo':
       return { titulo: 'Colocando a IA para dormir...', linha: '', piadaLista: null, botoes: [] };
     case 'Dormiu':
+      // Com erro, algo não parou: o aviso de reiniciar no lugar do "pode tirar", e sem piada.
+      if(e.erro) return { titulo: e.erro, linha: '', piadaLista: null, botoes: [] };
       return { titulo: 'Boa noite! Pode tirar o pen drive.', linha: '', piadaLista: Piadas.DESPEDIDA, botoes: [] };
     case 'Erro':
       return { titulo: e.erro || 'Algo deu errado.', linha: '', piadaLista: null, botoes: [B_REGISTROS, B_FECHAR] };
