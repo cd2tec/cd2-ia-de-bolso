@@ -12,6 +12,7 @@ import (
 
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/modelo"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/motor"
+	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/sobra"
 )
 
 const chaveTeste = "abc123"
@@ -701,5 +702,19 @@ func TestAmbiente(t *testing.T) {
 		if porta != c.porta || ctx != c.ctx {
 			t.Errorf("ambiente(%v) = %d, %q", c.env, porta, ctx)
 		}
+	}
+}
+
+func TestSessaoIAAnteriorAindaFechando(t *testing.T) {
+	c := novoCenario()
+	c.deps.SubirMotor = func(context.Context, motor.Config, func(string)) (Processo, error) {
+		return nil, sobra.ErrAindaFechando
+	}
+	esp := novoEspiao(c.ordem)
+	fim := rodar(t, Nova(c.deps, "0.14.0", esp.aoMudar))
+	e := esp.esperar(t, "Erro", fase(Erro))
+	<-fim
+	if e.Erro != TextoAindaFechando {
+		t.Fatalf("Erro = %q", e.Erro)
 	}
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/navegador"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/portas"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/proc"
+	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/sobra"
 )
 
 // Tique é o intervalo em que a barra anda enquanto o motor sobe. Variável
@@ -230,7 +231,9 @@ func (s *Sessao) carregar(ctx context.Context) (Processo, bool) {
 	m, err := d.SubirMotor(ctx, cfg, func(txt string) { s.mudar(func(e *Estado) { e.Aviso = txt }) })
 	parar()
 	if err != nil {
-		if ctx.Err() == nil {
+		if errors.Is(err, sobra.ErrAindaFechando) {
+			s.falhar(TextoAindaFechando)
+		} else if ctx.Err() == nil {
 			s.falhar(TextoNaoAcordou)
 		}
 		return nil, false
@@ -480,6 +483,12 @@ func DepsReais(raiz string) Deps {
 			return modelo.Ler(ctx, caminho, modelo.Bloco, prog)
 		},
 		SubirMotor: func(ctx context.Context, c motor.Config, aviso func(string)) (Processo, error) {
+			// Um llamafile deste pen drive que sobrou da abertura anterior
+			// segura o log no Windows; encerra só ele antes de subir.
+			logs := []string{filepath.Join(c.LogDir, "server.log"), filepath.Join(c.LogDir, "server.err.log")}
+			if err := sobra.Encerrar(c.Exe, logs); err != nil {
+				return nil, err
+			}
 			return processo(motor.Subir(ctx, c, get, aviso))
 		},
 		SubirCtl: func(ctx context.Context, exe string, args []string, k string, portaCtl int) (Processo, error) {

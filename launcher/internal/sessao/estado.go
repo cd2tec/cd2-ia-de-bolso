@@ -31,8 +31,11 @@ const (
 	TextoSemModelo  = "O modelo de IA não está neste pen drive. Grave o pen drive de novo."
 	TextoSemMotor   = "O motor da IA não está neste pen drive. Grave o pen drive de novo."
 	TextoNaoAcordou = "A IA não conseguiu acordar."
-	TextoParou      = "A IA parou de responder."
-	TextoSemBanco   = "O controle do banco não subiu. Seguindo sem banco de dados (Demonstração e Archeo continuam)."
+	// TextoAindaFechando: a IA de uma abertura anterior foi encerrada, mas
+	// o log dela não soltou a tempo.
+	TextoAindaFechando = "A IA anterior ainda está fechando. Espere alguns segundos e abra de novo."
+	TextoParou         = "A IA parou de responder."
+	TextoSemBanco      = "O controle do banco não subiu. Seguindo sem banco de dados (Demonstração e Archeo continuam)."
 	// TextoNaoDesligou vai no Erro do Dormiu quando algum processo não parou:
 	// aí não é seguro tirar o pen drive.
 	TextoNaoDesligou = "Não consegui desligar tudo. Reinicie o computador antes de tirar o pen drive."
