@@ -44,22 +44,6 @@ func trazerParaFrente() {}
 // O systray some no Quit; sem isso o ícone fica "fantasma" até passar o mouse.
 func fecharBandeja() { systray.Quit() }
 
-// notifyIconData é o NOTIFYICONDATAW, com o mesmo layout que o fyne.io/systray usa.
-type notifyIconData struct {
-	Size                       uint32
-	Wnd                        windows.Handle
-	ID, Flags, CallbackMessage uint32
-	Icon                       windows.Handle
-	Tip                        [128]uint16
-	State, StateMask           uint32
-	Info                       [256]uint16
-	Timeout, Version           uint32
-	InfoTitle                  [64]uint16
-	InfoFlags                  uint32
-	GuidItem                   windows.GUID
-	BalloonIcon                windows.Handle
-}
-
 var (
 	shell32         = windows.NewLazySystemDLL("shell32.dll")
 	user32          = windows.NewLazySystemDLL("user32.dll")
@@ -89,7 +73,8 @@ func janelaDoSystray() windows.Handle {
 // avisarPrimeiroFechar mostra a notificação do sistema pelo próprio ícone da
 // bandeja (NIF_INFO no mesmo ícone, id 100, que é o que o systray usa). O
 // fyne.io/systray não tem balão; isto evita uma dependência nova só para ele.
-func avisarPrimeiroFechar() {
+// Devolve se o aviso saiu (sem a janela do systray, fica para a próxima).
+func avisarPrimeiroFechar() bool {
 	const (
 		nimModify = 0x1
 		nifInfo   = 0x10
@@ -98,13 +83,14 @@ func avisarPrimeiroFechar() {
 	)
 	h := janelaDoSystray()
 	if h == 0 {
-		return
+		return false
 	}
-	nid := notifyIconData{Wnd: h, ID: idIcone, Flags: nifInfo, InfoFlags: niifInfo}
+	nid := notifyIconData{Wnd: uintptr(h), ID: idIcone, Flags: nifInfo, InfoFlags: niifInfo}
 	nid.Size = uint32(unsafe.Sizeof(nid))
 	info, _ := windows.UTF16FromString(textoAvisoBandeja)
 	titulo, _ := windows.UTF16FromString(nomeBandeja)
 	copy(nid.Info[:len(nid.Info)-1], info)
 	copy(nid.InfoTitle[:len(nid.InfoTitle)-1], titulo)
-	pShellNotify.Call(nimModify, uintptr(unsafe.Pointer(&nid)))
+	ok, _, _ := pShellNotify.Call(nimModify, uintptr(unsafe.Pointer(&nid)))
+	return ok != 0
 }

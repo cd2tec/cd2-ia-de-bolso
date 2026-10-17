@@ -11,5 +11,5 @@ func iniciarBandeja(*App)            {}
 func ligarCliqueSimples(*App)        {}
 func formatoIcone(png []byte) []byte { return png }
 func trazerParaFrente()              {}
-func avisarPrimeiroFechar()          {}
+func avisarPrimeiroFechar() bool     { return false }
 func fecharBandeja()                 {}

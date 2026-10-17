@@ -11,15 +11,21 @@ void agendarNaThreadPrincipal(void) {
     [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
     [NSApp activateIgnoringOtherApps:YES];
 
-    // O delegate do Wails não trata o "reabrir" (dois cliques no .app já
-    // aberto). Acrescenta o método, sem trocar o delegate.
+    // O delegate do Wails (conferido na v2.10.1) não trata o "reabrir" (dois
+    // cliques no .app já aberto). Acrescenta o método, sem trocar o delegate.
+    // Se uma versão nova do Wails passar a ter o método, o class_addMethod
+    // recusa e o reopen fica com o do Wails: registra no log.
     Class c = [[NSApp delegate] class];
     SEL s = @selector(applicationShouldHandleReopen:hasVisibleWindows:);
     IMP imp = imp_implementationWithBlock(^BOOL(id self, NSApplication *app, BOOL visiveis) {
       appReaberto();
       return YES;
     });
-    class_addMethod(c, s, imp, "c@:@c");
+    // BOOL é bool no arm64 e signed char no x86_64: a codificação vem do @encode.
+    NSString *tipos = [NSString stringWithFormat:@"%s@:@%s", @encode(BOOL), @encode(BOOL)];
+    if (!class_addMethod(c, s, imp, [tipos UTF8String])) {
+      NSLog(@"IA de Bolso: reabrir não instalado em %@ (o delegate já tem o método)", NSStringFromClass(c));
+    }
 
     bandejaNaThreadPrincipal();
   });

@@ -8,9 +8,11 @@ import (
 	"embed"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -63,9 +65,23 @@ func acharRaiz() string {
 	return filepath.Dir(exe)
 }
 
+// dormirNoSinal põe a IA para dormir num kill (TERM) ou Ctrl+C (INT) antes
+// de sair: sem isso o motor e o cd2-ctl ficariam órfãos.
+func dormirNoSinal(a *App) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGTERM, os.Interrupt)
+	go func() {
+		<-c
+		a.s.Dormir()
+		fecharBandeja()
+		os.Exit(0)
+	}()
+}
+
 func main() {
 	r := acharRaiz()
 	app := novaApp(r, lerVersao(versao, r))
+	dormirNoSinal(app)
 	err := wails.Run(&options.App{
 		Title:             "CD2 IA de Bolso",
 		Width:             largura,

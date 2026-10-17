@@ -53,6 +53,6 @@ func formatoIcone(png []byte) []byte { return png }
 // Com o app sem ícone no Dock, a janela não vem para a frente sozinha.
 func trazerParaFrente() { C.trazerParaFrente() }
 
-func avisarPrimeiroFechar() {}
+func avisarPrimeiroFechar() bool { return false }
 
 func fecharBandeja() {}

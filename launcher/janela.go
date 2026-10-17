@@ -128,11 +128,11 @@ func (a *App) esconder() {
 		wruntime.WindowHide(ctx)
 	}
 	a.mu.Lock()
-	primeira := !a.avisou
-	a.avisou = true
-	a.mu.Unlock()
-	if primeira {
-		avisarPrimeiroFechar()
+	defer a.mu.Unlock()
+	// Só conta como avisado se a notificação saiu de fato (o ícone pode
+	// ainda não existir); senão tenta de novo no próximo fechar.
+	if !a.avisou && avisarPrimeiroFechar() {
+		a.avisou = true
 	}
 }
 
