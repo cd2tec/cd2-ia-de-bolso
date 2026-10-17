@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Montar o ZIP
         run: |
-          git archive --format=zip --prefix=cd2tech-iadebolso/ -o cd2tech-iadebolso.zip HEAD -- . ':!tests' ':!docs/superpowers' ':!.github' ':!installer'
+          git archive --format=zip --prefix=cd2tech-iadebolso/ -o cd2tech-iadebolso.zip HEAD -- . ':!tests' ':!docs/superpowers' ':!.github' ':!installer' ':!launcher'
           unzip -l cd2tech-iadebolso.zip | tail -1
       # Os dois lançadores entram aqui, antes do manifesto. O ditto guardou o .app com permissões e links;
       # o unzip e o zip -y os preservam (-y guarda os links como links, não como cópias).
@@ -154,7 +154,7 @@ jobs:
           VERSAO="$(tr -d ' \r\n' < VERSION)"
           if ! gh release view iadebolso -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create iadebolso --latest=false --title "IA de Bolso" \
-              --notes "Baixe o instalador (CD2-IA-de-Bolso-Windows.exe ou CD2-IA-de-Bolso-Mac.dmg), abra, espete um pen drive de 16 GB e siga as quatro telas. Prefere o jeito técnico? Baixe cd2tech-iadebolso.zip, extraia e dê dois cliques em GRAVAR-PENDRIVE-Windows.bat. Passo a passo: https://cd2tec.github.io/cd2-ia-de-bolso/#pendrive" \
+              --notes "Baixe o instalador (CD2-IA-de-Bolso-Windows.exe ou CD2-IA-de-Bolso-Mac.dmg), abra, espete um pen drive de 16 GB e siga as quatro telas. Prefere o jeito técnico? Baixe cd2tech-iadebolso.zip, extraia e dê dois cliques em GRAVAR-PENDRIVE-Windows.bat. Para usar o pen drive pronto, dê dois cliques em IA de Bolso no pen drive. Passo a passo: https://cd2tec.github.io/cd2-ia-de-bolso/#pendrive" \
               -R "$GITHUB_REPOSITORY"
           fi
           gh release upload iadebolso cd2tech-iadebolso.zip --clobber -R "$GITHUB_REPOSITORY"
