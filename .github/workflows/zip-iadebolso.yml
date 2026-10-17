@@ -36,10 +36,11 @@ jobs:
         working-directory: launcher/build/bin
         run: |
           # O Apple Silicon exige ao menos a assinatura ad hoc. O ditto guarda permissões e links do .app,
-          # que um zip comum perderia.
+          # que um zip comum perderia. Sem atributos estendidos nem resource fork: senão entram ._ no
+          # ZIP, que viram lixo no pen drive (e a quarentena iria junto).
           codesign --force --deep -s - "IA de Bolso.app"
           codesign --verify --deep --strict "IA de Bolso.app"
-          ditto -c -k --keepParent "IA de Bolso.app" lancador-mac.zip
+          ditto -c -k --norsrc --noextattr --keepParent "IA de Bolso.app" lancador-mac.zip
       - uses: actions/upload-artifact@v4
         with:
           name: lancador-mac
@@ -97,7 +98,7 @@ jobs:
           zip -qry cd2tech-iadebolso.zip "cd2tech-iadebolso/IA de Bolso.app" "cd2tech-iadebolso/IA de Bolso.exe"
           LISTA="$(unzip -l cd2tech-iadebolso.zip)"
           printf '%s\n' "$LISTA" | grep -F "cd2tech-iadebolso/IA de Bolso.exe" >/dev/null || { echo "Faltou o IA de Bolso.exe no ZIP."; exit 1; }
-          printf '%s\n' "$LISTA" | grep -F "cd2tech-iadebolso/IA de Bolso.app/Contents/MacOS/" >/dev/null || { echo "Faltou o IA de Bolso.app no ZIP."; exit 1; }
+          printf '%s\n' "$LISTA" | grep -F "cd2tech-iadebolso/IA de Bolso.app/Contents/MacOS/IA de Bolso" >/dev/null || { echo "Faltou o executável do IA de Bolso.app no ZIP."; exit 1; }
           printf '%s\n' "$LISTA" | tail -1
       # Tudo o que pode falhar (API, HEAD, go run) roda antes de qualquer upload: falha aborta sem tocar na release.
       - uses: actions/setup-go@v5
