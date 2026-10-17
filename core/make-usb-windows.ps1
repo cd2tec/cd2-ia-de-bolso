@@ -7,7 +7,8 @@
 #   2. APAGA o pen drive escolhido e formata em exFAT (MBR), nome CD2
 #   3. copia os arquivos para a raiz do pen drive (ele acabou de ser formatado,
 #      entao nao precisa de subpasta)
-#   4. confere os checksums direto no pen drive e ejeta
+#   4. confere os checksums direto no pen drive, ejeta e, ao plugar de novo,
+#      abre o INICIAR do pen drive (a IA sobe lendo o modelo de la)
 #
 # Variaveis opcionais: CD2_USB_DISK (numero do disco) pula a pergunta de qual disco;
 # CD2_USB_YES=1 pula a confirmacao "APAGAR" (para gravar em serie).
@@ -20,6 +21,19 @@ $MinBytes = 4000000000
 
 function Pause-Exit($code) { Write-Host ''; Read-Host 'Pressione ENTER para fechar' | Out-Null; exit $code }
 function Die($msg) { Write-Host "`n[ERRO] $msg" -ForegroundColor Red; Pause-Exit 1 }
+function Find-Cd2Starter {
+    $usb = @(Get-Disk -ErrorAction SilentlyContinue | Where-Object { $_.BusType -in @('USB', 'SD', 'MMC') })
+    foreach ($d in $usb) {
+        $parts = @(Get-Partition -DiskNumber $d.Number -ErrorAction SilentlyContinue | Where-Object { $_.DriveLetter })
+        foreach ($p in $parts) {
+            $volume = "$($p.DriveLetter):\"
+            $bat = Join-Path $volume 'INICIAR-CD2-Windows.bat'
+            $exe = Join-Path $volume 'bin\llamafile.exe'
+            if ((Test-Path -LiteralPath $bat) -and (Test-Path -LiteralPath $exe)) { return $bat }
+        }
+    }
+    return $null
+}
 
 Write-Host ''
 Write-Host '  +-----------------------------+'
@@ -132,7 +146,13 @@ Get-ChildItem -Recurse (Join-Path $Dest 'bin\ctl') -File | ForEach-Object { Writ
 try { (New-Object -ComObject Shell.Application).NameSpace(17).ParseName("${letter}:").InvokeVerb('Eject'); Write-Host 'Ejetado.' }
 catch { Write-Host 'Nao consegui ejetar sozinha; use "Remover hardware com seguranca" antes de tirar.' }
 Write-Host ''
-Write-Host 'Pronto. Pode tirar o pen drive.'
 Write-Host "Copia do checksum guardada em: $keep"
-Write-Host 'Para gravar outro pen drive, plugue o proximo e rode de novo: nao baixa nada de novo.'
-Pause-Exit 0
+Write-Host 'Plugue o pen drive de novo. Quando o Windows reconhecer, a IA abre do pen drive e esta janela fecha.'
+$starter = $null
+while (-not $starter) {
+    Start-Sleep -Seconds 2
+    $starter = Find-Cd2Starter
+}
+Write-Host "Abrindo $starter"
+Start-Process -FilePath $starter -WorkingDirectory (Split-Path -Parent $starter)
+exit 0
