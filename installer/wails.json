@@ -1,0 +1,11 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "CD2 IA de Bolso",
+  "outputfilename": "CD2-IA-de-Bolso",
+  "frontend:dir": "frontend",
+  "frontend:install": "",
+  "frontend:build": "",
+  "author": {
+    "name": "CD2 Tecnologia"
+  }
+}

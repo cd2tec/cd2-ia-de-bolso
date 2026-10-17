@@ -19,7 +19,9 @@ Plugou, clicou, conversou. A IA de Bolso abre uma janela com a identidade da CD2
 
 ## Crie o seu pen drive em 4 passos
 
-Feito para Windows, sem precisar entender de tecnologia. Você só precisa de um pen drive de 16 GB ou mais (tudo nele será apagado) e de internet na primeira vez.
+O jeito mais fácil é o instalador para Windows e Mac, com quatro telas: veja [O jeito mais fácil: o instalador](docs/criar-pendrive.md#o-jeito-mais-fácil-o-instalador). Os passos abaixo são o jeito técnico, com os scripts do ZIP.
+
+Feito para Windows e Mac, sem precisar entender de tecnologia. Você só precisa de um pen drive de 16 GB ou mais (tudo nele será apagado) e de internet na primeira vez.
 
 ### [Baixar cd2tech-iadebolso.zip](https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/cd2tech-iadebolso.zip)
 

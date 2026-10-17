@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>DeviceIdentifier</key>
+	<string>disk4s1</string>
+	<key>Internal</key>
+	<false/>
+	<key>MediaName</key>
+	<string></string>
+	<key>MountPoint</key>
+	<string>/Volumes/CD2</string>
+	<key>ParentWholeDisk</key>
+	<string>disk4</string>
+	<key>Size</key>
+	<integer>32010928128</integer>
+	<key>TotalSize</key>
+	<integer>32010928128</integer>
+</dict>
+</plist>

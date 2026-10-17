@@ -1,4 +1,4 @@
-# Testes do cd2-ctl (Go) e do front (node --test) em todo pull request e push na main.
+# Testes do cd2-ctl (Go), do instalador (Go) e do front (node --test) em todo pull request e push na main.
 name: CI
 on:
   pull_request:
@@ -7,6 +7,22 @@ on:
 permissions:
   contents: read
 jobs:
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: installer/go.mod
+          cache: false
+      - name: gofmt, go vet e go test (installer/)
+        working-directory: installer
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./internal/... ./cmd/...
+          GOOS=windows go vet ./internal/... ./cmd/...
+          GOOS=darwin go vet ./internal/... ./cmd/...
+          go test ./internal/... ./cmd/...
   test:
     runs-on: ubuntu-latest
     steps:

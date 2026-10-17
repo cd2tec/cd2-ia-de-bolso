@@ -12,6 +12,17 @@ O caminho até aqui foi feito na mão uma vez, no Mac, e deu certo. Esta página
 
 Tudo que estiver no pen drive será apagado. Guarde o que importa antes.
 
+## O jeito mais fácil: o instalador
+
+Baixe o instalador na [página do projeto](https://cd2tec.github.io/cd2-ia-de-bolso/#pendrive) (`CD2-IA-de-Bolso-Windows.exe` ou `CD2-IA-de-Bolso-Mac.dmg`), abra e siga as quatro telas:
+
+1. **Plugue o pen drive:** o instalador mostra o pen drive assim que ele aparece.
+2. **Confirme antes de apagar:** marque "Pode apagar" e clique em Gravar pen drive.
+3. **Gravando:** uma barra acompanha o download, a cópia e a conferência.
+4. **Pronto, pode tirar o pen drive:** ele já foi ejetado. Clique em Gravar outro para o próximo.
+
+O instalador esconde discos acima de 256 GB, discos de boot e discos do Time Machine, para ninguém apagar o que não devia. Se o seu pen drive cair nesses casos, o caminho é o script, descrito abaixo.
+
 ## O jeito de um clique
 
 | Sistema | O que fazer |

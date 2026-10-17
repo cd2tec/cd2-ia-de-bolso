@@ -13,3 +13,14 @@ Thumbs.db
 
 # Ferramentas locais do Claude Code
 .claude/
+.superpowers/
+
+# Gerados pelo wails build/dev (a tela chama window.go direto)
+installer/frontend/wailsjs/
+
+# Artefatos do wails build e do empacotamento (a configuracao em installer/build/ entra)
+installer/build/bin/
+*.dmg
+
+# Recursos do Windows gerados pelo empacotamento
+installer/*.syso

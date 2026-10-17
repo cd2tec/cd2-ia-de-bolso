@@ -205,7 +205,7 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
       <a class="link" href="#cuidados">Cuidados</a>
       <a class="link" href="#dev">Para devs</a>
       <a class="link" href="https://github.com/cd2tec/cd2-ia-de-bolso">GitHub</a>
-      <a class="btn btn--primary btn--sm" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/cd2tech-iadebolso.zip">
+      <a class="btn btn--primary btn--sm" href="#pendrive">
         Baixar
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
       </a>
@@ -221,7 +221,8 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
       <h1>A IA da CD2 rodando <em>100% no seu computador.</em></h1>
       <p>Plugou, clicou, conversou. Um modelo de IA roda direto do pen drive, sem instalar nada e sem mandar dados para a nuvem. Conecta a um banco PostgreSQL, Oracle, MariaDB ou SQL Server com ferramentas somente leitura, ou ao Archeo via MCP.</p>
       <div class="cta">
-        <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/cd2tech-iadebolso.zip">Baixar a IA de Bolso <span class="btn__arrow" aria-hidden="true">↓</span></a>
+        <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Windows.exe">Baixar para Windows <span class="btn__arrow" aria-hidden="true">↓</span></a>
+        <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Mac.dmg">Baixar para Mac <span class="btn__arrow" aria-hidden="true">↓</span></a>
         <a class="btn btn--secondary" href="#pendrive">Como criar o pen drive</a>
       </div>
     </div>
@@ -236,17 +237,20 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
     <div class="wrap">
       <span class="eyebrow">Comece por aqui</span>
       <h2>Seu pen drive com IA <em>em 4 passos.</em></h2>
-      <p class="lead">Feito para Windows, sem precisar entender de tecnologia. Você só precisa de um pen drive de 16 GB ou mais (tudo nele será apagado) e de internet na primeira vez.</p>
+      <p class="lead">Feito para Windows e Mac, sem precisar entender de tecnologia. Você só precisa de um pen drive de 16 GB ou mais (tudo nele será apagado) e de internet na primeira vez.</p>
       <ol class="passos">
-        <li><b>Baixe</b><span>Clique em <a href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/cd2tech-iadebolso.zip">cd2tech-iadebolso.zip</a> e salve o arquivo.</span></li>
-        <li><b>Descompacte</b><span>Botão direito no arquivo baixado e <strong>Extrair tudo</strong>. Vai aparecer a pasta <code>cd2tech-iadebolso</code>.</span></li>
-        <li><b>Espete o pen drive</b><span>Em qualquer porta USB do computador.</span></li>
-        <li><b>Grave</b><span>Dois cliques em <code>GRAVAR-PENDRIVE-Windows.bat</code>, aceite a permissão, escolha o pen drive e digite <code>APAGAR</code>.</span></li>
+        <li><b>Baixe</b><span>Clique em <strong>Baixar para Windows</strong> ou <strong>Baixar para Mac</strong> e salve o instalador.</span></li>
+        <li><b>Abra</b><span>Dê dois cliques no arquivo baixado. No Mac, arraste o app para a pasta Aplicativos se o sistema pedir.</span></li>
+        <li><b>Espete o pen drive</b><span>Em qualquer porta USB. O instalador mostra o pen drive sozinho.</span></li>
+        <li><b>Siga as quatro telas</b><span>Plugue o pen drive, confirme que pode apagar, acompanhe a gravação e tire o pen drive quando aparecer "Pronto".</span></li>
       </ol>
       <div class="cta">
-        <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/cd2tech-iadebolso.zip">Baixar cd2tech-iadebolso.zip <span class="btn__arrow" aria-hidden="true">↓</span></a>
+        <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Windows.exe">Baixar para Windows <span class="btn__arrow" aria-hidden="true">↓</span></a>
+        <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Mac.dmg">Baixar para Mac <span class="btn__arrow" aria-hidden="true">↓</span></a>
       </div>
-      <p class="note">Na primeira vez ele baixa uns 3,9 GB, então leva alguns minutos. Para usar, espete o pen drive em qualquer computador e dê dois cliques em <code>INICIAR-CD2-Windows.bat</code>. Se aparecer "O Windows protegeu o computador", clique em <strong>Mais informações</strong> e depois em <strong>Executar assim mesmo</strong>. No Mac, use <code>GRAVAR-PENDRIVE-Mac.command</code>; no Linux, <code>sh gravar-pendrive-linux.sh</code>. <a href="https://github.com/cd2tec/cd2-ia-de-bolso/blob/main/docs/criar-pendrive.md">Passo a passo completo</a>.</p>
+      <p class="note"><strong>Windows:</strong> se aparecer "O Windows protegeu o computador", clique em <strong>Mais informações</strong> e depois em <strong>Executar assim mesmo</strong>.<br><strong>Mac:</strong> se o Mac não deixar abrir, vá em Ajustes do Sistema, Privacidade e Segurança, e clique em <strong>Abrir mesmo assim</strong>.</p>
+      <p class="note">Na primeira vez ele baixa uns 3,9 GB, então leva alguns minutos. O instalador esconde discos acima de 256 GB, de boot e do Time Machine; para esses casos, use o jeito técnico. Para usar o pen drive pronto, espete em qualquer computador e dê dois cliques em <code>INICIAR-CD2-Windows.bat</code> (no Mac, <code>INICIAR-CD2-Mac.command</code>).</p>
+      <p class="note">Prefere o jeito técnico? <a href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/cd2tech-iadebolso.zip">Baixe o ZIP com os scripts.</a> Dentro dele, no Windows use <code>GRAVAR-PENDRIVE-Windows.bat</code>, no Mac <code>GRAVAR-PENDRIVE-Mac.command</code> e no Linux <code>sh gravar-pendrive-linux.sh</code>. <a href="https://github.com/cd2tec/cd2-ia-de-bolso/blob/main/docs/criar-pendrive.md">Passo a passo completo</a>.</p>
     </div>
   </section>
 
