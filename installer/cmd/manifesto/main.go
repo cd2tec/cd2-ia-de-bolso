@@ -1,6 +1,7 @@
 // Comando manifesto monta o manifesto.json da release "iadebolso" e o escreve em stdout.
-// Os valores fixos vêm dos scripts de preparo; o SHA-256 do ZIP é calculado do arquivo e o do
-// llamafile vem do workflow, que baixa o motor resolvido para calcular.
+// Os valores fixos vêm dos scripts de preparo, inclusive a URL e o SHA-256 do llamafile; o SHA-256
+// do ZIP é calculado do arquivo. O workflow baixa o motor da URL fixa e passa o SHA que mediu, que
+// precisa bater com o dos scripts: assim o pen drive do instalador e o dos scripts levam o mesmo motor.
 package main
 
 import (
@@ -33,8 +34,7 @@ func executar(args []string, saida io.Writer) error {
 	versaoArq := fs.String("version-file", "", "caminho do arquivo VERSION")
 	zip := fs.String("zip", "", "arquivo ZIP da release (para o SHA-256 e o tamanho)")
 	zipURL := fs.String("zip-url", "", "URL pública do ZIP")
-	llamaURL := fs.String("llamafile-url", "", "URL do llamafile")
-	llamaSHA := fs.String("llamafile-sha256", "", "SHA-256 do llamafile")
+	llamaSHA := fs.String("llamafile-sha256", "", "SHA-256 medido do llamafile baixado da URL fixa")
 	llamaBytes := fs.Int64("llamafile-bytes", 0, "tamanho do llamafile em bytes")
 	modeloBytes := fs.Int64("modelo-bytes", 0, "tamanho do modelo em bytes")
 	if err := fs.Parse(args); err != nil {
@@ -43,7 +43,7 @@ func executar(args []string, saida io.Writer) error {
 
 	for nome, v := range map[string]string{
 		"-prepare-unix": *prepUnix, "-prepare-windows": *prepWin, "-version-file": *versaoArq,
-		"-zip": *zip, "-zip-url": *zipURL, "-llamafile-url": *llamaURL, "-llamafile-sha256": *llamaSHA,
+		"-zip": *zip, "-zip-url": *zipURL, "-llamafile-sha256": *llamaSHA,
 	} {
 		if v == "" {
 			return fmt.Errorf("falta a flag %s", nome)
@@ -65,6 +65,9 @@ func executar(args []string, saida io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if fixos.LlamafileSHA256 == "" || !strings.EqualFold(*llamaSHA, fixos.LlamafileSHA256) {
+		return fmt.Errorf("o llamafile baixado (%s) não confere com o SHA-256 fixo nos scripts (%s)", *llamaSHA, fixos.LlamafileSHA256)
+	}
 	versao, err := os.ReadFile(*versaoArq)
 	if err != nil {
 		return err
@@ -77,7 +80,7 @@ func executar(args []string, saida io.Writer) error {
 	var m manifesto.Manifesto
 	m.Versao = strings.TrimSpace(string(versao))
 	m.Zip = manifesto.Arquivo{URL: *zipURL, SHA256: sha, Bytes: tamanho}
-	m.Llamafile = manifesto.Arquivo{URL: *llamaURL, SHA256: strings.ToLower(*llamaSHA), Bytes: *llamaBytes}
+	m.Llamafile = manifesto.Arquivo{URL: fixos.LlamafileURL, SHA256: fixos.LlamafileSHA256, Bytes: *llamaBytes}
 	m.Modelo = manifesto.Arquivo{URL: fixos.ModeloURL, SHA256: fixos.ModeloSHA256, Bytes: *modeloBytes}
 	m.ModeloNome = fixos.ModeloNome
 	m.Toolbox.Versao = fixos.ToolboxVersao

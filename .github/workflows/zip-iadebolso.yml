@@ -116,15 +116,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Mesma consulta do core/prepare-unix.sh, com a mesma URL de reserva. Com o token, a API não
-          # cai no limite de pedidos anônimos, que o runner compartilhado esgota fácil.
-          FALLBACK_BIN_URL="$(sed -n 's/^FALLBACK_BIN_URL="\(.*\)"$/\1/p' core/prepare-unix.sh)"
-          LLAMAFILE_URL="$(curl -fsSL -H 'User-Agent: cd2-harness' -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/mozilla-ai/llamafile/releases/latest \
-            | grep -Eo 'https://[^"]+/llamafile-[0-9]+(\.[0-9]+)+"' | tr -d '"' | head -n 1 || true)"
-          if [ -z "$LLAMAFILE_URL" ]; then echo "Não consegui resolver a última release; usando a URL de reserva."; LLAMAFILE_URL="$FALLBACK_BIN_URL"; fi
+          # URL e SHA-256 do motor fixos no core/prepare-unix.sh (o cmd/manifesto confere que o
+          # prepare-windows.ps1 diz o mesmo). Nada de "ultima release": o instalador e os scripts gravam o mesmo motor.
+          LLAMAFILE_URL="$(sed -n 's/^LLAMAFILE_URL="${CD2_LLAMAFILE_URL:-\(.*\)}"$/\1/p' core/prepare-unix.sh)"
+          [ -n "$LLAMAFILE_URL" ] || { echo "Não achei LLAMAFILE_URL no core/prepare-unix.sh."; exit 1; }
           MODELO_URL="$(sed -n 's/^MODEL_URL="${CD2_MODEL_URL:-\(.*\)}"$/\1/p' core/prepare-unix.sh)"
-          # O motor é baixado aqui para o manifesto levar o SHA-256: sem ele, um llamafile antigo e menor
-          # na cache do instalador seria retomado e passaria na conferência só pelo tamanho.
+          # O motor é baixado aqui para medir o SHA-256 e o tamanho: o cmd/manifesto recusa se o SHA
+          # medido não bater com o fixo nos scripts (URL trocada de conteúdo ou SHA errado no script).
           MOTOR="$RUNNER_TEMP/llamafile"
           curl -fsSL -H 'User-Agent: cd2-harness' -o "$MOTOR" "$LLAMAFILE_URL"
           LLAMAFILE_SHA256="$(sha256sum "$MOTOR" | cut -d ' ' -f 1)"
@@ -148,7 +146,6 @@ jobs:
             -version-file ../VERSION \
             -zip ../cd2tech-iadebolso.zip \
             -zip-url "https://github.com/${{ github.repository }}/releases/download/iadebolso/cd2tech-iadebolso.zip" \
-            -llamafile-url "$LLAMAFILE_URL" \
             -llamafile-sha256 "$LLAMAFILE_SHA256" \
             -llamafile-bytes "$LLAMAFILE_BYTES" \
             -modelo-bytes "$MODELO_BYTES") > manifesto.json

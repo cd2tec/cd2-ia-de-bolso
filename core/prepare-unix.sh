@@ -11,7 +11,12 @@ MODEL_FILE="${CD2_MODEL_FILE:-Qwen3-4B-Instruct-2507-Q4_K_M.gguf}"
 if [ -n "${CD2_MODEL_URL:-}" ]; then MODEL_SHA256="${CD2_MODEL_SHA256:-}"
 else MODEL_SHA256="${CD2_MODEL_SHA256:-3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597}"; fi
 MODEL_SHA256="$(printf '%s' "$MODEL_SHA256" | tr 'A-F' 'a-f')"
-FALLBACK_BIN_URL="https://huggingface.co/mozilla-ai/llamafile_0.10/resolve/main/llamafile_0.10.1"
+# Motor (llamafile): versao e SHA-256 fixos, os mesmos que o manifesto do instalador publica.
+# Com CD2_LLAMAFILE_URL proprio, so confere se CD2_LLAMAFILE_SHA256 vier junto.
+LLAMAFILE_URL="${CD2_LLAMAFILE_URL:-https://github.com/mozilla-ai/llamafile/releases/download/0.10.6/llamafile-0.10.6}"
+if [ -n "${CD2_LLAMAFILE_URL:-}" ]; then LLAMAFILE_SHA256="${CD2_LLAMAFILE_SHA256:-}"
+else LLAMAFILE_SHA256="${CD2_LLAMAFILE_SHA256:-d579f61dcd3a306f518e6d90e599d77793ed5f09543023d09c96ad35fcfa63f0}"; fi
+LLAMAFILE_SHA256="$(printf '%s' "$LLAMAFILE_SHA256" | tr 'A-F' 'a-f')"
 # MCP Toolbox for Databases: versao fixa (pen drive reprodutivel), um binario por sistema.
 TOOLBOX_VERSION="${CD2_TOOLBOX_VERSION:-1.14.0}"
 TOOLBOX_PLATFORMS="${CD2_TOOLBOX_PLATFORMS:-windows-amd64 darwin-arm64 darwin-amd64 linux-amd64}"
@@ -44,18 +49,46 @@ fetch() {
   fi
 }
 
+# baixar_motor: o motor nunca e emendado em arquivo de outra versao. O download vai para um pedaco
+# com nome tirado da URL (bin/llamafile.part-<12 hex do SHA-256 da URL>), que so a mesma origem
+# retoma; pedacos de outras origens sao apagados. So vira bin/llamafile depois de conferir o SHA.
+baixar_motor() {
+  motor="$ROOT/bin/llamafile"
+  if [ -s "$motor" ]; then
+    if [ -n "$LLAMAFILE_SHA256" ]; then
+      [ "$($SUM "$motor" | cut -d' ' -f1)" = "$LLAMAFILE_SHA256" ] && ok=1 || ok=""
+    else
+      [ "$(wc -c < "$motor" | tr -d ' ')" = "$(remote_size "$LLAMAFILE_URL")" ] && ok=1 || ok=""
+    fi
+    if [ -n "$ok" ]; then echo "Ja conferido, pulando: bin/llamafile"
+    else echo "O bin/llamafile e de outra versao; baixando o motor fixo."; rm -f "$motor"; fi
+  fi
+  if [ ! -s "$motor" ]; then
+    pedaco="$motor.part-$(printf '%s' "$LLAMAFILE_URL" | $SUM | cut -c1-12)"
+    for f in "$motor".part*; do [ -e "$f" ] && [ "$f" != "$pedaco" ] && rm -f "$f"; done
+    echo "Origem: $LLAMAFILE_URL"
+    # retoma o pedaco; se o servidor recusar o retomo, baixa inteiro
+    curl -L --fail -C - -o "$pedaco" "$LLAMAFILE_URL" || { rm -f "$pedaco"; curl -L --fail -o "$pedaco" "$LLAMAFILE_URL"; } \
+      || { rm -f "$pedaco"; echo "[ERRO] Falha ao baixar o motor. Rode de novo."; return 1; }
+    if [ -n "$LLAMAFILE_SHA256" ]; then
+      got="$($SUM "$pedaco" | cut -d' ' -f1)"
+      if [ "$got" != "$LLAMAFILE_SHA256" ]; then
+        rm -f "$pedaco"; echo "[ERRO] SHA-256 do motor nao confere ($got). Rode de novo."; return 1
+      fi
+      echo "SHA-256 do motor conferido."
+    fi
+    mv -f "$pedaco" "$motor"
+  fi
+  chmod +x "$motor" 2>/dev/null || true
+  # Windows exige a extensao .exe; mesma binaria (APE) serve para os tres sistemas
+  if ! cmp -s "$motor" "$motor.exe" 2>/dev/null; then
+    cp -f "$motor" "$motor.exe"
+  fi
+}
+
 mkdir -p "$ROOT/bin" "$ROOT/models"
 echo "== Motor (llamafile)"
-BIN_URL="$(curl -fsSL -H 'User-Agent: cd2-harness' https://api.github.com/repos/mozilla-ai/llamafile/releases/latest \
-  | grep -Eo 'https://[^"]+/llamafile-[0-9]+(\.[0-9]+)+"' | tr -d '"' | head -n 1 || true)"
-if [ -z "$BIN_URL" ]; then echo "Nao consegui resolver a ultima release; usando a URL de reserva."; BIN_URL="$FALLBACK_BIN_URL"; fi
-echo "Origem: $BIN_URL"
-fetch "$BIN_URL" "$ROOT/bin/llamafile"
-chmod +x "$ROOT/bin/llamafile" 2>/dev/null || true
-# Windows exige a extensao .exe; mesma binaria (APE) serve para os tres sistemas
-if ! cmp -s "$ROOT/bin/llamafile" "$ROOT/bin/llamafile.exe" 2>/dev/null; then
-  cp -f "$ROOT/bin/llamafile" "$ROOT/bin/llamafile.exe"
-fi
+baixar_motor || exit 1
 
 echo "== Modelo"
 echo "Origem: $MODEL_URL"
