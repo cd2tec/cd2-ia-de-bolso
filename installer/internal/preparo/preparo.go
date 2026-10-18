@@ -38,13 +38,13 @@ var minimos = struct{ Modelo, Toolbox int64 }{1_000_000_000, 100_000_000}
 const prefixoZip = "cd2tech-iadebolso/"
 
 var itensDoZip = map[string]bool{
-	"INICIAR-CD2-Windows.bat": true, "INICIAR-CD2-Mac.command": true, "iniciar-cd2-linux.sh": true,
+	"INICIAR-CD2-Windows.bat": true, "INICIAR-CD2-Mac.command": true, "ia-de-bolso.sh": true,
 	"README.md": true, "LICENSE": true, "VERSION": true,
 	nomeLancadorWin: true,
 }
 
-// Lançadores da raiz do pen drive. Com o do Mac na cópia, o INICIAR do Mac vai
-// para core/ (arrumarLancadores); o do Windows, por enquanto, fica na raiz.
+// Lançadores da raiz do pen drive. Com o lançador na cópia, o INICIAR do mesmo
+// sistema vai para core/ (arrumarLancadores).
 const (
 	nomeLancadorWin = "IA de Bolso.exe"
 	nomeLancadorMac = "IA de Bolso.app"
@@ -329,12 +329,11 @@ func aceitoNoZip(rel string) bool {
 // arrumarLancadores aplica a regra do pen drive (a mesma do core/lancadores.sh):
 // com o lançador na cópia, o INICIAR da plataforma sai da raiz e vai para core/,
 // sobrescrevendo o que já houver lá; sem ele, o INICIAR fica na raiz. O
-// iniciar-cd2-linux.sh nunca se move. O INICIAR-CD2-Windows.bat fica na raiz
-// junto do .exe, como alternativa: o par do Windows volta para a regra depois do
-// teste num Windows de verdade.
+// ia-de-bolso.sh (Linux, sem lançador) nunca se move.
 func arrumarLancadores(stage string) error {
 	for _, par := range [][2]string{
 		{nomeLancadorMac, "INICIAR-CD2-Mac.command"},
+		{nomeLancadorWin, "INICIAR-CD2-Windows.bat"},
 	} {
 		if _, err := os.Stat(filepath.Join(stage, par[0])); err != nil {
 			continue

@@ -25,22 +25,22 @@ test('lancadores.sh: carregar nao faz nada', () => {
 test('lancadores.sh com os dois lançadores', () => {
   const s = tmp();
   for (const f of ['IA de Bolso.exe', 'IA de Bolso.app/Contents/MacOS/IA de Bolso', 'INICIAR-CD2-Windows.bat',
-    'INICIAR-CD2-Mac.command', 'iniciar-cd2-linux.sh', 'core/start-unix.sh']) touch(s, f);
+    'INICIAR-CD2-Mac.command', 'ia-de-bolso.sh', 'core/start-unix.sh']) touch(s, f);
   arrumar(s);
-  // Ate o teste no Windows, o .bat fica na raiz ao lado do .exe (alternativa).
-  assert.ok(existe(s, 'INICIAR-CD2-Windows.bat'));
-  assert.ok(!existe(s, 'core/INICIAR-CD2-Windows.bat'));
+  // Com o .exe, o .bat sai da raiz e fica em core/ (plano B pelo terminal), como o .command do Mac.
+  assert.ok(!existe(s, 'INICIAR-CD2-Windows.bat'));
+  assert.ok(existe(s, 'core/INICIAR-CD2-Windows.bat'));
   assert.ok(existe(s, 'core/INICIAR-CD2-Mac.command'));
   assert.ok(!existe(s, 'INICIAR-CD2-Mac.command'));
-  assert.ok(existe(s, 'iniciar-cd2-linux.sh'));
+  assert.ok(existe(s, 'ia-de-bolso.sh'));
   assert.ok(existe(s, 'IA de Bolso.exe'));
 });
 
 test('lancadores.sh sem lançador, nada muda', () => {
   const s = tmp();
-  for (const f of ['INICIAR-CD2-Windows.bat', 'INICIAR-CD2-Mac.command', 'iniciar-cd2-linux.sh']) touch(s, f);
+  for (const f of ['INICIAR-CD2-Windows.bat', 'INICIAR-CD2-Mac.command', 'ia-de-bolso.sh']) touch(s, f);
   arrumar(s);
-  for (const f of ['INICIAR-CD2-Windows.bat', 'INICIAR-CD2-Mac.command', 'iniciar-cd2-linux.sh']) assert.ok(existe(s, f), f);
+  for (const f of ['INICIAR-CD2-Windows.bat', 'INICIAR-CD2-Mac.command', 'ia-de-bolso.sh']) assert.ok(existe(s, f), f);
   assert.ok(!existe(s, 'core'));
 });
 
@@ -52,11 +52,19 @@ test('lancadores.sh so o .app: o .command vai, o .bat fica', () => {
   assert.ok(existe(s, 'INICIAR-CD2-Windows.bat') && !existe(s, 'core/INICIAR-CD2-Windows.bat'));
 });
 
-test('lancadores.sh so o .exe: o .bat fica na raiz', () => {
+test('lancadores.sh so o .exe: o .bat vai para core/', () => {
   const s = tmp();
   for (const f of ['IA de Bolso.exe', 'INICIAR-CD2-Windows.bat']) touch(s, f);
   arrumar(s);
-  assert.ok(existe(s, 'INICIAR-CD2-Windows.bat') && !existe(s, 'core/INICIAR-CD2-Windows.bat'));
+  assert.ok(!existe(s, 'INICIAR-CD2-Windows.bat') && existe(s, 'core/INICIAR-CD2-Windows.bat'));
+});
+
+test('raiz do repositorio: ia-de-bolso.sh no lugar do iniciar-cd2-linux.sh, chamando o start-unix.sh', () => {
+  assert.ok(!fs.existsSync(path.join(ROOT, 'iniciar-cd2-linux.sh')));
+  const sh = fs.readFileSync(path.join(ROOT, 'ia-de-bolso.sh'), 'utf8');
+  assert.match(sh, /exec sh core\/start-unix\.sh/);
+  for (const f of ['core/make-usb-unix.sh', 'core/make-usb-windows.ps1'])
+    assert.match(fs.readFileSync(path.join(ROOT, f), 'utf8'), /'?ia-de-bolso\.sh'?/, f);
 });
 
 test('lancadores.sh sobrescreve o de core/ e roda duas vezes sem erro', () => {
