@@ -9,9 +9,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
-// abrirPeloBat é a saída quando a janelinha não abre no Windows: o .bat da
-// raiz faz o mesmo pelo terminal, sem WebView2.
-const abrirPeloBat = "Dá para abrir a IA pelo INICIAR-CD2-Windows.bat, na raiz do pen drive."
+// abrirPeloBat é a saída quando a janelinha não abre no Windows: o .bat em
+// core\ faz o mesmo pelo terminal, sem WebView2.
+const abrirPeloBat = "Dá para abrir a IA pelo INICIAR-CD2-Windows.bat, na pasta core do pen drive."
 
 // mensagensWebView2 são as caixas de aviso que o Wails mostra no Windows
 // quando falta o WebView2 (o componente da Microsoft que desenha a janelinha)

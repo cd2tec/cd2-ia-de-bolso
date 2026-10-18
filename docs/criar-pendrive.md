@@ -59,9 +59,8 @@ As cópias do checksum ficam na mesma pasta, uma por gravação, com data e hora
 ```
 CD2/   (a raiz do pen drive)
   IA de Bolso.exe        (o lançador do Windows)
-  INICIAR-CD2-Windows.bat (alternativa no Windows, pelo terminal)
   IA de Bolso.app        (o lançador do Mac)
-  iniciar-cd2-linux.sh
+  ia-de-bolso.sh         (no Linux: sh ia-de-bolso.sh)
   README.md  LICENSE  VERSION
   CHECKSUMS.sha256
   bin/llamafile          ~350 MB
@@ -76,17 +75,17 @@ CD2/   (a raiz do pen drive)
   bin/ctl/darwin-amd64/cd2-ctl            ~7 MB
   bin/ctl/linux-amd64/cd2-ctl             ~7 MB
   core/toolbox/                           receitas por motor
-  core/   web/           (em core/ fica também INICIAR-CD2-Mac.command, o plano B do Mac)
+  core/   web/           (em core/ ficam também INICIAR-CD2-Windows.bat e INICIAR-CD2-Mac.command, o plano B pelo terminal)
 ```
 
-O código do lançador (`launcher/`) fica só no repositório, como `installer/`. O `INICIAR-CD2-Windows.bat` fica na raiz junto do `IA de Bolso.exe`, como alternativa enquanto o lançador não for testado num Windows de verdade. Se o lançador do Mac não estiver na cópia que você gravou, o `INICIAR-CD2-Mac.command` fica na raiz, no lugar dele.
+O código do lançador (`launcher/`) fica só no repositório, como `installer/`. Com o lançador na cópia, o INICIAR do mesmo sistema fica em `core/` como plano B. Se o lançador de um sistema não estiver na cópia que você gravou, o INICIAR dele fica na raiz, no lugar do lançador.
 
 Os scripts de gravação (`GRAVAR-*`, `gravar-*` e `core/make-usb-*`) e a pasta `docs/` ficam de fora de propósito. Quem recebe o pen drive só precisa ver o `IA de Bolso`.
 
 ## Teste de fumaça (faça no primeiro pen drive, antes de duplicar)
 
 1. Tire e plugue de novo o pen drive.
-2. Dê dois cliques em `IA de Bolso` (`.exe` no Windows, `.app` no Mac). No Linux, `sh iniciar-cd2-linux.sh`.
+2. Dê dois cliques em `IA de Bolso` (`.exe` no Windows, `.app` no Mac). No Linux, `sh ia-de-bolso.sh`.
 3. Espere a janela abrir e mande uma pergunta qualquer. Na primeira vez, o modelo leva de 20 a 90 segundos para carregar; o robô da janelinha mostra quanto do modelo já foi lido do pen drive.
 4. Se for usar banco: Configurações, modo MCP Nativo para Banco de dados, preencha a conexão e clique em Salvar e conectar. A lista com motor, versão e tabelas tem de aparecer.
 5. Clique em **Colocar a IA para dormir**, espere "Boa noite! Pode tirar o pen drive." e ejete com segurança.
@@ -96,7 +95,7 @@ Se passou, está aprovado. Grave os outros com o mesmo script ou copie todo o co
 ## Se der problema
 
 - **`llamafile.exe` sumiu logo depois do download (Windows).** Foi o antivírus. Libere uma exceção para a pasta de cache e rode de novo.
-- **SmartScreen reclamou do `IA de Bolso.exe` (ou do `.bat`).** "Mais informações" e depois "Executar assim mesmo". Esse caminho e o WebView2 (que a janelinha usa no Windows) ainda não foram testados num Windows de verdade; se a janelinha não abrir, dê dois cliques no `INICIAR-CD2-Windows.bat`, ali mesmo na raiz, que faz o mesmo pelo terminal.
+- **SmartScreen reclamou do `IA de Bolso.exe` (ou do `.bat`).** "Mais informações" e depois "Executar assim mesmo". Esse caminho e o WebView2 (que a janelinha usa no Windows) ainda não foram testados num Windows de verdade; se a janelinha não abrir, dê dois cliques no `INICIAR-CD2-Windows.bat`, na pasta `core`, que faz o mesmo pelo terminal.
 - **Mac: o `IA de Bolso.app` pediu confirmação para abrir.** Com os secrets da Apple cadastrados na CI, o `.app` e o instalador saem assinados com o Developer ID da CD2 e notarizados, e não pedem nada (ver [assinatura-mac.md](assinatura-mac.md)). Sem eles, a CI assina ad hoc: gravado pelo instalador ou pelo `GRAVAR-PENDRIVE-Mac.command`, ainda não deve pedir aviso, porque a cópia não leva quarentena, mas um `.app` copiado à mão de um ZIP baixado é bloqueado. Nesse caso, Ajustes do Sistema, Privacidade e Segurança, botão "Abrir mesmo assim", ou `xattr -dr com.apple.quarantine "IA de Bolso.app"` no Terminal. Desde o macOS 15, botão direito e Abrir não libera mais um `.app`; para o plano B (`core/INICIAR-CD2-Mac.command`) o caminho também é o "Abrir mesmo assim".
 - **Fechei a janelinha e a IA continua rodando.** É assim mesmo: ela fica no ícone perto do relógio (Windows) ou na barra de menus (Mac). Para encerrar, "Colocar a IA para dormir".
 - **Linux não achou `mkfs.exfat`.** Instale o `exfatprogs` (`sudo apt install exfatprogs` ou `sudo dnf install exfatprogs`). O script aceita também o `exfat-utils` mais antigo.

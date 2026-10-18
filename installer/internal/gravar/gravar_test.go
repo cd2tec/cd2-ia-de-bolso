@@ -143,7 +143,7 @@ func criarZip(t *testing.T) []byte {
 		}
 		w.Write([]byte(conteudo))
 	}
-	for _, n := range []string{"INICIAR-CD2-Windows.bat", "INICIAR-CD2-Mac.command", "iniciar-cd2-linux.sh", "README.md", "LICENSE"} {
+	for _, n := range []string{"INICIAR-CD2-Windows.bat", "INICIAR-CD2-Mac.command", "ia-de-bolso.sh", "README.md", "LICENSE"} {
 		add(n, n)
 	}
 	add("VERSION", "0.13.0")

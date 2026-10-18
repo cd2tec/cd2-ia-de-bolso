@@ -93,7 +93,7 @@ for f in "$STAGE"/* "$STAGE"/.[!.]*; do
   [ -e "$f" ] || continue
   case "$(basename "$f")" in bin|models|CHECKSUMS.sha256) ;; *) rm -rf "$f" ;; esac
 done
-for item in INICIAR-CD2-Windows.bat INICIAR-CD2-Mac.command iniciar-cd2-linux.sh README.md LICENSE VERSION web core; do
+for item in INICIAR-CD2-Windows.bat INICIAR-CD2-Mac.command ia-de-bolso.sh README.md LICENSE VERSION web core; do
   [ -e "$ROOT/$item" ] || die "Nao achei '$item' em $ROOT. Rode este script de dentro da pasta do repositorio."
   if [ "$OS" = "Darwin" ]; then cp -RX "$ROOT/$item" "$STAGE/"; else cp -R "$ROOT/$item" "$STAGE/"; fi
 done
@@ -104,7 +104,7 @@ for item in "IA de Bolso.exe" "IA de Bolso.app"; do
   if [ "$OS" = "Darwin" ]; then cp -RX "$ROOT/$item" "$STAGE/"; else cp -R "$ROOT/$item" "$STAGE/"; fi
 done
 rm -f "$STAGE/core/make-usb-unix.sh" "$STAGE/core/make-usb-windows.ps1"
-# Com o lancador do Mac na copia, o .command vai para core/; sem ele, fica na raiz (plano B). O .bat fica na raiz.
+# Com o lancador na copia, o INICIAR do sistema (.command ou .bat) vai para core/; sem ele, fica na raiz (plano B).
 . "$ROOT/core/lancadores.sh"
 arrumar_lancadores "$STAGE" || die "Nao consegui arrumar os lancadores na copia local."
 find "$STAGE" \( -name '.DS_Store' -o -name '._*' \) -delete 2>/dev/null || true

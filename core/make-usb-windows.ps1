@@ -79,7 +79,7 @@ Write-Host ''
 Write-Host "== 1/4 Montando a copia local em $Stage"
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 Get-ChildItem -Force $Stage | Where-Object { $_.Name -notin @('bin', 'models', 'CHECKSUMS.sha256') } | Remove-Item -Recurse -Force
-$items = @('INICIAR-CD2-Windows.bat', 'INICIAR-CD2-Mac.command', 'iniciar-cd2-linux.sh', 'README.md', 'LICENSE', 'VERSION', 'web', 'core')
+$items = @('INICIAR-CD2-Windows.bat', 'INICIAR-CD2-Mac.command', 'ia-de-bolso.sh', 'README.md', 'LICENSE', 'VERSION', 'web', 'core')
 foreach ($i in $items) {
     $src = Join-Path $Root $i
     if (-not (Test-Path $src)) { Die "Nao achei '$i' em $Root. Rode de dentro da pasta do repositorio." }
@@ -92,11 +92,10 @@ foreach ($i in @('IA de Bolso.exe', 'IA de Bolso.app')) {
 }
 Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $Stage 'core\make-usb-unix.sh'), (Join-Path $Stage 'core\make-usb-windows.ps1')
 
-# Com o lancador do Mac na copia, o INICIAR dele vai para core\; sem ele, fica na raiz (plano B).
-# O .bat do Windows fica na raiz junto do .exe, como alternativa: o par do Windows
-# volta para a regra depois do teste num Windows de verdade.
+# Com o lancador na copia, o INICIAR do sistema (.command ou .bat) vai para core\; sem ele,
+# fica na raiz (plano B). Mesma regra do core/lancadores.sh e do instalador.
 New-Item -ItemType Directory -Force -Path (Join-Path $Stage 'core') | Out-Null
-foreach ($par in @(,@('IA de Bolso.app', 'INICIAR-CD2-Mac.command'))) {
+foreach ($par in @(@('IA de Bolso.app', 'INICIAR-CD2-Mac.command'), @('IA de Bolso.exe', 'INICIAR-CD2-Windows.bat'))) {
     $iniciar = Join-Path $Stage $par[1]
     if ((Test-Path -LiteralPath (Join-Path $Stage $par[0])) -and (Test-Path -LiteralPath $iniciar)) {
         Move-Item -LiteralPath $iniciar -Destination (Join-Path $Stage ('core\' + $par[1])) -Force

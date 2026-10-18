@@ -35,8 +35,8 @@ func TestMensagensWebView2ApontamOBat(t *testing.T) {
 		"ContactAdmin": m.ContactAdmin, "InvalidFixedWebview2": m.InvalidFixedWebview2,
 		"WebView2ProcessCrash": m.WebView2ProcessCrash,
 	} {
-		if !strings.Contains(v, "INICIAR-CD2-Windows.bat") || !strings.Contains(v, "raiz do pen drive") {
-			t.Errorf("%s não fala do INICIAR-CD2-Windows.bat na raiz do pen drive: %q", nome, v)
+		if !strings.Contains(v, "INICIAR-CD2-Windows.bat") || !strings.Contains(v, "pasta core do pen drive") {
+			t.Errorf("%s não fala do INICIAR-CD2-Windows.bat na pasta core do pen drive: %q", nome, v)
 		}
 	}
 }
