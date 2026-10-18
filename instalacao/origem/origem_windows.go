@@ -16,7 +16,6 @@ const (
 	ioctlStorageQueryProperty = 0x002D1400 // IOCTL_STORAGE_QUERY_PROPERTY
 	storageDeviceProperty     = 0          // StorageDeviceProperty
 	propertyStandardQuery     = 0          // PropertyStandardQuery
-	busTypeUsb                = 7          // BusTypeUsb
 	// BusType fica no byte 28 de STORAGE_DEVICE_DESCRIPTOR: Version, Size,
 	// quatro bytes de tipo e fila, e quatro deslocamentos de 32 bits.
 	deslocBusType = 28
@@ -58,7 +57,8 @@ func lerVolumeDoSistema(raiz string) (Volume, error) {
 	return v, nil
 }
 
-// ehUSB abre o volume sem pedir acesso e pergunta o tipo de barramento.
+// ehUSB abre o volume sem pedir acesso e pergunta o tipo de barramento
+// (USB, SD ou MMC contam como USB).
 func ehUSB(letra string) (bool, error) {
 	nome, err := windows.UTF16PtrFromString(`\\.\` + letra)
 	if err != nil {
@@ -82,5 +82,5 @@ func ehUSB(letra string) (bool, error) {
 		return false, errors.New("resposta curta do STORAGE_DEVICE_DESCRIPTOR")
 	}
 	bus := *(*uint32)(unsafe.Pointer(&buf[deslocBusType]))
-	return bus == busTypeUsb, nil
+	return barramentoRemovivel(bus), nil
 }

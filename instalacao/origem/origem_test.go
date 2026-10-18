@@ -112,3 +112,12 @@ func TestDiskutilTravadoViraErro(t *testing.T) {
 		t.Fatalf("Detectar = %q", got)
 	}
 }
+
+// BusType do STORAGE_DEVICE_DESCRIPTOR: USB (7), SD (12) e MMC (13) contam como pen drive.
+func TestBarramentoRemovivel(t *testing.T) {
+	for bus, quer := range map[uint32]bool{7: true, 12: true, 13: true, 0: false, 3: false, 8: false, 10: false, 11: false, 17: false} {
+		if got := barramentoRemovivel(bus); got != quer {
+			t.Errorf("BusType %d: %v, quero %v", bus, got, quer)
+		}
+	}
+}
