@@ -1333,7 +1333,7 @@ function instAcompanhar(){
 }
 function instPronto(p){
   clearTimeout(inst.poll);
-  $('#iProntoTxt').textContent = 'A partir de agora, abra a IA de Bolso pelo ícone nos programas' + (inst.area ? ' ou na área de trabalho' : '') + '. Pode tirar o pen drive.';
+  $('#iProntoTxt').textContent = CD2Instalar.textoPronto(inst.area);
   const tem = !!inst.chave;
   $('#iChaveBox').hidden = !tem; $('#iChaveGuardada').hidden = tem; $('#iCopiar').hidden = !tem;
   $('#iChaveMostra').value = inst.chave || '';

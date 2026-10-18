@@ -85,6 +85,12 @@ function ouvirNoPendrive(opts){
   return ouvirChave(opts);
 }
 
+// Texto da tela Pronto. O motor ainda roda do pen drive até a instalada abrir.
+function textoPronto(area){
+  return 'A partir de agora, abra a IA de Bolso pelo ícone nos programas' + (area ? ' ou na área de trabalho' : '') +
+    '. Depois de abrir a IA instalada, pode tirar o pen drive.';
+}
+
 function gb(bytes){ return (bytes / 1e9).toFixed(1).replace('.', ','); }
 function textoProgresso(p){
   p = p || {};
@@ -92,6 +98,6 @@ function textoProgresso(p){
   return 'copiando ... ' + gb(p.feitos || 0) + ' de ' + gb(p.total) + ' GB';
 }
 
-const api = { WORKER, urlComprar, normalizar, telaInicial, lerParametros, semParametros, entregarChave, ouvirChave, ouvirNoPendrive, aceitaChave, textoProgresso };
+const api = { WORKER, urlComprar, normalizar, telaInicial, lerParametros, semParametros, entregarChave, ouvirChave, ouvirNoPendrive, aceitaChave, textoPronto, textoProgresso };
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else root.CD2Instalar = api;
 })(typeof window !== 'undefined' ? window : globalThis);

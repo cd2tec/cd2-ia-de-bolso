@@ -165,3 +165,8 @@ test('ouvirNoPendrive só liga o ouvido quando a IA roda do pen drive', () => {
   o.parar();
   assert.equal(aba._ouvintes.length, 0);
 });
+
+test('textoPronto: o pen drive só sai depois de abrir a instalada', () => {
+  assert.equal(I.textoPronto(true), 'A partir de agora, abra a IA de Bolso pelo ícone nos programas ou na área de trabalho. Depois de abrir a IA instalada, pode tirar o pen drive.');
+  assert.equal(I.textoPronto(false), 'A partir de agora, abra a IA de Bolso pelo ícone nos programas. Depois de abrir a IA instalada, pode tirar o pen drive.');
+});

@@ -93,7 +93,7 @@ Tudo no mesmo modal da conversa:
    - "Acordar quando o computador ligar", com o aviso dos 4 a 5 GB de memória e de que dá para desligar no ícone. Vem marcada, porque a IA sempre carrega ao iniciar, com a opção de desligar (decisão do Gabriel).
    - Botão "Instalar".
 2. **"Mudando para o seu computador..."**: barra de progresso real, com o que está sendo copiado, quanto falta e o tempo estimado, e o aviso "Não tire o pen drive agora".
-3. **"Pronto! Agora eu moro aqui"**: abrir pelo ícone nos programas ou na área de trabalho e "Pode tirar o pen drive". A chave na tela, com "Copiar a chave" e a nota "Guarde. Ela reinstala neste computador quando precisar". Botão "Abrir a IA instalada".
+3. **"Pronto! Agora eu moro aqui"**: abrir pelo ícone nos programas ou na área de trabalho e "Depois de abrir a IA instalada, pode tirar o pen drive". A chave na tela, com "Copiar a chave" e a nota "Guarde. Ela reinstala neste computador quando precisar". Botão "Abrir a IA instalada".
 
 **"Abrir a IA instalada"** põe a IA do pen drive para dormir e abre o lançador instalado. Como os dois lançadores usam o mesmo `idUnico`, sem isso o lançador instalado só traria a janelinha da IA do pen drive. **Escolha minha:** a ordem é dormir, esperar tudo parar e só então abrir o instalado.
 
