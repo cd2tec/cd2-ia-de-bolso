@@ -43,7 +43,12 @@ func Gravar(cache, k string) error {
 	if err := os.MkdirAll(cache, 0o700); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(cache, nomeArquivo), []byte(norm+"\n"), 0o600)
+	arq := filepath.Join(cache, nomeArquivo)
+	if err := os.WriteFile(arq, []byte(norm+"\n"), 0o600); err != nil {
+		return err
+	}
+	// WriteFile não muda a permissão de um arquivo que já existia.
+	return os.Chmod(arq, 0o600)
 }
 
 // Valida diz se a chave guardada vale para este computador.

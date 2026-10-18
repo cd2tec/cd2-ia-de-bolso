@@ -4,7 +4,6 @@ package origem
 
 import (
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"syscall"
 )
@@ -40,9 +39,5 @@ func lerVolumeDoSistema(raiz string) (Volume, error) {
 	if montagemDoSistema(ponto) {
 		return Volume{DoSistema: true}, nil
 	}
-	saida, err := exec.Command("diskutil", "info", "-plist", ponto).Output()
-	if err != nil {
-		return Volume{}, fmt.Errorf("diskutil falhou: %w", err)
-	}
-	return volumeDePlist(saida)
+	return volumeDoDiskutil(ponto)
 }

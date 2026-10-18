@@ -104,3 +104,22 @@ func TestValida(t *testing.T) {
 		t.Fatal("valeu sem conseguir ler o código")
 	}
 }
+
+func TestGravarCorrigePermissaoDeArquivoAntigo(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("permissões POSIX")
+	}
+	_, _, chv := vetor(t)
+	pasta := t.TempDir()
+	arq := filepath.Join(pasta, "instalacao.chave")
+	if err := os.WriteFile(arq, []byte("velho"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := Gravar(pasta, chv); err != nil {
+		t.Fatal(err)
+	}
+	info, _ := os.Stat(arq)
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("permissão = %v", info.Mode().Perm())
+	}
+}

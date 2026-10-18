@@ -1,8 +1,10 @@
 package origem
 
 import (
+	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestRegra(t *testing.T) {
@@ -85,5 +87,28 @@ func TestEhDoSistemaMac(t *testing.T) {
 		if got := montagemDoSistema(p); got != quer {
 			t.Errorf("%s: %v", p, got)
 		}
+	}
+}
+
+func TestDiskutilTravadoViraErro(t *testing.T) {
+	antesE, antesT := executarDiskutil, timeoutDiskutil
+	defer func() { executarDiskutil, timeoutDiskutil = antesE, antesT }()
+	timeoutDiskutil = 50 * time.Millisecond
+	executarDiskutil = func(ctx context.Context, _ string) ([]byte, error) {
+		<-ctx.Done() // simula um diskutil que nunca responde
+		return nil, ctx.Err()
+	}
+	inicio := time.Now()
+	if _, err := volumeDoDiskutil("/Volumes/PEN"); err == nil {
+		t.Fatal("travou e não deu erro")
+	}
+	if time.Since(inicio) > 2*time.Second {
+		t.Fatal("não respeitou o timeout")
+	}
+	antesL := lerVolume
+	defer func() { lerVolume = antesL }()
+	lerVolume = func(string) (Volume, error) { return volumeDoDiskutil("/Volumes/PEN") }
+	if got := Detectar("/Volumes/PEN"); got != Pendrive {
+		t.Fatalf("Detectar = %q", got)
 	}
 }
