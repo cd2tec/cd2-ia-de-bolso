@@ -6,7 +6,7 @@ Rotas: `/comprar?codigo=...&porta=...`, `/voltou?session_id=...` e `/cancelou`.
 ## Passo a passo (CD2)
 
 1. No Stripe, em modo de teste, crie o produto da instalação com o preço de R$ 25 (pagamento único). Guarde o ID do preço (`price_...`).
-2. No painel do Stripe, cadastre a URL das condições do serviço (Configurações, Empresa, Informações públicas). O Checkout exige isso por causa de `consent_collection[terms_of_service]`.
+2. No painel do Stripe, cadastre a URL das condições do serviço, `https://cd2tec.github.io/cd2-ia-de-bolso/condicoes-instalacao.html` (Configurações, Empresa, Informações públicas). O Checkout exige isso por causa de `consent_collection[terms_of_service]`.
 3. Gere o par de chaves de assinatura, uma única vez: `node worker/gerar-chaves.mjs`. Guarde a privada fora do repositório e cole a pública em `instalacao/chave/publica.go`.
 4. Cadastre os três segredos, dentro de `worker/`:
    - `wrangler secret put STRIPE_SECRET_KEY` (chave secreta do Stripe, `sk_test_...` no teste)

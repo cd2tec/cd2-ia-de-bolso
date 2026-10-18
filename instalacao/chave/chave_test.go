@@ -1,6 +1,7 @@
 package chave_test
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
@@ -51,9 +52,14 @@ func TestVetorCompartilhado(t *testing.T) {
 }
 
 func TestConferirUsaChavePublica(t *testing.T) {
-	v, _ := carregar(t)
+	v, pub := carregar(t)
+	// Com a chave pública de produção colada em publica.go, o vetor de teste deixa de valer
+	// para Conferir; o caso continua coberto por ConferirCom (TestVetorCompartilhado).
+	if !bytes.Equal(chave.Publica, pub) {
+		t.Skip("Publica já não é a do vetor de teste (chave de produção)")
+	}
 	if !chave.Conferir(v.Chave, v.Codigo) {
-		t.Fatal("Publica deveria ser a do vetor enquanto provisória")
+		t.Fatal("Publica é a do vetor, então a chave do vetor deveria conferir")
 	}
 }
 
