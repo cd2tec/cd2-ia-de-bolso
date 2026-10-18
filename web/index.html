@@ -1223,7 +1223,7 @@ function logoutArcheo(){
 // Só aparece quando o cd2-ctl diz que a IA roda do pen drive. Sem cd2-ctl, nada aparece.
 const CANAL_INSTALACAO = 'cd2-instalacao';
 const SEM_CTL = 'O controle da IA não respondeu. Feche e abra a IA de Bolso pelo pen drive.';
-const inst = { status:null, tela:null, chave:null, pago:false, area:true, poll:null, falhas:0, ocupado:false };
+const inst = { status:null, tela:null, chave:null, pago:false, area:true, poll:null, falhas:0, ocupado:false, medidor:null };
 function instCanal(){ return typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(CANAL_INSTALACAO) : null; }
 async function instPedir(method, path, body){ try{ return await ctlRequest(method, path, body); }catch(e){ return null; } }
 const instMsg = (r, padrao) => (r && r.data && r.data.erro) || padrao || SEM_CTL;
@@ -1280,7 +1280,7 @@ async function abrirInstalar(){
   if(!r || r.status !== 200) return instErro(instMsg(r));
   inst.status = r.data;
   const p = await instPedir('GET', '/instalacao/progresso');
-  if(p && p.status === 200 && p.data.fase === 'copiando'){ instMostrarProgresso(p.data); instTela('instalando'); return instAcompanhar(); }
+  if(p && p.status === 200 && p.data.fase === 'copiando'){ inst.medidor = null; instMostrarProgresso(p.data); instTela('instalando'); return instAcompanhar(); }
   if(p && p.status === 200 && p.data.fase === 'pronta') return instPronto(p.data);
   const t = CD2Instalar.telaInicial(r.data);
   if(t === 'compra') instCompra();
@@ -1303,14 +1303,15 @@ async function instInstalar(){
   const r = await instPedir('POST', '/instalacao', { areaDeTrabalho:inst.area, inicio:$('#iInicio').checked });
   b.disabled = false;
   // 409: já tem uma cópia em andamento, então é só acompanhar
-  if(r && (r.status === 202 || r.status === 409)){ instMostrarProgresso({ feitos:0, total:0 }); instTela('instalando'); return instAcompanhar(); }
+  if(r && (r.status === 202 || r.status === 409)){ inst.medidor = null; instMostrarProgresso({ feitos:0, total:0 }); instTela('instalando'); return instAcompanhar(); }
   instErro(instMsg(r));
 }
 function instMostrarProgresso(p){
   const pct = p.total ? Math.min(100, Math.round((p.feitos || 0) * 100 / p.total)) : 0;
   $('#iBarra').style.width = pct + '%';
   $('#iTrilho').setAttribute('aria-valuenow', String(pct));
-  $('#iProgresso').textContent = CD2Instalar.textoProgresso(p);
+  if(!inst.medidor) inst.medidor = CD2Instalar.medidorProgresso();
+  $('#iProgresso').textContent = inst.medidor(p, Date.now());
 }
 // Pergunta o progresso a cada 500 ms até a cópia acabar (pronta ou erro).
 function instAcompanhar(){

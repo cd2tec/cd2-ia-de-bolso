@@ -170,3 +170,34 @@ test('textoPronto: o pen drive só sai depois de abrir a instalada', () => {
   assert.equal(I.textoPronto(true), 'A partir de agora, abra a IA de Bolso pelo ícone nos programas ou na área de trabalho. Depois de abrir a IA instalada, pode tirar o pen drive.');
   assert.equal(I.textoPronto(false), 'A partir de agora, abra a IA de Bolso pelo ícone nos programas. Depois de abrir a IA instalada, pode tirar o pen drive.');
 });
+
+test('textoProgresso diz o que está copiando e quanto tempo falta', () => {
+  const p = { feitos: 1.4e9, total: 2.4e9, arquivo: 'o modelo de IA' };
+  assert.equal(I.textoProgresso(p), 'copiando o modelo de IA ... 1,4 de 2,4 GB');
+  assert.equal(I.textoProgresso(p, 120), 'copiando o modelo de IA ... 1,4 de 2,4 GB · uns 2 minutos');
+  assert.equal(I.textoProgresso({ feitos: 0, total: 0, arquivo: 'o motor' }), 'copiando o motor ...');
+  assert.equal(I.textoProgresso({ feitos: 1e9, total: 2e9 }, 30), 'copiando ... 1,0 de 2,0 GB · menos de um minuto');
+});
+
+test('tempoRestante em palavras', () => {
+  assert.equal(I.tempoRestante(0), 'menos de um minuto');
+  assert.equal(I.tempoRestante(59), 'menos de um minuto');
+  assert.equal(I.tempoRestante(75), 'um minuto');
+  assert.equal(I.tempoRestante(130), 'uns 2 minutos');
+  assert.equal(I.tempoRestante(25 * 60), 'uns 25 minutos');
+  assert.equal(I.tempoRestante(2 * 3600), 'mais de uma hora');
+});
+
+test('medidorProgresso: média desde o início, sem estimativa nos primeiros 3 s', () => {
+  const m = I.medidorProgresso();
+  const GB = 1e9;
+  assert.equal(m({ feitos: 0, total: 0 }, 0), 'copiando ...');
+  assert.equal(m({ feitos: 0.2 * GB, total: 2.4 * GB, arquivo: 'o modelo de IA' }, 1000), 'copiando o modelo de IA ... 0,2 de 2,4 GB');
+  assert.equal(m({ feitos: 0.3 * GB, total: 2.4 * GB, arquivo: 'o modelo de IA' }, 3500), 'copiando o modelo de IA ... 0,3 de 2,4 GB');
+  // 1,2 GB em 60 s desde o início (0,2 GB em t=1 s): 20 MB/s, falta 1,0 GB = 50 s.
+  assert.equal(m({ feitos: 1.4 * GB, total: 2.4 * GB, arquivo: 'o modelo de IA' }, 61000), 'copiando o modelo de IA ... 1,4 de 2,4 GB · menos de um minuto');
+  // Parado desde o início: sem velocidade, sem estimativa.
+  const parado = I.medidorProgresso();
+  parado({ feitos: 1 * GB, total: 2 * GB }, 0);
+  assert.equal(parado({ feitos: 1 * GB, total: 2 * GB }, 10000), 'copiando ... 1,0 de 2,0 GB');
+});

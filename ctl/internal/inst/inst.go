@@ -56,8 +56,22 @@ type Progresso struct {
 	Fase   string `json:"fase"`
 	Feitos int64  `json:"feitos"`
 	Total  int64  `json:"total"`
-	Erro   string `json:"erro,omitempty"`
-	Aviso  string `json:"aviso,omitempty"`
+	// Arquivo é o que está sendo copiado agora, em palavras da tela ("o modelo de IA").
+	Arquivo string `json:"arquivo,omitempty"`
+	Erro    string `json:"erro,omitempty"`
+	Aviso   string `json:"aviso,omitempty"`
+}
+
+// nomeAmigavel traduz o caminho de um arquivo da instalação para a tela.
+func nomeAmigavel(destino string) string {
+	switch {
+	case strings.HasPrefix(destino, "models/") && strings.HasSuffix(destino, ".gguf"):
+		return "o modelo de IA"
+	case strings.HasPrefix(destino, "bin/llamafile"):
+		return "o motor"
+	default:
+		return "os arquivos da IA"
+	}
 }
 
 // Em variáveis para os testes trocarem a máquina de verdade.
@@ -161,7 +175,12 @@ func (b *Backend) Instalar(areaDeTrabalho, inicio bool) error {
 	if v, err := os.ReadFile(filepath.Join(b.raiz, "VERSION")); err == nil {
 		versao = strings.TrimSpace(string(v))
 	}
-	o := instalacao.Opcoes{Raiz: b.raiz, Cache: b.cache, Versao: versao, AreaDeTrabalho: areaDeTrabalho, Inicio: inicio}
+	o := instalacao.Opcoes{Raiz: b.raiz, Cache: b.cache, Versao: versao, AreaDeTrabalho: areaDeTrabalho, Inicio: inicio,
+		AoArquivo: func(destino string) {
+			b.mu.Lock()
+			b.prog.Arquivo = nomeAmigavel(destino)
+			b.mu.Unlock()
+		}}
 	go b.rodar(o)
 	return nil
 }

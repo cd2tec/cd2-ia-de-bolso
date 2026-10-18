@@ -178,3 +178,12 @@ func TestForaDoPenDriveDa403(t *testing.T) {
 		}
 	}
 }
+
+func TestProgressoLevaOArquivo(t *testing.T) {
+	h, fi := newHI()
+	fi.prog = inst.Progresso{Fase: "copiando", Feitos: 1, Total: 5, Arquivo: "o modelo de IA"}
+	w := do(h, "GET", "/instalacao/progresso", "", nil)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"arquivo":"o modelo de IA"`) {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+}

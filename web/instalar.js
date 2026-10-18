@@ -92,12 +92,46 @@ function textoPronto(area){
 }
 
 function gb(bytes){ return (bytes / 1e9).toFixed(1).replace('.', ','); }
-function textoProgresso(p){
-  p = p || {};
-  if(!p.total) return 'copiando ...';
-  return 'copiando ... ' + gb(p.feitos || 0) + ' de ' + gb(p.total) + ' GB';
+
+// Segundos que faltam, em palavras curtas.
+function tempoRestante(seg){
+  if(seg < 60) return 'menos de um minuto';
+  const min = Math.round(seg / 60);
+  if(min <= 1) return 'um minuto';
+  if(min >= 60) return 'mais de uma hora';
+  return 'uns ' + min + ' minutos';
 }
 
-const api = { WORKER, urlComprar, normalizar, telaInicial, lerParametros, semParametros, entregarChave, ouvirChave, ouvirNoPendrive, aceitaChave, textoPronto, textoProgresso };
+// "copiando o modelo de IA ... 1,4 de 2,4 GB · uns 2 minutos". O que está sendo copiado vem do
+// cd2-ctl (p.arquivo); os segundos que faltam (seg), de medidorProgresso. Sem eles, some o pedaço.
+function textoProgresso(p, seg){
+  p = p || {};
+  const inicio = 'copiando ' + (p.arquivo ? p.arquivo + ' ' : '') + '...';
+  if(!p.total) return inicio;
+  let t = inicio + ' ' + gb(p.feitos || 0) + ' de ' + gb(p.total) + ' GB';
+  if(typeof seg === 'number' && isFinite(seg) && seg >= 0) t += ' · ' + tempoRestante(seg);
+  return t;
+}
+
+// Mede a velocidade no cliente: média desde o primeiro progresso com total, sem estimativa nos
+// primeiros 3 s. Devolve uma função (p, agoraMs) -> texto do progresso.
+function medidorProgresso(){
+  let ini = null;
+  return function(p, agoraMs){
+    p = p || {};
+    if(!p.total) return textoProgresso(p);
+    const feitos = p.feitos || 0;
+    if(!ini) ini = { ms: agoraMs, feitos };
+    const dt = (agoraMs - ini.ms) / 1000;
+    let seg = null;
+    if(dt >= 3){
+      const vel = (feitos - ini.feitos) / dt;
+      if(vel > 0) seg = Math.max(0, p.total - feitos) / vel;
+    }
+    return textoProgresso(p, seg);
+  };
+}
+
+const api = { WORKER, urlComprar, normalizar, telaInicial, lerParametros, semParametros, entregarChave, ouvirChave, ouvirNoPendrive, aceitaChave, textoPronto, textoProgresso, tempoRestante, medidorProgresso };
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else root.CD2Instalar = api;
 })(typeof window !== 'undefined' ? window : globalThis);

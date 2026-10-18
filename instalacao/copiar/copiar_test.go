@@ -366,3 +366,31 @@ func TestDestinoNaoLocalRecusado(t *testing.T) {
 		t.Error("devia recusar destino fora da pasta")
 	}
 }
+
+// CopiarAvisando conta qual item começou, na ordem do plano, antes dos bytes dele.
+func TestCopiarAvisandoDizOItemAtual(t *testing.T) {
+	raiz := penDriveFalso(t, "1.0.0")
+	itens, _, _ := Planejar(raiz, "darwin", "arm64")
+	var vistos []string
+	var feitosNoInicio []int64
+	var feitos int64
+	err := CopiarAvisando(context.Background(), itens, filepath.Join(t.TempDir(), "IA"),
+		func(f, _ int64) { feitos = f },
+		func(destino string) {
+			vistos = append(vistos, destino)
+			feitosNoInicio = append(feitosNoInicio, feitos)
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(vistos) != len(itens) {
+		t.Fatalf("avisou %d itens de %d", len(vistos), len(itens))
+	}
+	var antes int64
+	for i, it := range itens {
+		if vistos[i] != it.Destino || feitosNoInicio[i] != antes {
+			t.Errorf("item %d: %s com %d feitos, queria %s com %d", i, vistos[i], feitosNoInicio[i], it.Destino, antes)
+		}
+		antes += it.Tamanho
+	}
+}

@@ -232,7 +232,13 @@ func pedirEspaco(destino string) (int64, error) {
 
 // Copiar instala itens em destino. Copia para destino+".novo", confere o
 // SHA-256 e só no fim troca. Em erro, apaga o .novo e deixa destino intacto.
-func Copiar(ctx context.Context, itens []Item, destino string, prog func(feitos, total int64)) (err error) {
+func Copiar(ctx context.Context, itens []Item, destino string, prog func(feitos, total int64)) error {
+	return CopiarAvisando(ctx, itens, destino, prog, nil)
+}
+
+// CopiarAvisando é o Copiar que também chama item (se não for nil) com o
+// Destino de cada arquivo, logo antes de começar a copiá-lo.
+func CopiarAvisando(ctx context.Context, itens []Item, destino string, prog func(feitos, total int64), item func(destino string)) (err error) {
 	var total int64
 	for _, it := range itens {
 		if !filepath.IsLocal(filepath.FromSlash(it.Destino)) {
@@ -283,6 +289,9 @@ func Copiar(ctx context.Context, itens []Item, destino string, prog func(feitos,
 	for _, it := range itens {
 		if err = ctx.Err(); err != nil {
 			return err
+		}
+		if item != nil {
+			item(it.Destino)
 		}
 		if err = copiarUm(ctx, it, filepath.Join(novo, filepath.FromSlash(it.Destino)), &feitos, avisar); err != nil {
 			return err

@@ -33,6 +33,9 @@ type Opcoes struct {
 	// AreaDeTrabalho cria o atalho na área de trabalho; Inicio abre a IA de
 	// Bolso junto com o computador.
 	AreaDeTrabalho, Inicio bool
+	// AoArquivo, se não for nil, recebe o caminho (relativo, com barras
+	// normais) de cada arquivo logo antes de ele ser copiado.
+	AoArquivo func(destino string)
 }
 
 // Em variáveis para os testes trocarem a máquina de verdade.
@@ -42,7 +45,7 @@ var (
 	sistemaDo    = sistema.Do
 	valida       = guarda.Valida
 	planejar     = copiar.Planejar
-	copiarPara   = copiar.Copiar
+	copiarPara   = copiar.CopiarAvisando
 	pastaDestino = func() (string, error) {
 		home, _ := os.UserHomeDir()
 		return destinoDoSistema(goos, os.Getenv, home)
@@ -74,7 +77,7 @@ func Instalar(ctx context.Context, o Opcoes, prog func(feitos, total int64)) err
 	if err != nil {
 		return err
 	}
-	if err := copiarPara(ctx, itens, destino, prog); err != nil {
+	if err := copiarPara(ctx, itens, destino, prog, o.AoArquivo); err != nil {
 		return err
 	}
 	s := sistemaDo(goos)

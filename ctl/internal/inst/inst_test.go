@@ -230,3 +230,33 @@ func TestCodigoIlegivelNaoCulpaAChave(t *testing.T) {
 		t.Error("não devia ter gravado")
 	}
 }
+
+func TestProgressoDizOQueEstaCopiando(t *testing.T) {
+	casos := map[string]string{
+		"models/modelo.gguf":                   "o modelo de IA",
+		"bin/llamafile":                        "o motor",
+		"bin/llamafile.exe":                    "o motor",
+		"web/index.html":                       "os arquivos da IA",
+		"bin/ctl/darwin-arm64/cd2-ctl":         "os arquivos da IA",
+		"IA de Bolso.app/Contents/MacOS/bolso": "os arquivos da IA",
+	}
+	for destino, quer := range casos {
+		passo, fim := make(chan struct{}), make(chan struct{})
+		b := novo(t, func(_ context.Context, o instalacao.Opcoes, prog func(int64, int64)) error {
+			o.AoArquivo(destino)
+			prog(1, 10)
+			close(passo)
+			<-fim
+			return nil
+		})
+		if err := b.Instalar(false, false); err != nil {
+			t.Fatal(err)
+		}
+		<-passo
+		if p := b.Progresso(); p.Arquivo != quer {
+			t.Errorf("%s: arquivo %q, queria %q", destino, p.Arquivo, quer)
+		}
+		close(fim)
+		esperaFase(t, b, "pronta")
+	}
+}

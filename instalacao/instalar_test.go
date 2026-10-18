@@ -68,8 +68,13 @@ func trocar(t *testing.T, chaveBoa bool) (*sisFalso, string, *[]string) {
 	planejar = func(raiz, g, a string) ([]copiar.Item, int64, error) {
 		return []copiar.Item{{Origem: raiz + "/VERSION", Destino: "VERSION", Tamanho: 1}}, 1, nil
 	}
-	copiarPara = func(ctx context.Context, itens []copiar.Item, d string, prog func(int64, int64)) error {
+	copiarPara = func(ctx context.Context, itens []copiar.Item, d string, prog func(int64, int64), item func(string)) error {
 		copiados = append(copiados, d)
+		for _, it := range itens {
+			if item != nil {
+				item(it.Destino)
+			}
+		}
 		return os.MkdirAll(d, 0o755)
 	}
 	t.Cleanup(func() {
@@ -77,7 +82,7 @@ func trocar(t *testing.T, chaveBoa bool) (*sisFalso, string, *[]string) {
 		pastaDestino = velhos[1].(func() (string, error))
 		valida = velhos[2].(func(string) bool)
 		planejar = velhos[3].(func(string, string, string) ([]copiar.Item, int64, error))
-		copiarPara = velhos[4].(func(context.Context, []copiar.Item, string, func(int64, int64)) error)
+		copiarPara = velhos[4].(func(context.Context, []copiar.Item, string, func(int64, int64), func(string)) error)
 		goos = velhos[5].(string)
 	})
 	return sis, destino, &copiados
@@ -128,7 +133,9 @@ func TestInstalarNaOrdem(t *testing.T) {
 
 func TestInstalarErroNaCopiaParaAntesDosAtalhos(t *testing.T) {
 	sis, _, _ := trocar(t, true)
-	copiarPara = func(context.Context, []copiar.Item, string, func(int64, int64)) error { return copiar.ErrSemEspaco }
+	copiarPara = func(context.Context, []copiar.Item, string, func(int64, int64), func(string)) error {
+		return copiar.ErrSemEspaco
+	}
 	err := Instalar(context.Background(), Opcoes{Raiz: t.TempDir(), Cache: t.TempDir()}, nil)
 	if !errors.Is(err, copiar.ErrSemEspaco) {
 		t.Fatalf("err = %v", err)
@@ -273,5 +280,17 @@ func TestDesinstalarPastaEstranhaNaoApagaSobras(t *testing.T) {
 	}
 	if _, err := os.Stat(estranha + ".novo"); err != nil {
 		t.Errorf("apagou fora da instalação: %v", err)
+	}
+}
+
+func TestInstalarAvisaOArquivoAtual(t *testing.T) {
+	trocar(t, true)
+	var vistos []string
+	o := Opcoes{Raiz: t.TempDir(), Cache: t.TempDir(), AoArquivo: func(d string) { vistos = append(vistos, d) }}
+	if err := Instalar(context.Background(), o, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(vistos, []string{"VERSION"}) {
+		t.Errorf("arquivos avisados = %v", vistos)
 	}
 }
