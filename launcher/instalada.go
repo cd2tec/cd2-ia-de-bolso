@@ -24,7 +24,7 @@ import (
 type Args struct {
 	Inicio      bool // acordou com o computador: só o ícone, sem janela nem conversa
 	Assumir     bool // o cd2-ctl abriu a instalada: a do pen drive dorme e passa a vez
-	Desinstalar bool
+	Desinstalar bool // de Configurações > Aplicativos: abre na pergunta, sem acordar a IA
 	// Esperar é o pid do lançador do pen drive que passou a vez: a instalada
 	// espera ele sair, porque os dois disputam a mesma trava de cópia única.
 	Esperar int
@@ -94,9 +94,15 @@ const textoNaoAbriuInstalada = "Não consegui abrir a IA instalada. Abra pelo í
 
 // segundaCopia é outro lançador aberto com este rodando. Com --assumir e a
 // instalada no disco, este (o do pen drive) dorme e passa a vez; em qualquer
-// outro caso só traz a janela.
+// outro caso só traz a janela. Com --desinstalar (de Configurações >
+// Aplicativos), traz a janela na pergunta de desinstalar.
 func (a *App) segundaCopia(args []string) {
-	if !lerArgs(args).Assumir {
+	pedido := lerArgs(args)
+	if pedido.Desinstalar {
+		a.PedirDesinstalar()
+		return
+	}
+	if !pedido.Assumir {
 		a.chamar()
 		return
 	}

@@ -44,6 +44,15 @@ type App struct {
 	naoAbriu   bool // a troca foi pedida e a instalada não abriu
 	// semNavegador é o --inicio: a conversa não abriu sozinha.
 	semNavegador bool
+	versao       string
+
+	inicioLigado  bool   // a marcação do "Acordar quando o computador ligar"
+	avisoInicio   string // o acordar com o computador não mudou
+	perguntando   bool   // a tela pergunta se pode desinstalar
+	desinstalando bool   // o próximo Dormiu é o da desinstalação
+	desinstalada  bool   // a remoção foi disparada: só falta sair
+	ficou         bool   // a desinstalação falhou: a IA dorme e o app fica
+	erroFicou     string
 }
 
 // estadoTela é o Estado no formato da tela: chaves em minúsculas e a fase
@@ -73,7 +82,13 @@ func paraTela(e sessao.Estado, pendrive, semNavegador bool) estadoTela {
 // telaDe é o estado como a tela recebe, com a origem, o --inicio e a falha
 // de abrir a instalada.
 func (a *App) telaDe(e sessao.Estado) estadoTela {
-	return paraTela(a.comDormiu(e), a.pendrive(), a.semNavegador)
+	t := paraTela(a.comDormiu(e), a.pendrive(), a.semNavegador)
+	a.mu.Lock()
+	if t.Aviso == "" {
+		t.Aviso = a.avisoInicio
+	}
+	a.mu.Unlock()
+	return t
 }
 
 // deveMostrar diz se o estado traz a janela de volta sozinho: um erro nunca
@@ -102,8 +117,9 @@ func deveChamar(f sessao.Fase) bool { return f == sessao.Pronta }
 
 // novaApp prepara o app. Com --inicio a conversa não abre e o aviso do
 // primeiro fechar não sai: quem acordou com o computador não pediu janela.
+// Com --desinstalar a IA nem acorda: a janela abre na pergunta.
 func novaApp(raiz, versao string, args Args) *App {
-	a := &App{raiz: raiz, avisou: args.Inicio, semNavegador: args.Inicio}
+	a := &App{raiz: raiz, avisou: args.Inicio, semNavegador: args.Inicio, versao: versao, perguntando: args.Desinstalar}
 	d := sessao.DepsReais(raiz)
 	d.SemNavegador = args.Inicio
 	a.s = sessao.Nova(d, versao, a.aoMudar)
@@ -124,6 +140,17 @@ func (a *App) contexto() context.Context {
 // aoMudar recebe cada estado da sessão, na goroutine de entrega dela: não
 // pode chamar o Dormir síncrono aqui.
 func (a *App) aoMudar(e sessao.Estado) {
+	// Indo dormir, a pergunta de desinstalar sai da frente.
+	if e.Fase == sessao.Dormindo || e.Fase == sessao.Dormiu {
+		a.mu.Lock()
+		a.perguntando = false
+		a.mu.Unlock()
+	}
+	if e.Fase == sessao.Dormiu && a.estaDesinstalando() {
+		a.atualizarBandeja(e)
+		a.terminarDesinstalar(e.Erro)
+		return
+	}
 	// Passando a vez para a instalada: ela espera este processo sair, então
 	// nada de esperar o "Boa noite!". Se ela não abriu, o Dormiu vira aviso.
 	t := semTroca
@@ -131,7 +158,8 @@ func (a *App) aoMudar(e sessao.Estado) {
 		t = a.trocar(e.Erro)
 		e = a.comDormiu(e)
 	}
-	if ctx := a.contexto(); ctx != nil {
+	// Com a pergunta na tela, os estados esperam a resposta.
+	if ctx := a.contexto(); ctx != nil && !a.naPergunta() {
 		wruntime.EventsEmit(ctx, "estado", a.telaDe(e))
 	}
 	a.atualizarBandeja(e)
@@ -172,9 +200,13 @@ func (a *App) iniciar(ctx context.Context) {
 	a.trancada = tranca
 	a.origem = o
 	a.mu.Unlock()
+	if o == origem.Instalada {
+		a.lerInicio()
+	}
 	iniciarBandeja(a)
-	if tranca {
-		wruntime.EventsEmit(ctx, "estado", estadoTela{Fase: faseTrancada})
+	// Trancada ou com a pergunta do --desinstalar, a IA não acorda.
+	if t, ok := a.telaEspecial(); ok {
+		wruntime.EventsEmit(ctx, "estado", t)
 		return
 	}
 	a.acordar()
@@ -187,7 +219,7 @@ func (a *App) iniciar(ctx context.Context) {
 // não há IA para dormir: a saída vale na hora.
 func (a *App) antesDeFechar(ctx context.Context) (impedir bool) {
 	a.mu.Lock()
-	pode := a.podeSair || a.trancada
+	pode := a.podeSair || a.trancada || a.ficou
 	a.mu.Unlock()
 	if pode {
 		return false
@@ -266,19 +298,20 @@ func (a *App) Dormir() { go a.s.Dormir() }
 
 // Fechar é o botão da tela de erro: dorme (parando o que tiver subido) e sai.
 // Trancada, nada subiu: sai direto, sem o "Boa noite! Pode tirar o pen drive".
+// Depois da desinstalação que falhou, a IA já dorme: sai direto também.
 func (a *App) Fechar() {
-	if a.estaTrancada() {
+	if a.estaTrancada() || a.ficouViva() {
 		go a.sair()
 		return
 	}
 	a.Dormir()
 }
 
-// Estado é o estado de agora, que a tela pede ao abrir (o evento pode ter
+// Estado é o estado de agora (ou a tela que não é da sessão), que a tela pede ao abrir (o evento pode ter
 // saído antes de a página carregar).
 func (a *App) Estado() estadoTela {
-	if a.estaTrancada() {
-		return estadoTela{Fase: faseTrancada}
+	if t, ok := a.telaEspecial(); ok {
+		return t
 	}
 	return a.telaDe(a.s.Atual())
 }

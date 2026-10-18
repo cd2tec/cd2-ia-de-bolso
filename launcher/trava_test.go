@@ -38,7 +38,7 @@ func TestDeveTrancar(t *testing.T) {
 
 // Trancada, a bandeja só mostra a janela ou fecha: não há IA para dormir.
 func TestItensBandejaTrancada(t *testing.T) {
-	quer := []item{{"Mostrar a IA de Bolso", true}, {"Fechar", true}}
+	quer := []item{{Texto: "Mostrar a IA de Bolso", Ligado: true}, {Texto: "Fechar", Ligado: true}}
 	got := itensBandejaTrancada()
 	if len(got) != len(quer) {
 		t.Fatalf("%d itens, quer %d", len(got), len(quer))

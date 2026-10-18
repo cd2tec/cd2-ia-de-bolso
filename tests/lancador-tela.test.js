@@ -197,3 +197,29 @@ test('render Dormiu quando a instalada não abriu: aviso no lugar do boa noite',
   assert.notEqual(r.titulo, 'Boa noite! Pode tirar o pen drive.');
   assert.equal(r.piadaLista, null);
 });
+
+test('render Desinstalar', () => {
+  const r = render({ fase: 'Desinstalar' }, 'normal');
+  assert.equal(r.titulo, 'Quer mesmo me desinstalar?');
+  assert.equal(r.linha, 'Apago a IA deste computador, os atalhos e o acordar com o computador. A sua conexão com o banco também sai. Para voltar, use a chave que foi para o seu e-mail.');
+  assert.deepEqual(r.botoes, ['Desinstalar', 'Melhor não']);
+  assert.equal(r.primario, 1, 'o destaque é o "Melhor não", como no rascunho');
+  assert.deepEqual(r.cena, { rosto: 'sono', nivel: 6 });
+  assert.equal(r.piadaLista, null);
+  assert.deepEqual(render({ fase: 'Desinstalar' }, 'chamada'), r);
+});
+
+test('render Desinstalada se despede sem botões', () => {
+  const r = render({ fase: 'Desinstalada' }, 'normal');
+  assert.equal(r.titulo, 'Pronto, fui desinstalada. Até a próxima!');
+  assert.deepEqual(r.botoes, []);
+  assert.equal(r.piadaLista, null);
+});
+
+test('trava: Desinstalar espera o próximo estado', () => {
+  let fn = null;
+  const t = criarTrava(null, f => { fn = f; return 1; });
+  assert.equal(t.clicar('Desinstalar'), true);
+  assert.equal(fn, null);
+  assert.equal(t.travado, true);
+});

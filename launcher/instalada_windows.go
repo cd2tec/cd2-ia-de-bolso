@@ -22,3 +22,9 @@ func processoVivo(pid int) bool {
 	ev, err := windows.WaitForSingleObject(h, 0)
 	return err == nil && ev == uint32(windows.WAIT_TIMEOUT)
 }
+
+// soltarEscondido solta o programa e não deixa abrir janela nenhuma.
+func soltarEscondido(c *exec.Cmd) {
+	c.SysProcAttr = &syscall.SysProcAttr{HideWindow: true,
+		CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS | windows.CREATE_NO_WINDOW}
+}

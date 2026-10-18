@@ -51,7 +51,7 @@ func deveTrancar(o origem.Origem, valida func() bool) bool {
 // itensBandejaTrancada é o menu do ícone com a IA trancada: não há o que
 // pôr para dormir, só mostrar a janela ou fechar.
 func itensBandejaTrancada() []item {
-	return []item{{itemMostrar, true}, {itemFechar, true}}
+	return []item{{Texto: itemMostrar, Ligado: true}, {Texto: itemFechar, Ligado: true}}
 }
 
 // estaTrancada diz se a IA está esperando a chave.
@@ -62,9 +62,17 @@ func (a *App) estaTrancada() bool {
 }
 
 // fecharSai diz se fechar a janela encerra o app: com o erro na tela ou
-// trancada, não há IA acordada para ficar no ícone.
+// trancada (ou depois da desinstalação que falhou), não há IA acordada
+// para ficar no ícone.
 func (a *App) fecharSai() bool {
-	return a.estaTrancada() || fecharVaiDormir(a.s.Atual().Fase)
+	return a.estaTrancada() || a.ficouViva() || fecharVaiDormir(a.s.Atual().Fase)
+}
+
+// ficouViva diz se a desinstalação falhou e o app ficou, com a IA dormindo.
+func (a *App) ficouViva() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.ficou
 }
 
 // ColarChave é o "Liberar" da tela trancada. Devolve "" se a chave vale para

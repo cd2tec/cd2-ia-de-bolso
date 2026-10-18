@@ -16,9 +16,11 @@ const B_INSTALAR = 'Instalar neste computador';
 const B_JA_TENHO = 'Já tenho a chave';
 const B_LIBERAR = 'Liberar';
 const B_VOLTAR = 'Voltar';
+const B_DESINSTALAR = 'Desinstalar';
+const B_MELHOR_NAO = 'Melhor não';
 // Texto do botão -> método do Go (Task 9). Instalar, Já tenho e Voltar só trocam o modo da tela.
 const ACAO = { [B_NOVA]: 'AbrirConversa', [B_DORMIR]: 'Dormir', [B_REGISTROS]: 'AbrirRegistros', [B_FECHAR]: 'Fechar',
-  [B_LIBERAR]: 'ColarChave' };
+  [B_LIBERAR]: 'ColarChave', [B_DESINSTALAR]: 'Desinstalar', [B_MELHOR_NAO]: 'MelhorNao' };
 
 // O convite para instalar, embaixo dos botões de Pronta, só quando a IA roda do pen drive. Clicar abre a conversa
 // já com o modal de instalação (AbrirInstalar).
@@ -31,7 +33,14 @@ const L_INSTALAR = 'Espete o pen drive da IA de Bolso e abra o lançador de lá.
 const T_COLAR = 'Cole a sua chave aqui:';
 const CENA_TRISTE = { rosto: 'sono', nivel: 0 };
 
-// estado: {fase, pct, aviso, erro, pendrive, semNavegador}; modo: 'normal' ou 'chamada' (e, na Trancada, 'instalar' ou 'colar');
+// A pergunta do "Desinstalar..." (a fase vem do Go: do ícone ou do --desinstalar) e a despedida depois dela.
+const T_DESINSTALAR = 'Quer mesmo me desinstalar?';
+const L_DESINSTALAR = 'Apago a IA deste computador, os atalhos e o acordar com o computador. A sua conexão com o banco ' +
+  'também sai. Para voltar, use a chave que foi para o seu e-mail.';
+const T_DESINSTALADA = 'Pronto, fui desinstalada. Até a próxima!';
+const CENA_SONO = { rosto: 'sono', nivel: 6 };
+
+// estado: {fase, pct, aviso, erro, pendrive, semNavegador} (fase também Trancada, Desinstalar, Desinstalada); modo: 'normal' ou 'chamada' (e, na Trancada, 'instalar' ou 'colar');
 // msg: a resposta do ColarChave, mostrada no modo 'colar'.
 function render(estado, modo, msg){
   const e = estado || {};
@@ -62,13 +71,20 @@ function render(estado, modo, msg){
         campo: true, cena: CENA_TRISTE };
       return { titulo: T_TRANCADA, linha: modo === 'instalar' ? L_INSTALAR : L_TRANCADA, piadaLista: null,
         botoes: [B_INSTALAR, B_JA_TENHO], cena: CENA_TRISTE };
+    case 'Desinstalar':
+      // Como no rascunho, o botão de destaque é o "Melhor não": o seguro é o mais fácil de clicar.
+      return { titulo: T_DESINSTALAR, linha: L_DESINSTALAR, piadaLista: null, botoes: [B_DESINSTALAR, B_MELHOR_NAO],
+        primario: 1, cena: CENA_SONO };
+    case 'Desinstalada':
+      return { titulo: T_DESINSTALADA, linha: '', piadaLista: null, botoes: [], cena: CENA_SONO };
     default:
       return { titulo: '', linha: '', piadaLista: null, botoes: [] };
   }
 }
 
 // Trava dos botões: o primeiro clique vale e o resto espera o próximo estado (clique duplo não dispara
-// Dormir/AbrirConversa duas vezes). AbrirConversa e AbrirRegistros não mudam a fase, então destravam sozinhas depois de um tempo.
+// Dormir/AbrirConversa duas vezes). AbrirConversa e AbrirRegistros não mudam a fase, então destravam sozinhas depois de um tempo;
+// Dormir, Fechar e Desinstalar esperam o próximo estado.
 function criarTrava(aoMudar, esperar, ms){
   let travado = false, timer = null;
   const muda = v => { travado = v; if(aoMudar) aoMudar(v); };
@@ -78,7 +94,7 @@ function criarTrava(aoMudar, esperar, ms){
     clicar(acao){
       if(travado) return false;
       muda(true);
-      if(acao !== 'Dormir' && acao !== 'Fechar') timer = (esperar || setTimeout)(() => { timer = null; muda(false); }, ms || 1500);
+      if(acao !== 'Dormir' && acao !== 'Fechar' && acao !== 'Desinstalar') timer = (esperar || setTimeout)(() => { timer = null; muda(false); }, ms || 1500);
       return true;
     },
     liberar(){ limpa(); muda(false); }
@@ -164,7 +180,7 @@ function desenhar(){
   r.botoes.forEach((rotulo, i) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'btn ' + (i === 0 ? 'primario' : 'secundario');
+    b.className = 'btn ' + (i === (r.primario || 0) ? 'primario' : 'secundario');
     b.textContent = rotulo;
     b.addEventListener('click', () => {
       if(LOCAL[rotulo]){ LOCAL[rotulo](); desenhar(); return; }
