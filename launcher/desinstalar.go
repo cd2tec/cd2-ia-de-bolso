@@ -59,6 +59,44 @@ func (a *App) instalada() bool {
 	return a.origem == origem.Instalada
 }
 
+// guardarOrigem guarda a trava e a origem decididas na abertura. Só a
+// instalada pode desinstalar: no pen drive (ou na dúvida) a pergunta do
+// --desinstalar é esquecida e a IA sobe como sempre.
+func (a *App) guardarOrigem(o origem.Origem, tranca bool) {
+	a.mu.Lock()
+	a.trancada = tranca
+	a.origem = o
+	if o != origem.Instalada && a.perguntando {
+		a.perguntando = false
+		log.Printf("--desinstalar ignorado: esta IA não é a instalada")
+	}
+	a.mu.Unlock()
+	if o == origem.Instalada {
+		a.lerInicio()
+	}
+}
+
+// novaFase roda a cada estado da sessão. Na troca de fase o aviso do
+// acordar com o computador sai e a marcação é relida (alguém pode ter
+// mudado por fora). Indo dormir ou com erro, a pergunta de desinstalar sai
+// da frente.
+func (a *App) novaFase(f sessao.Fase) {
+	a.mu.Lock()
+	mudou := f != a.ultimaFase
+	a.ultimaFase = f
+	if mudou {
+		a.avisoInicio = ""
+	}
+	if f == sessao.Dormindo || f == sessao.Dormiu || f == sessao.Erro {
+		a.perguntando = false
+	}
+	instalada := a.origem == origem.Instalada
+	a.mu.Unlock()
+	if mudou && instalada {
+		a.lerInicio()
+	}
+}
+
 // lerInicio guarda se o acordar com o computador está ligado, para a
 // marcação do menu não ler o sistema a cada estado.
 func (a *App) lerInicio() {
@@ -129,8 +167,13 @@ func (a *App) emitirAgora() {
 }
 
 // PedirDesinstalar é o "Desinstalar..." do ícone e o --desinstalar: mostra
-// a pergunta. Indo dormir (ou já desinstalando) só traz a janela.
+// a pergunta. Indo dormir (ou já desinstalando) só traz a janela. Fora da
+// instalada não faz nada.
 func (a *App) PedirDesinstalar() {
+	if !a.instalada() {
+		log.Printf("desinstalar ignorado: esta IA não é a instalada")
+		return
+	}
 	f := a.s.Atual().Fase
 	a.mu.Lock()
 	pode := !a.desinstalando && !a.ficou && f != sessao.Dormindo && f != sessao.Dormiu
@@ -157,9 +200,13 @@ func (a *App) MelhorNao() {
 	}
 }
 
-// Desinstalar é o botão da pergunta. A IA dorme primeiro; o resto vem no
+// Desinstalar é o botão da pergunta (só na instalada). A IA dorme primeiro; o resto vem no
 // Dormiu (terminarDesinstalar), como a troca para a instalada.
 func (a *App) Desinstalar() {
+	if !a.instalada() {
+		log.Printf("desinstalar ignorado: esta IA não é a instalada")
+		return
+	}
 	a.mu.Lock()
 	if a.desinstalando {
 		a.mu.Unlock()

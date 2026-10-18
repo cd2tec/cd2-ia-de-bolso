@@ -99,7 +99,12 @@ const textoNaoAbriuInstalada = "Não consegui abrir a IA instalada. Abra pelo í
 func (a *App) segundaCopia(args []string) {
 	pedido := lerArgs(args)
 	if pedido.Desinstalar {
-		a.PedirDesinstalar()
+		if a.instalada() {
+			a.PedirDesinstalar()
+			return
+		}
+		log.Printf("--desinstalar ignorado: esta IA não é a instalada")
+		a.chamar()
 		return
 	}
 	if !pedido.Assumir {

@@ -53,6 +53,7 @@ type App struct {
 	desinstalada  bool   // a remoção foi disparada: só falta sair
 	ficou         bool   // a desinstalação falhou: a IA dorme e o app fica
 	erroFicou     string
+	ultimaFase    sessao.Fase // para saber quando a fase muda
 }
 
 // estadoTela é o Estado no formato da tela: chaves em minúsculas e a fase
@@ -83,8 +84,10 @@ func paraTela(e sessao.Estado, pendrive, semNavegador bool) estadoTela {
 // de abrir a instalada.
 func (a *App) telaDe(e sessao.Estado) estadoTela {
 	t := paraTela(a.comDormiu(e), a.pendrive(), a.semNavegador)
+	carregando := e.Fase == sessao.Lendo || e.Fase == sessao.Subindo
 	a.mu.Lock()
-	if t.Aviso == "" {
+	// O aviso do acordar com o computador nunca toma a linha do carregamento.
+	if t.Aviso == "" && !carregando {
 		t.Aviso = a.avisoInicio
 	}
 	a.mu.Unlock()
@@ -140,12 +143,7 @@ func (a *App) contexto() context.Context {
 // aoMudar recebe cada estado da sessão, na goroutine de entrega dela: não
 // pode chamar o Dormir síncrono aqui.
 func (a *App) aoMudar(e sessao.Estado) {
-	// Indo dormir, a pergunta de desinstalar sai da frente.
-	if e.Fase == sessao.Dormindo || e.Fase == sessao.Dormiu {
-		a.mu.Lock()
-		a.perguntando = false
-		a.mu.Unlock()
-	}
+	a.novaFase(e.Fase)
 	if e.Fase == sessao.Dormiu && a.estaDesinstalando() {
 		a.atualizarBandeja(e)
 		a.terminarDesinstalar(e.Erro)
@@ -197,12 +195,8 @@ func (a *App) iniciar(ctx context.Context) {
 	tranca := deveTrancar(o, func() bool { return chaveValida(pastaCache()) })
 	a.mu.Lock()
 	a.ctx = ctx
-	a.trancada = tranca
-	a.origem = o
 	a.mu.Unlock()
-	if o == origem.Instalada {
-		a.lerInicio()
-	}
+	a.guardarOrigem(o, tranca)
 	iniciarBandeja(a)
 	// Trancada ou com a pergunta do --desinstalar, a IA não acorda.
 	if t, ok := a.telaEspecial(); ok {

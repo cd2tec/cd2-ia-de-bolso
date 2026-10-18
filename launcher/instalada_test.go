@@ -370,12 +370,12 @@ func TestAlternarInicio(t *testing.T) {
 	if !a.inicioLigado {
 		t.Error("a falha devia manter a marcação de antes")
 	}
-	if got := a.Estado().Aviso; got != textoNaoMudouInicio {
+	if got := a.telaDe(sessao.Estado{Fase: sessao.Pronta}).Aviso; got != textoNaoMudouInicio {
 		t.Errorf("Aviso = %q, quer %q", got, textoNaoMudouInicio)
 	}
 	s.falha = nil
 	a.alternarInicio()
-	if a.inicioLigado || a.Estado().Aviso != "" {
+	if a.inicioLigado || a.telaDe(sessao.Estado{Fase: sessao.Pronta}).Aviso != "" {
 		t.Errorf("desligar: ligado=%v aviso=%q", a.inicioLigado, a.Estado().Aviso)
 	}
 }
@@ -383,10 +383,14 @@ func TestAlternarInicio(t *testing.T) {
 // remocaoFalsa troca o que a desinstalação faz na máquina.
 func remocaoFalsa(t *testing.T, c sistema.Comando, err error, ordem chan string) chan sistema.Comando {
 	t.Helper()
-	da, dr, pc, ed := desinstalarAgora, dispararRemocao, pastaCache, esperaDesinstalada
-	t.Cleanup(func() { desinstalarAgora, dispararRemocao, pastaCache, esperaDesinstalada = da, dr, pc, ed })
+	da, dr, pc, ed, af := desinstalarAgora, dispararRemocao, pastaCache, esperaDesinstalada, anotarFalha
+	t.Cleanup(func() {
+		desinstalarAgora, dispararRemocao, pastaCache, esperaDesinstalada, anotarFalha = da, dr, pc, ed, af
+	})
+	anotarFalha = func(string, error) {} // nada no lancador.log de verdade
 	esperaDesinstalada = 10 * time.Millisecond
 	pastaCache = func() string { return "/cache" }
+	sistemaDeTeste(t, &sistemaFalso{})
 	desinstalarAgora = func(cache string, pid int) (sistema.Comando, error) {
 		ordem <- "desinstalou " + cache + " " + strconv.Itoa(pid)
 		return c, err
@@ -495,6 +499,8 @@ func TestDesinstalarRecusado(t *testing.T) {
 // não" acorda a IA como sempre.
 func TestArgDesinstalarNaoAcorda(t *testing.T) {
 	a := novaApp(t.TempDir(), "t", Args{Desinstalar: true})
+	sistemaDeTeste(t, &sistemaFalso{})
+	a.guardarOrigem(origem.Instalada, false)
 	acordou := 0
 	a.acordar = func() { acordou++ }
 	if tela, ok := a.telaEspecial(); !ok || tela.Fase != faseDesinstalar {
@@ -512,7 +518,7 @@ func TestArgDesinstalarNaoAcorda(t *testing.T) {
 	}
 	// Trancada, o Melhor não volta para a trava e não acorda.
 	b := novaApp(t.TempDir(), "t", Args{Desinstalar: true})
-	b.trancada = true
+	b.guardarOrigem(origem.Instalada, true)
 	b.acordar = func() { t.Error("trancada não acorda") }
 	b.MelhorNao()
 	if got := b.Estado().Fase; got != faseTrancada {
@@ -552,5 +558,67 @@ func TestComandoRemocao(t *testing.T) {
 	}
 	if !reflect.DeepEqual(c.Args, []string{"/bin/sh", "-c", "x"}) {
 		t.Errorf("Args = %q", c.Args)
+	}
+}
+
+// Só a instalada desinstala: no pen drive (ou na dúvida) o --desinstalar
+// da abertura é esquecido, o da segunda cópia só traz a janela e os
+// métodos não fazem nada.
+func TestDesinstalarSoNaInstalada(t *testing.T) {
+	for _, o := range []origem.Origem{origem.Pendrive, origem.Desconhecida} {
+		a := novaApp(t.TempDir(), "t", Args{Desinstalar: true})
+		a.guardarOrigem(o, false)
+		if _, ok := a.telaEspecial(); ok {
+			t.Errorf("%s: a abertura com --desinstalar abriu a pergunta", o)
+		}
+		b := &App{origem: o, s: sessao.Nova(sessao.Deps{}, "t", nil)}
+		b.segundaCopia([]string{"--desinstalar"})
+		if got := b.Estado().Fase; got == faseDesinstalar {
+			t.Errorf("%s: a segunda cópia levou para a pergunta", o)
+		}
+		b.PedirDesinstalar()
+		if got := b.Estado().Fase; got == faseDesinstalar {
+			t.Errorf("%s: PedirDesinstalar mostrou a pergunta", o)
+		}
+		ordem := make(chan string, 8)
+		remocaoFalsa(t, sistema.Comando{Exe: "/bin/sh"}, nil, ordem)
+		b.Desinstalar()
+		time.Sleep(50 * time.Millisecond)
+		if len(ordem) != 0 || b.estaDesinstalando() || b.s.Atual().Fase != sessao.Lendo {
+			t.Errorf("%s: Desinstalar mexeu (%d chamadas, fase %s)", o, len(ordem), b.s.Atual().Fase)
+		}
+	}
+}
+
+// Um erro da sessão tira a pergunta da frente, para o erro aparecer.
+func TestErroTiraAPergunta(t *testing.T) {
+	sistemaDeTeste(t, &sistemaFalso{})
+	a := &App{origem: origem.Instalada, perguntando: true, s: sessao.Nova(sessao.Deps{}, "t", nil)}
+	a.aoMudar(sessao.Estado{Fase: sessao.Erro, Erro: "x"})
+	if a.naPergunta() {
+		t.Error("o erro devia tirar a pergunta")
+	}
+}
+
+// O aviso do acordar com o computador sai na troca de fase, nunca toma a
+// linha do carregamento, e a marcação é relida na troca de fase.
+func TestAvisoInicioSaiNaTrocaDeFase(t *testing.T) {
+	s := &sistemaFalso{}
+	sistemaDeTeste(t, s)
+	a := &App{origem: origem.Instalada, ultimaFase: sessao.Pronta, avisoInicio: textoNaoMudouInicio}
+	if got := a.telaDe(sessao.Estado{Fase: sessao.Subindo, Pct: 50}).Aviso; got != "" {
+		t.Errorf("no carregamento o aviso tomou a linha: %q", got)
+	}
+	a.novaFase(sessao.Pronta)
+	if a.avisoInicio == "" {
+		t.Error("sem troca de fase o aviso devia ficar")
+	}
+	s.ligado = true
+	a.novaFase(sessao.Erro)
+	if a.avisoInicio != "" {
+		t.Error("na troca de fase o aviso devia sair")
+	}
+	if !a.inicioLigado {
+		t.Error("na troca de fase a marcação devia ser relida")
 	}
 }
