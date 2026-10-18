@@ -41,18 +41,23 @@ type App struct {
 	// trocarPara é o lançador instalado que roda depois do Dormiu (o
 	// --assumir); vazio, não há troca.
 	trocarPara string
+	naoAbriu   bool // a troca foi pedida e a instalada não abriu
+	// semNavegador é o --inicio: a conversa não abriu sozinha.
+	semNavegador bool
 }
 
 // estadoTela é o Estado no formato da tela: chaves em minúsculas e a fase
 // com inicial maiúscula, como o tela.js compara. A URL fica de fora: ela
 // leva a chave da sessão, que só vai para o navegador. Pendrive decide o
-// convite para instalar.
+// convite para instalar; SemNavegador, o título de Pronta (a conversa não
+// abriu sozinha com o --inicio).
 type estadoTela struct {
-	Fase     string `json:"fase"`
-	Pct      int    `json:"pct"`
-	Aviso    string `json:"aviso"`
-	Erro     string `json:"erro"`
-	Pendrive bool   `json:"pendrive"`
+	Fase         string `json:"fase"`
+	Pct          int    `json:"pct"`
+	Aviso        string `json:"aviso"`
+	Erro         string `json:"erro"`
+	Pendrive     bool   `json:"pendrive"`
+	SemNavegador bool   `json:"semNavegador"`
 }
 
 var nomesFase = map[sessao.Fase]string{
@@ -60,8 +65,15 @@ var nomesFase = map[sessao.Fase]string{
 	sessao.Dormindo: "Dormindo", sessao.Dormiu: "Dormiu", sessao.Erro: "Erro",
 }
 
-func paraTela(e sessao.Estado, pendrive bool) estadoTela {
-	return estadoTela{Fase: nomesFase[e.Fase], Pct: e.Pct, Aviso: e.Aviso, Erro: e.Erro, Pendrive: pendrive}
+func paraTela(e sessao.Estado, pendrive, semNavegador bool) estadoTela {
+	return estadoTela{Fase: nomesFase[e.Fase], Pct: e.Pct, Aviso: e.Aviso, Erro: e.Erro, Pendrive: pendrive,
+		SemNavegador: semNavegador}
+}
+
+// telaDe é o estado como a tela recebe, com a origem, o --inicio e a falha
+// de abrir a instalada.
+func (a *App) telaDe(e sessao.Estado) estadoTela {
+	return paraTela(a.comDormiu(e), a.pendrive(), a.semNavegador)
 }
 
 // deveMostrar diz se o estado traz a janela de volta sozinho: um erro nunca
@@ -91,7 +103,7 @@ func deveChamar(f sessao.Fase) bool { return f == sessao.Pronta }
 // novaApp prepara o app. Com --inicio a conversa não abre e o aviso do
 // primeiro fechar não sai: quem acordou com o computador não pediu janela.
 func novaApp(raiz, versao string, args Args) *App {
-	a := &App{raiz: raiz, avisou: args.Inicio}
+	a := &App{raiz: raiz, avisou: args.Inicio, semNavegador: args.Inicio}
 	d := sessao.DepsReais(raiz)
 	d.SemNavegador = args.Inicio
 	a.s = sessao.Nova(d, versao, a.aoMudar)
@@ -112,17 +124,22 @@ func (a *App) contexto() context.Context {
 // aoMudar recebe cada estado da sessão, na goroutine de entrega dela: não
 // pode chamar o Dormir síncrono aqui.
 func (a *App) aoMudar(e sessao.Estado) {
+	// Passando a vez para a instalada: ela espera este processo sair, então
+	// nada de esperar o "Boa noite!". Se ela não abriu, o Dormiu vira aviso.
+	t := semTroca
+	if e.Fase == sessao.Dormiu {
+		t = a.trocar(e.Erro)
+		e = a.comDormiu(e)
+	}
 	if ctx := a.contexto(); ctx != nil {
-		wruntime.EventsEmit(ctx, "estado", paraTela(e, a.pendrive()))
+		wruntime.EventsEmit(ctx, "estado", a.telaDe(e))
 	}
 	a.atualizarBandeja(e)
 	if deveMostrar(e) {
 		a.mostrar()
 	}
 	if e.Fase == sessao.Dormiu {
-		// Passando a vez para a instalada: ela espera este processo sair,
-		// então nada de esperar o "Boa noite!".
-		if a.trocar(e.Erro) {
+		if t == trocou {
 			go a.sair()
 			return
 		}
@@ -263,7 +280,7 @@ func (a *App) Estado() estadoTela {
 	if a.estaTrancada() {
 		return estadoTela{Fase: faseTrancada}
 	}
-	return paraTela(a.s.Atual(), a.pendrive())
+	return a.telaDe(a.s.Atual())
 }
 
 // AbrirRegistros abre a pasta dos logs no Finder ou no Explorer.

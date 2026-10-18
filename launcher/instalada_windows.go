@@ -7,15 +7,9 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// iniciarSolto roda o programa solto deste processo, sem esperar por ele.
-func iniciarSolto(exe string, args ...string) error {
-	c := exec.Command(exe, args...)
+// soltar desliga o programa deste processo e do console dele.
+func soltar(c *exec.Cmd) {
 	c.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
-	if err := c.Start(); err != nil {
-		return err
-	}
-	go func() { _ = c.Wait() }()
-	return nil
 }
 
 // processoVivo diz se o pid ainda está rodando.

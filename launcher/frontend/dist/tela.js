@@ -31,7 +31,7 @@ const L_INSTALAR = 'Espete o pen drive da IA de Bolso e abra o lançador de lá.
 const T_COLAR = 'Cole a sua chave aqui:';
 const CENA_TRISTE = { rosto: 'sono', nivel: 0 };
 
-// estado: {fase, pct, aviso, erro, pendrive}; modo: 'normal' ou 'chamada' (e, na Trancada, 'instalar' ou 'colar');
+// estado: {fase, pct, aviso, erro, pendrive, semNavegador}; modo: 'normal' ou 'chamada' (e, na Trancada, 'instalar' ou 'colar');
 // msg: a resposta do ColarChave, mostrada no modo 'colar'.
 function render(estado, modo, msg){
   const e = estado || {};
@@ -43,7 +43,9 @@ function render(estado, modo, msg){
     case 'Pronta': {
       // Com o convite a piada sai: a janelinha (380 px) não tem altura para os dois junto do aviso.
       const convite = e.pendrive ? CONVITE : null;
-      return { titulo: modo === 'chamada' ? 'Me chamou?' : 'Acordei! A conversa abriu no navegador.', linha: e.aviso || '',
+      // Com o --inicio (semNavegador) a conversa não abriu sozinha: o título não promete o que não houve.
+      const acordei = e.semNavegador ? 'Acordei! Estou aqui no ícone.' : 'Acordei! A conversa abriu no navegador.';
+      return { titulo: modo === 'chamada' ? 'Me chamou?' : acordei, linha: e.aviso || '',
         piadaLista: convite ? null : (modo === 'chamada' ? Piadas.CHAMADA : Mascote.PIADAS), botoes: [B_NOVA, B_DORMIR],
         convite };
     }

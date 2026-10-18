@@ -68,15 +68,15 @@ func TestParaTela(t *testing.T) {
 		sessao.Dormindo: "Dormindo", sessao.Dormiu: "Dormiu", sessao.Erro: "Erro",
 	}
 	for f, quer := range casos {
-		if got := paraTela(sessao.Estado{Fase: f}, false).Fase; got != quer {
+		if got := paraTela(sessao.Estado{Fase: f}, false, false).Fase; got != quer {
 			t.Errorf("fase %q virou %q, quer %q", f, got, quer)
 		}
 	}
-	b, err := json.Marshal(paraTela(sessao.Estado{Fase: sessao.Subindo, Pct: 91, Aviso: "a", Erro: "e", URL: "http://x/#k=segredo"}, false))
+	b, err := json.Marshal(paraTela(sessao.Estado{Fase: sessao.Subindo, Pct: 91, Aviso: "a", Erro: "e", URL: "http://x/#k=segredo"}, false, false))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, quer := string(b), `{"fase":"Subindo","pct":91,"aviso":"a","erro":"e","pendrive":false}`; got != quer {
+	if got, quer := string(b), `{"fase":"Subindo","pct":91,"aviso":"a","erro":"e","pendrive":false,"semNavegador":false}`; got != quer {
 		t.Errorf("json = %s, quer %s", got, quer)
 	}
 }

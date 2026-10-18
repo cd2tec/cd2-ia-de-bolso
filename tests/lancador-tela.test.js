@@ -183,3 +183,17 @@ test('convite só em Pronta', () => {
     assert.equal(render({ fase, pendrive: true }, 'normal').convite || null, null, fase);
   }
 });
+
+test('render Pronta sem navegador (--inicio) não diz que a conversa abriu', () => {
+  assert.equal(render({ fase: 'Pronta', semNavegador: true }, 'normal').titulo, 'Acordei! Estou aqui no ícone.');
+  assert.equal(render({ fase: 'Pronta', semNavegador: true }, 'chamada').titulo, 'Me chamou?');
+  assert.deepEqual(render({ fase: 'Pronta', semNavegador: true }, 'normal').botoes, BOTOES);
+});
+
+test('render Dormiu quando a instalada não abriu: aviso no lugar do boa noite', () => {
+  const erro = 'Não consegui abrir a IA instalada. Abra pelo ícone nos programas.';
+  const r = render({ fase: 'Dormiu', erro }, 'normal');
+  assert.equal(r.titulo, erro);
+  assert.notEqual(r.titulo, 'Boa noite! Pode tirar o pen drive.');
+  assert.equal(r.piadaLista, null);
+});

@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
@@ -70,11 +72,11 @@ func TestItensBandejaPendrive(t *testing.T) {
 
 // A tela recebe "pendrive" para decidir o convite; a URL continua de fora.
 func TestParaTelaPendrive(t *testing.T) {
-	b, err := json.Marshal(paraTela(sessao.Estado{Fase: sessao.Pronta, Pct: 100, URL: "http://x/#k=segredo"}, true))
+	b, err := json.Marshal(paraTela(sessao.Estado{Fase: sessao.Pronta, Pct: 100, URL: "http://x/#k=segredo"}, true, true))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, quer := string(b), `{"fase":"Pronta","pct":100,"aviso":"","erro":"","pendrive":true}`; got != quer {
+	if got, quer := string(b), `{"fase":"Pronta","pct":100,"aviso":"","erro":"","pendrive":true,"semNavegador":true}`; got != quer {
 		t.Errorf("json = %s, quer %s", got, quer)
 	}
 }
@@ -203,7 +205,71 @@ func TestInicioNaoAvisa(t *testing.T) {
 	if !a.avisou {
 		t.Error("com --inicio o aviso do primeiro fechar devia já contar como dado")
 	}
-	if b := novaApp(t.TempDir(), "t", Args{}); b.avisou {
+	if !a.semNavegador || !a.Estado().SemNavegador {
+		t.Error("com --inicio a tela devia saber que a conversa não abriu")
+	}
+	if b := novaApp(t.TempDir(), "t", Args{}); b.avisou || b.semNavegador {
 		t.Error("sem --inicio o aviso continua valendo")
+	}
+}
+
+// Se a instalada não abre, nada de "Boa noite! Pode tirar o pen drive.": o
+// Dormiu vira o aviso, visível e pelo tempo do aviso de falha.
+func TestTrocaQueFalhaAvisa(t *testing.T) {
+	trocaFalsa(t, true)
+	iniciarDestacado = func(string, ...string) error { return errors.New("sem permissão") }
+	a := &App{origem: origem.Pendrive, trocarPara: "/inst/IA de Bolso"}
+	a.s = sessao.Nova(sessao.Deps{}, "t", nil)
+	if got := a.trocar(""); got != naoAbriu {
+		t.Fatalf("trocar = %v, quer naoAbriu", got)
+	}
+	e := a.comDormiu(sessao.Estado{Fase: sessao.Dormiu})
+	if e.Erro != "Não consegui abrir a IA instalada. Abra pelo ícone nos programas." {
+		t.Errorf("Erro = %q", e.Erro)
+	}
+	if !deveMostrar(e) || esperaAntesDeSair(e) != esperaSairFalha {
+		t.Error("o aviso devia trazer a janela e ficar o tempo da falha")
+	}
+	// A tela que pede o estado depois (recarregou) também vê o aviso.
+	a.s.Dormir()
+	if got := a.Estado(); got.Fase != "Dormiu" || got.Erro != textoNaoAbriuInstalada {
+		t.Errorf("Estado = %+v", got)
+	}
+}
+
+// Sem pedido de troca, o Dormiu continua o "Boa noite" de sempre.
+func TestDormiuSemTrocaNaoMuda(t *testing.T) {
+	a := &App{}
+	if got := a.trocar(""); got != semTroca {
+		t.Errorf("trocar = %v", got)
+	}
+	if e := a.comDormiu(sessao.Estado{Fase: sessao.Dormiu}); e.Erro != "" {
+		t.Errorf("Erro = %q", e.Erro)
+	}
+}
+
+// A instalada roda de dentro da própria pasta, não da pasta do pen drive.
+func TestComandoSoltoForaDoPendrive(t *testing.T) {
+	exe := filepath.Join("inst", "IA de Bolso", "IA de Bolso")
+	c := comandoSolto(exe, "--esperar", "7")
+	if c.Dir != filepath.Dir(exe) {
+		t.Errorf("Dir = %q, quer %q", c.Dir, filepath.Dir(exe))
+	}
+	if c.SysProcAttr == nil {
+		t.Error("o comando devia sair solto deste processo")
+	}
+	if !reflect.DeepEqual(c.Args[1:], []string{"--esperar", "7"}) {
+		t.Errorf("Args = %q", c.Args)
+	}
+}
+
+// --assumir que chega com a IA já dormida não faz nada.
+func TestAssumirDepoisDoDormiu(t *testing.T) {
+	rodou := trocaFalsa(t, true)
+	a := &App{origem: origem.Pendrive, s: sessao.Nova(sessao.Deps{}, "t", nil)}
+	a.s.Dormir()
+	a.segundaCopia([]string{"--assumir"})
+	if a.trocarPara != "" || len(rodou) != 0 {
+		t.Error("depois do Dormiu o --assumir não devia pedir troca")
 	}
 }
