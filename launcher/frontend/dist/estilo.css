@@ -35,3 +35,10 @@ body{display:flex;flex-direction:column;justify-content:center;padding:18px 22px
 .rosto.acordado{animation:piscar 3s steps(1) infinite}
 @media (prefers-reduced-motion:reduce){.rosto.acordado{animation:none}.preenche{transition:none}}
 .linha.centro{text-align:center;margin-top:4px}
+.campo{display:block;width:100%;margin-top:10px;padding:7px 12px;border-radius:999px;border:1px solid var(--linha);background:var(--vazio);color:var(--texto);font:11px/16px var(--mono);outline:none}
+.campo:focus{border-color:var(--amarelo)}
+.convite{appearance:none;display:block;width:100%;margin-top:12px;padding:8px 10px;border:1px dashed var(--amarelo);border-radius:8px;background:transparent;color:var(--texto);font:500 11px/16px var(--sans);text-align:center;cursor:pointer}
+.convite b{display:block;font-weight:800;color:var(--amarelo)}
+.convite:hover{background:var(--barra)}
+.convite:focus-visible{outline:2px solid var(--amarelo);outline-offset:2px}
+.convite:disabled{cursor:default;opacity:.6}

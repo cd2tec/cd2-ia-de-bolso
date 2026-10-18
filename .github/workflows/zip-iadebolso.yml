@@ -15,9 +15,21 @@ concurrency:
   group: zip-iadebolso
   cancel-in-progress: true
 jobs:
+  # Guarda de release: o ZIP do pen drive nunca sai com a chave pública PROVISÓRIA do vetor de teste
+  # (a privada dela está no repositório). Falha até a chave de produção entrar em instalacao/chave/publica.go.
+  guarda-chave:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: instalacao/go.mod
+      - name: Conferir que a chave pública não é a de teste
+        run: cd instalacao && go test -tags release ./chave/
   # Lançador do pen drive (Wails, em launcher/). Entra no ZIP antes do manifesto, que calcula o SHA do ZIP.
   # Go fixado em 1.23.x pelo mesmo motivo dos instaladores (o CLI do Wails 2.10.1 não compila com o Go mais novo).
   lancador-mac:
+    needs: guarda-chave
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +67,7 @@ jobs:
           if-no-files-found: error
 
   lancador-windows:
+    needs: guarda-chave
     runs-on: windows-latest
     defaults:
       run:
@@ -80,7 +93,7 @@ jobs:
           if-no-files-found: error
 
   zip:
-    needs: [lancador-mac, lancador-windows]
+    needs: [guarda-chave, lancador-mac, lancador-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

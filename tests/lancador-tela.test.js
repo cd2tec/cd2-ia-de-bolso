@@ -122,3 +122,104 @@ test('trava: AbrirRegistros destrava sozinha, Dormir e Fechar não', () => {
   assert.equal(fn, null);
   assert.equal(t.travado, true);
 });
+
+test('render Trancada', () => {
+  const r = render({ fase: 'Trancada' }, 'normal');
+  assert.equal(r.titulo, 'Esta cópia não foi instalada neste computador');
+  assert.equal(r.linha, 'Para me usar daqui, instale pelo pen drive. Se você já pagou por este computador, cole a sua chave.');
+  assert.deepEqual(r.botoes, ['Instalar neste computador', 'Já tenho a chave']);
+  assert.deepEqual(r.cena, { rosto: 'sono', nivel: 0 });
+  assert.equal(r.piadaLista, null);
+  assert.equal(!!r.campo, false);
+});
+
+test('render Trancada em chamada é a tela normal', () => {
+  assert.deepEqual(render({ fase: 'Trancada' }, 'chamada'), render({ fase: 'Trancada' }, 'normal'));
+});
+
+test('render Trancada instalar explica que é pelo pen drive', () => {
+  const r = render({ fase: 'Trancada' }, 'instalar');
+  assert.equal(r.titulo, 'Esta cópia não foi instalada neste computador');
+  assert.equal(r.linha, 'Espete o pen drive da IA de Bolso e abra o lançador de lá. A instalação é feita por ele.');
+  assert.deepEqual(r.botoes, ['Instalar neste computador', 'Já tenho a chave']);
+});
+
+test('render Trancada colar mostra o campo, Liberar e Voltar', () => {
+  const r = render({ fase: 'Trancada' }, 'colar');
+  assert.equal(r.campo, true);
+  assert.deepEqual(r.botoes, ['Liberar', 'Voltar']);
+  assert.equal(r.linha, '');
+  assert.deepEqual(r.cena, { rosto: 'sono', nivel: 0 });
+});
+
+test('render Trancada colar com a resposta do ColarChave na linha', () => {
+  const r = render({ fase: 'Trancada' }, 'colar', 'Esta chave não é deste computador.');
+  assert.equal(r.linha, 'Esta chave não é deste computador.');
+  assert.equal(r.campo, true);
+});
+
+const CONVITE = { pergunta: 'Quer me usar sem o pen drive?', acao: 'Instale neste computador' };
+
+test('render Pronta com convite', () => {
+  for (const modo of ['normal', 'chamada']) {
+    const r = render({ fase: 'Pronta', pendrive: true }, modo);
+    assert.deepEqual(r.convite, CONVITE);
+    assert.deepEqual(r.botoes, BOTOES);
+    // A janelinha não tem altura para a piada junto do convite.
+    assert.equal(r.piadaLista, null);
+  }
+  assert.equal(render({ fase: 'Pronta', pendrive: true }, 'chamada').titulo, 'Me chamou?');
+});
+
+test('render Pronta instalada sem convite', () => {
+  const r = render({ fase: 'Pronta', pendrive: false }, 'normal');
+  assert.equal(r.convite, null);
+  assert.equal(r.piadaLista, Mascote.PIADAS);
+  assert.equal(render({ fase: 'Pronta' }, 'chamada').convite, null);
+});
+
+test('convite só em Pronta', () => {
+  for (const fase of ['Lendo', 'Subindo', 'Dormindo', 'Dormiu', 'Erro', 'Trancada']) {
+    assert.equal(render({ fase, pendrive: true }, 'normal').convite || null, null, fase);
+  }
+});
+
+test('render Pronta sem navegador (--inicio) não diz que a conversa abriu', () => {
+  assert.equal(render({ fase: 'Pronta', semNavegador: true }, 'normal').titulo, 'Acordei! Estou aqui no ícone.');
+  assert.equal(render({ fase: 'Pronta', semNavegador: true }, 'chamada').titulo, 'Me chamou?');
+  assert.deepEqual(render({ fase: 'Pronta', semNavegador: true }, 'normal').botoes, BOTOES);
+});
+
+test('render Dormiu quando a instalada não abriu: aviso no lugar do boa noite', () => {
+  const erro = 'Não consegui abrir a IA instalada. Abra pelo ícone nos programas.';
+  const r = render({ fase: 'Dormiu', erro }, 'normal');
+  assert.equal(r.titulo, erro);
+  assert.notEqual(r.titulo, 'Boa noite! Pode tirar o pen drive.');
+  assert.equal(r.piadaLista, null);
+});
+
+test('render Desinstalar', () => {
+  const r = render({ fase: 'Desinstalar' }, 'normal');
+  assert.equal(r.titulo, 'Quer mesmo me desinstalar?');
+  assert.equal(r.linha, 'Apago a IA deste computador, os atalhos e o acordar com o computador. A sua conexão com o banco também sai. Para voltar, use a chave que foi para o seu e-mail.');
+  assert.deepEqual(r.botoes, ['Desinstalar', 'Melhor não']);
+  assert.equal(r.primario, 1, 'o destaque é o "Melhor não", como no rascunho');
+  assert.deepEqual(r.cena, { rosto: 'sono', nivel: 6 });
+  assert.equal(r.piadaLista, null);
+  assert.deepEqual(render({ fase: 'Desinstalar' }, 'chamada'), r);
+});
+
+test('render Desinstalada se despede sem botões', () => {
+  const r = render({ fase: 'Desinstalada' }, 'normal');
+  assert.equal(r.titulo, 'Pronto, fui desinstalada. Até a próxima!');
+  assert.deepEqual(r.botoes, []);
+  assert.equal(r.piadaLista, null);
+});
+
+test('trava: Desinstalar espera o próximo estado', () => {
+  let fn = null;
+  const t = criarTrava(null, f => { fn = f; return 1; });
+  assert.equal(t.clicar('Desinstalar'), true);
+  assert.equal(fn, null);
+  assert.equal(t.travado, true);
+});

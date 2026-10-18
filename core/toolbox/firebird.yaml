@@ -5,6 +5,7 @@
 # Sem timeout no servidor (a fonte firebird do toolbox v1.14.0 nao tem
 # queryTimeout); o harness para de esperar em 15 s.
 # A base e o caminho do arquivo .fdb. Firebird nao tem schema.
+# NUMERIC e DECIMAL compartilham o tipo interno do inteiro; o subtipo 1 ou 2 distingue.
 kind: source
 name: cd2-db
 type: firebird
@@ -66,18 +67,20 @@ description: Apresenta as colunas, os tipos e a estrutura de uma tabela. Mostra 
 annotations: { readOnlyHint: true }
 statement: |
   SELECT TRIM(rf.RDB$FIELD_NAME) AS column_name,
-         CASE f.RDB$FIELD_TYPE
-           WHEN 7 THEN 'SMALLINT'
-           WHEN 8 THEN 'INTEGER'
-           WHEN 10 THEN 'FLOAT'
-           WHEN 12 THEN 'DATE'
-           WHEN 13 THEN 'TIME'
-           WHEN 14 THEN 'CHAR'
-           WHEN 16 THEN 'BIGINT'
-           WHEN 27 THEN 'DOUBLE PRECISION'
-           WHEN 35 THEN 'TIMESTAMP'
-           WHEN 37 THEN 'VARCHAR'
-           WHEN 261 THEN 'BLOB'
+         CASE
+           WHEN f.RDB$FIELD_TYPE IN (7, 8, 16, 27) AND f.RDB$FIELD_SUB_TYPE = 1 THEN 'NUMERIC'
+           WHEN f.RDB$FIELD_TYPE IN (7, 8, 16, 27) AND f.RDB$FIELD_SUB_TYPE = 2 THEN 'DECIMAL'
+           WHEN f.RDB$FIELD_TYPE = 7 THEN 'SMALLINT'
+           WHEN f.RDB$FIELD_TYPE = 8 THEN 'INTEGER'
+           WHEN f.RDB$FIELD_TYPE = 10 THEN 'FLOAT'
+           WHEN f.RDB$FIELD_TYPE = 12 THEN 'DATE'
+           WHEN f.RDB$FIELD_TYPE = 13 THEN 'TIME'
+           WHEN f.RDB$FIELD_TYPE = 14 THEN 'CHAR'
+           WHEN f.RDB$FIELD_TYPE = 16 THEN 'BIGINT'
+           WHEN f.RDB$FIELD_TYPE = 27 THEN 'DOUBLE PRECISION'
+           WHEN f.RDB$FIELD_TYPE = 35 THEN 'TIMESTAMP'
+           WHEN f.RDB$FIELD_TYPE = 37 THEN 'VARCHAR'
+           WHEN f.RDB$FIELD_TYPE = 261 THEN 'BLOB'
            ELSE 'OTHER'
          END AS data_type,
          CASE WHEN rf.RDB$NULL_FLAG = 1 THEN 0 ELSE 1 END AS nullable,
@@ -121,18 +124,20 @@ annotations: { readOnlyHint: true }
 statement: |
   SELECT TRIM(r.RDB$RELATION_NAME) AS "table",
          TRIM(rf.RDB$FIELD_NAME) AS "column",
-         CASE f.RDB$FIELD_TYPE
-           WHEN 7 THEN 'SMALLINT'
-           WHEN 8 THEN 'INTEGER'
-           WHEN 10 THEN 'FLOAT'
-           WHEN 12 THEN 'DATE'
-           WHEN 13 THEN 'TIME'
-           WHEN 14 THEN 'CHAR'
-           WHEN 16 THEN 'BIGINT'
-           WHEN 27 THEN 'DOUBLE PRECISION'
-           WHEN 35 THEN 'TIMESTAMP'
-           WHEN 37 THEN 'VARCHAR'
-           WHEN 261 THEN 'BLOB'
+         CASE
+           WHEN f.RDB$FIELD_TYPE IN (7, 8, 16, 27) AND f.RDB$FIELD_SUB_TYPE = 1 THEN 'NUMERIC'
+           WHEN f.RDB$FIELD_TYPE IN (7, 8, 16, 27) AND f.RDB$FIELD_SUB_TYPE = 2 THEN 'DECIMAL'
+           WHEN f.RDB$FIELD_TYPE = 7 THEN 'SMALLINT'
+           WHEN f.RDB$FIELD_TYPE = 8 THEN 'INTEGER'
+           WHEN f.RDB$FIELD_TYPE = 10 THEN 'FLOAT'
+           WHEN f.RDB$FIELD_TYPE = 12 THEN 'DATE'
+           WHEN f.RDB$FIELD_TYPE = 13 THEN 'TIME'
+           WHEN f.RDB$FIELD_TYPE = 14 THEN 'CHAR'
+           WHEN f.RDB$FIELD_TYPE = 16 THEN 'BIGINT'
+           WHEN f.RDB$FIELD_TYPE = 27 THEN 'DOUBLE PRECISION'
+           WHEN f.RDB$FIELD_TYPE = 35 THEN 'TIMESTAMP'
+           WHEN f.RDB$FIELD_TYPE = 37 THEN 'VARCHAR'
+           WHEN f.RDB$FIELD_TYPE = 261 THEN 'BLOB'
            ELSE 'OTHER'
          END AS data_type,
          CAST(rf.RDB$DESCRIPTION AS VARCHAR(1000)) AS comments
@@ -181,18 +186,20 @@ statement: |
      ROWS 300)
   SELECT TRIM(t.relname) AS table_name, t.table_type, CAST(NULL AS INTEGER) AS num_rows,
          TRIM(rf.RDB$FIELD_NAME) AS column_name,
-         CASE f.RDB$FIELD_TYPE
-           WHEN 7 THEN 'SMALLINT'
-           WHEN 8 THEN 'INTEGER'
-           WHEN 10 THEN 'FLOAT'
-           WHEN 12 THEN 'DATE'
-           WHEN 13 THEN 'TIME'
-           WHEN 14 THEN 'CHAR'
-           WHEN 16 THEN 'BIGINT'
-           WHEN 27 THEN 'DOUBLE PRECISION'
-           WHEN 35 THEN 'TIMESTAMP'
-           WHEN 37 THEN 'VARCHAR'
-           WHEN 261 THEN 'BLOB'
+         CASE
+           WHEN f.RDB$FIELD_TYPE IN (7, 8, 16, 27) AND f.RDB$FIELD_SUB_TYPE = 1 THEN 'NUMERIC'
+           WHEN f.RDB$FIELD_TYPE IN (7, 8, 16, 27) AND f.RDB$FIELD_SUB_TYPE = 2 THEN 'DECIMAL'
+           WHEN f.RDB$FIELD_TYPE = 7 THEN 'SMALLINT'
+           WHEN f.RDB$FIELD_TYPE = 8 THEN 'INTEGER'
+           WHEN f.RDB$FIELD_TYPE = 10 THEN 'FLOAT'
+           WHEN f.RDB$FIELD_TYPE = 12 THEN 'DATE'
+           WHEN f.RDB$FIELD_TYPE = 13 THEN 'TIME'
+           WHEN f.RDB$FIELD_TYPE = 14 THEN 'CHAR'
+           WHEN f.RDB$FIELD_TYPE = 16 THEN 'BIGINT'
+           WHEN f.RDB$FIELD_TYPE = 27 THEN 'DOUBLE PRECISION'
+           WHEN f.RDB$FIELD_TYPE = 35 THEN 'TIMESTAMP'
+           WHEN f.RDB$FIELD_TYPE = 37 THEN 'VARCHAR'
+           WHEN f.RDB$FIELD_TYPE = 261 THEN 'BLOB'
            ELSE 'OTHER'
          END AS data_type,
          rf.RDB$FIELD_POSITION + 1 AS ordinal

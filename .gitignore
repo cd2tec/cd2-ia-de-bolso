@@ -24,3 +24,8 @@ installer/build/bin/
 
 # Recursos do Windows gerados pelo empacotamento
 installer/*.syso
+
+# Worker da instalação paga: segredos locais e artefatos do wrangler
+worker/.dev.vars
+worker/.wrangler/
+worker/node_modules/

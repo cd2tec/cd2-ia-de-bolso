@@ -10,6 +10,7 @@ const V = ler('VERSION').trim();
 test('index.html: todo script local leva ?v= com a versão de VERSION', () => {
   const srcs = [...ler('web/index.html').matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
   assert.ok(srcs.length >= 9, srcs.join(', '));
+  assert.ok(srcs.some(s => s.startsWith('instalar.js')), 'instalar.js precisa estar no index.html');
   for(const s of srcs) assert.equal(s.split('?v=')[1], V, s);
 });
 
