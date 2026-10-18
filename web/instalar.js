@@ -74,6 +74,17 @@ function ouvirChave(opts){
   return { parar(){ canal.removeEventListener('message', ouvir); } };
 }
 
+// Telas em que uma chave nova (colada, de outra aba ou do ?chave=) não muda nada: a chave já foi
+// aceita e o modal não pode voltar para trás.
+const TELAS_SEM_CHAVE = ['perguntas', 'instalando', 'pronto'];
+function aceitaChave(tela){ return TELAS_SEM_CHAVE.indexOf(tela) < 0; }
+
+// Só a IA que roda do pen drive escuta a chave vinda da outra aba. Fora dele, devolve null.
+function ouvirNoPendrive(opts){
+  if(telaInicial(opts.status) === null) return null;
+  return ouvirChave(opts);
+}
+
 function gb(bytes){ return (bytes / 1e9).toFixed(1).replace('.', ','); }
 function textoProgresso(p){
   p = p || {};
@@ -81,6 +92,6 @@ function textoProgresso(p){
   return 'copiando ... ' + gb(p.feitos || 0) + ' de ' + gb(p.total) + ' GB';
 }
 
-const api = { WORKER, urlComprar, normalizar, telaInicial, lerParametros, semParametros, entregarChave, ouvirChave, textoProgresso };
+const api = { WORKER, urlComprar, normalizar, telaInicial, lerParametros, semParametros, entregarChave, ouvirChave, ouvirNoPendrive, aceitaChave, textoProgresso };
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else root.CD2Instalar = api;
 })(typeof window !== 'undefined' ? window : globalThis);

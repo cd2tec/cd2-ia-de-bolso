@@ -144,3 +144,24 @@ test('semParametros tira instalar e chave e mantém o resto', () => {
   assert.equal(I.semParametros('chave=X&v=1&outro=a%20b'), '?v=1&outro=a+b');
   assert.equal(I.semParametros(''), '');
 });
+
+test('aceitaChave: chave reentregue não arrasta o modal no meio ou no fim', () => {
+  for(const t of ['pronto', 'perguntas', 'instalando']) assert.equal(I.aceitaChave(t), false, t);
+  for(const t of [null, undefined, 'compra', 'colar', 'reinstalar', 'erro', 'entrega']) assert.equal(I.aceitaChave(t), true, String(t));
+});
+
+test('ouvirNoPendrive só liga o ouvido quando a IA roda do pen drive', () => {
+  const novo = criarBarramento();
+  for(const status of [null, { origem: 'instalada' }, { origem: 'desconhecida' }]){
+    const aba = novo();
+    assert.equal(I.ouvirNoPendrive({ canal: aba, status, aoReceber(){} }), null);
+    assert.equal(aba._ouvintes.length, 0);
+  }
+  const aba = novo(), outro = novo();
+  let recebida = null;
+  const o = I.ouvirNoPendrive({ canal: aba, status: { origem: 'pendrive', temChave: false }, aoReceber: c => { recebida = c; } });
+  outro.postMessage({ tipo: 'chave', chave: v.chave });
+  assert.equal(recebida, v.chave);
+  o.parar();
+  assert.equal(aba._ouvintes.length, 0);
+});

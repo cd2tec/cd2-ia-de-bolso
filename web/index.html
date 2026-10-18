@@ -1264,7 +1264,7 @@ function instColarErro(chave, texto){
 }
 // Colar, receber da outra aba ou chegar pelo ?chave= dá no mesmo: POST /instalacao/chave.
 async function instColarChave(chave){
-  if(inst.ocupado || inst.tela === 'instalando') return;
+  if(inst.ocupado || !CD2Instalar.aceitaChave(inst.tela)) return;
   const n = CD2Instalar.normalizar(chave);
   if(!n) return instColarErro(chave, 'Esta chave não está completa. Confira se copiou ela inteira.');
   inst.ocupado = true; $('#iColarOk').disabled = true;
@@ -1380,13 +1380,14 @@ async function iniciarInstalacao(){
     else if(par.abrir) instErro('Para instalar, abra a IA de Bolso pelo pen drive.');
     return;
   }
-  const canal = instCanal();
-  if(canal) CD2Instalar.ouvirChave({ canal, aoReceber: c => { instColarChave(c); } });
   const r = await instPedir('GET', '/instalacao');
   if(r && r.status === 200){
     inst.status = r.data;
     const mostra = !!CD2Instalar.telaInicial(r.data);
     $('#pPendrive').hidden = !mostra; $('#bInstalar').hidden = !mostra;
+    // Só a IA do pen drive escuta a chave que volta do pagamento noutra aba.
+    const canal = mostra ? instCanal() : null;
+    if(canal) CD2Instalar.ouvirNoPendrive({ canal, status:r.data, aoReceber: c => { instColarChave(c); } });
   }
   if(par.chave) instColarChave(par.chave);
   else if(par.abrir) abrirInstalar();
