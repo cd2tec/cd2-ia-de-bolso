@@ -232,3 +232,46 @@ func contem(xs []string, x string) bool {
 	}
 	return false
 }
+
+// Sobras de uma cópia interrompida (.novo e .velho, .velho<n>) saem junto; o resto da pasta pai fica.
+func TestDesinstalarApagaSobrasDaCopia(t *testing.T) {
+	_, destino, _ := trocar(t, true)
+	sobras := []string{destino + ".novo", destino + ".velho", destino + ".velho1729000000000000000"}
+	vizinhos := []string{destino, destino + ".velhos", destino + ".novo2", filepath.Join(filepath.Dir(destino), "Outra pasta")}
+	for _, p := range append(append([]string{}, sobras...), vizinhos...) {
+		if err := os.MkdirAll(filepath.Join(p, "sub"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(p, "sub", "arq"), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := Desinstalar(t.TempDir(), 1); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range sobras {
+		if _, err := os.Stat(p); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("sobra ficou: %s (%v)", p, err)
+		}
+	}
+	for _, p := range vizinhos {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("apagou o que não devia: %s (%v)", p, err)
+		}
+	}
+}
+
+func TestDesinstalarPastaEstranhaNaoApagaSobras(t *testing.T) {
+	trocar(t, true)
+	estranha := filepath.Join(t.TempDir(), "Documentos")
+	pastaDestino = func() (string, error) { return estranha, nil }
+	if err := os.MkdirAll(estranha+".novo", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Desinstalar(t.TempDir(), 1); err == nil {
+		t.Fatal("devia recusar")
+	}
+	if _, err := os.Stat(estranha + ".novo"); err != nil {
+		t.Errorf("apagou fora da instalação: %v", err)
+	}
+}

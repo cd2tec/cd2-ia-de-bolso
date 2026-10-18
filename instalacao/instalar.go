@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/copiar"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/guarda"
@@ -95,7 +96,7 @@ func Instalar(ctx context.Context, o Opcoes, prog func(feitos, total int64)) err
 }
 
 // Desinstalar desliga o início, tira atalhos e registro, apaga o db.env do
-// cache e devolve o comando que apaga a pasta da instalação depois que o
+// cache, apaga as sobras de uma cópia interrompida (.novo, .velho*) e devolve o comando que apaga a pasta da instalação depois que o
 // lançador (pidLancador) sair. A chave fica, para reinstalar sem comprar de
 // novo. Pode ser chamada de novo depois de um erro: cada passo aceita o que
 // já foi desfeito. Recusa, sem mexer em nada, uma pasta que não seja a da
@@ -118,9 +119,36 @@ func Desinstalar(cache string, pidLancador int) (sistema.Comando, error) {
 	if err := os.Remove(filepath.Join(cache, "db.env")); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return sistema.Comando{}, fmt.Errorf("não consegui apagar a configuração do banco: %w", err)
 	}
+	apagarSobras(destino)
 	c := s.PlanoRemocao(destino, pidLancador)
 	if c.Exe == "" {
 		return sistema.Comando{}, fmt.Errorf("não consegui montar a remoção da pasta %q", destino)
 	}
 	return c, nil
+}
+
+// apagarSobras tira as pastas que uma cópia interrompida deixa ao lado da
+// instalação: destino.novo, destino.velho e destino.velho<números>. O
+// lançador roda de destino, não delas, então dá para apagar já. É o melhor
+// esforço: uma sobra presa (Windows) não impede a desinstalação.
+func apagarSobras(destino string) {
+	pai, base := filepath.Dir(destino), filepath.Base(destino)
+	entradas, err := os.ReadDir(pai)
+	if err != nil {
+		return
+	}
+	for _, e := range entradas {
+		n := e.Name()
+		if !strings.HasPrefix(n, base+".") {
+			continue
+		}
+		resto := n[len(base)+1:]
+		ok := resto == "novo"
+		if v, achou := strings.CutPrefix(resto, "velho"); achou {
+			ok = strings.Trim(v, "0123456789") == ""
+		}
+		if ok {
+			_ = os.RemoveAll(filepath.Join(pai, n))
+		}
+	}
 }
