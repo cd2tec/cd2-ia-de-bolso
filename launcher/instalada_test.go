@@ -1,0 +1,209 @@
+package main
+
+import (
+	"encoding/json"
+	"reflect"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/origem"
+	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/navegador"
+	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/sessao"
+)
+
+func TestLerArgs(t *testing.T) {
+	casos := []struct {
+		args []string
+		quer Args
+	}{
+		{nil, Args{}},
+		{[]string{"--inicio"}, Args{Inicio: true}},
+		{[]string{"--assumir"}, Args{Assumir: true}},
+		{[]string{"--desinstalar"}, Args{Desinstalar: true}},
+		// O Mac pode mandar -psn_...; o desconhecido não atrapalha.
+		{[]string{"-psn_0_12345", "--inicio", "qualquer"}, Args{Inicio: true}},
+		{[]string{"--esperar", "4242"}, Args{Esperar: 4242}},
+		{[]string{"--esperar"}, Args{}},
+		{[]string{"--esperar", "x", "--assumir"}, Args{Assumir: true}},
+		{[]string{"--esperar", "-3"}, Args{}},
+	}
+	for _, c := range casos {
+		if got := lerArgs(c.args); got != c.quer {
+			t.Errorf("lerArgs(%q) = %+v, quer %+v", c.args, got, c.quer)
+		}
+	}
+}
+
+func TestURLInstalarAntesDoHash(t *testing.T) {
+	got := navegador.ComInstalar(navegador.URL(8080, "0.15.0", "abc"))
+	if quer := "http://127.0.0.1:8080/?v=0.15.0&instalar=1#k=abc"; got != quer {
+		t.Errorf("ComInstalar = %q, quer %q", got, quer)
+	}
+}
+
+// O item "Instalar neste computador" só existe no pen drive e com a IA
+// acordada, entre a nova janela e o dormir.
+func TestItensBandejaPendrive(t *testing.T) {
+	for _, f := range []sessao.Fase{sessao.Lendo, sessao.Subindo, sessao.Pronta, sessao.Dormindo, sessao.Dormiu, sessao.Erro} {
+		for _, pendrive := range []bool{false, true} {
+			itens := itensBandeja(sessao.Estado{Fase: f}, pendrive)
+			textos := []string{}
+			for _, it := range itens {
+				textos = append(textos, it.Texto)
+			}
+			quer := []string{itemMostrar, itemNova, itemDormir}
+			if pendrive && f == sessao.Pronta {
+				quer = []string{itemMostrar, itemNova, itemInstalar, itemDormir}
+			}
+			if !reflect.DeepEqual(textos, quer) {
+				t.Errorf("%s pendrive=%v: %q, quer %q", f, pendrive, textos, quer)
+			}
+			for _, it := range itens {
+				if it.Texto == itemInstalar && !it.Ligado {
+					t.Errorf("%s: o item de instalar veio desligado", f)
+				}
+			}
+		}
+	}
+}
+
+// A tela recebe "pendrive" para decidir o convite; a URL continua de fora.
+func TestParaTelaPendrive(t *testing.T) {
+	b, err := json.Marshal(paraTela(sessao.Estado{Fase: sessao.Pronta, Pct: 100, URL: "http://x/#k=segredo"}, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, quer := string(b), `{"fase":"Pronta","pct":100,"aviso":"","erro":"","pendrive":true}`; got != quer {
+		t.Errorf("json = %s, quer %s", got, quer)
+	}
+}
+
+func TestAppPendrive(t *testing.T) {
+	for _, c := range []struct {
+		o    origem.Origem
+		quer bool
+	}{{origem.Pendrive, true}, {origem.Instalada, false}, {origem.Desconhecida, false}, {"", false}} {
+		a := &App{origem: c.o}
+		if got := a.pendrive(); got != c.quer {
+			t.Errorf("origem %q: pendrive = %v, quer %v", c.o, got, c.quer)
+		}
+	}
+}
+
+// trocaFalsa troca o que a troca usa na máquina de verdade.
+func trocaFalsa(t *testing.T, existe bool) chan []string {
+	t.Helper()
+	ce, cl, ci := caminhoInstalada, existeArquivo, iniciarDestacado
+	t.Cleanup(func() { caminhoInstalada, existeArquivo, iniciarDestacado = ce, cl, ci })
+	caminhoInstalada = func() string { return "/inst/IA de Bolso" }
+	existeArquivo = func(string) bool { return existe }
+	rodou := make(chan []string, 2)
+	iniciarDestacado = func(exe string, args ...string) error {
+		rodou <- append([]string{exe}, args...)
+		return nil
+	}
+	return rodou
+}
+
+// No pen drive, o --assumir da instalada põe a IA para dormir e, só depois
+// do Dormiu, roda a instalada (sem --assumir, esperando este processo sair).
+func TestAssumirDormeEDepoisAbre(t *testing.T) {
+	rodou := trocaFalsa(t, true)
+	a := &App{origem: origem.Pendrive}
+	fases := make(chan sessao.Fase, 4)
+	a.s = sessao.Nova(sessao.Deps{}, "t", func(e sessao.Estado) {
+		fases <- e.Fase
+		a.aoMudar(e)
+	})
+	a.segundaCopia([]string{"--assumir"})
+	var vistas []sessao.Fase
+	select {
+	case cmd := <-rodou:
+		for len(fases) > 0 {
+			vistas = append(vistas, <-fases)
+		}
+		if !reflect.DeepEqual(vistas, []sessao.Fase{sessao.Dormindo, sessao.Dormiu}) {
+			t.Errorf("rodou a instalada depois de %v, quer depois do Dormiu", vistas)
+		}
+		quer := []string{"/inst/IA de Bolso", "--esperar", strconv.Itoa(pidAtual())}
+		if !reflect.DeepEqual(cmd, quer) {
+			t.Errorf("rodou %q, quer %q", cmd, quer)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("não rodou a instalada")
+	}
+	// A saída vem logo depois de rodar a instalada, sem os 3 s do "Boa noite".
+	for prazo := time.Now().Add(time.Second); ; time.Sleep(5 * time.Millisecond) {
+		a.mu.Lock()
+		pode := a.podeSair
+		a.mu.Unlock()
+		if pode {
+			break
+		}
+		if time.Now().After(prazo) {
+			t.Fatal("depois da troca o app devia sair na hora")
+		}
+	}
+}
+
+// A instalada que recebe --assumir (ou um pen drive sem a instalada no disco)
+// só se mostra: nada de dormir.
+func TestAssumirSemTroca(t *testing.T) {
+	for _, c := range []struct {
+		nome   string
+		o      origem.Origem
+		existe bool
+	}{{"instalada", origem.Instalada, true}, {"sem a instalada", origem.Pendrive, false}} {
+		rodou := trocaFalsa(t, c.existe)
+		a := &App{origem: c.o, s: sessao.Nova(sessao.Deps{}, "t", nil)}
+		a.segundaCopia([]string{"--assumir"})
+		if f := a.s.Atual().Fase; f != sessao.Lendo {
+			t.Errorf("%s: fase %s, quer que nada dormisse", c.nome, f)
+		}
+		if len(rodou) != 0 {
+			t.Errorf("%s: rodou %q", c.nome, <-rodou)
+		}
+	}
+}
+
+// Uma segunda cópia comum só traz a janela.
+func TestSegundaCopiaComumNaoTroca(t *testing.T) {
+	rodou := trocaFalsa(t, true)
+	a := &App{origem: origem.Pendrive, s: sessao.Nova(sessao.Deps{}, "t", nil)}
+	a.segundaCopia(nil)
+	if f := a.s.Atual().Fase; f != sessao.Lendo || len(rodou) != 0 {
+		t.Errorf("fase %s, rodou %d: a segunda cópia comum não troca", f, len(rodou))
+	}
+}
+
+func TestEsperarProcesso(t *testing.T) {
+	vivo := 3
+	esperarProcesso(77, time.Second, time.Millisecond, func(pid int) bool {
+		if pid != 77 {
+			t.Errorf("perguntou do pid %d", pid)
+		}
+		vivo--
+		return vivo > 0
+	})
+	if vivo != 0 {
+		t.Errorf("parou de esperar cedo: %d", vivo)
+	}
+	// Um processo que não sai não trava o lançador para sempre.
+	inicio := time.Now()
+	esperarProcesso(77, 20*time.Millisecond, time.Millisecond, func(int) bool { return true })
+	if d := time.Since(inicio); d > time.Second {
+		t.Errorf("esperou %v", d)
+	}
+}
+
+// Com --inicio a notificação do primeiro fechar não sai.
+func TestInicioNaoAvisa(t *testing.T) {
+	a := novaApp(t.TempDir(), "t", Args{Inicio: true})
+	if !a.avisou {
+		t.Error("com --inicio o aviso do primeiro fechar devia já contar como dado")
+	}
+	if b := novaApp(t.TempDir(), "t", Args{}); b.avisou {
+		t.Error("sem --inicio o aviso continua valendo")
+	}
+}

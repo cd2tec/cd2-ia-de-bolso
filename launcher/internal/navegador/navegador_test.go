@@ -100,3 +100,17 @@ func TestMacPrioridade(t *testing.T) {
 		t.Fatalf("esperava Brave, veio %q", a[1])
 	}
 }
+
+func TestComInstalar(t *testing.T) {
+	casos := map[string]string{
+		"http://127.0.0.1:8080/?v=1#k=abc": "http://127.0.0.1:8080/?v=1&instalar=1#k=abc",
+		"http://127.0.0.1:8080/?v=1":       "http://127.0.0.1:8080/?v=1&instalar=1",
+		"http://127.0.0.1:8080/#k=abc":     "http://127.0.0.1:8080/?instalar=1#k=abc",
+		"http://127.0.0.1:8080/":           "http://127.0.0.1:8080/?instalar=1",
+	}
+	for url, quer := range casos {
+		if got := ComInstalar(url); got != quer {
+			t.Errorf("ComInstalar(%q) = %q, quer %q", url, got, quer)
+		}
+	}
+}

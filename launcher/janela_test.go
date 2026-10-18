@@ -45,7 +45,7 @@ func TestItensBandeja(t *testing.T) {
 		{sessao.Dormiu, []bool{true, false, false}},
 	}
 	for _, c := range casos {
-		itens := itensBandeja(sessao.Estado{Fase: c.fase})
+		itens := itensBandeja(sessao.Estado{Fase: c.fase}, false)
 		if len(itens) != len(textos) {
 			t.Fatalf("%s: %d itens, quer %d", c.fase, len(itens), len(textos))
 		}
@@ -68,15 +68,15 @@ func TestParaTela(t *testing.T) {
 		sessao.Dormindo: "Dormindo", sessao.Dormiu: "Dormiu", sessao.Erro: "Erro",
 	}
 	for f, quer := range casos {
-		if got := paraTela(sessao.Estado{Fase: f}).Fase; got != quer {
+		if got := paraTela(sessao.Estado{Fase: f}, false).Fase; got != quer {
 			t.Errorf("fase %q virou %q, quer %q", f, got, quer)
 		}
 	}
-	b, err := json.Marshal(paraTela(sessao.Estado{Fase: sessao.Subindo, Pct: 91, Aviso: "a", Erro: "e", URL: "http://x/#k=segredo"}))
+	b, err := json.Marshal(paraTela(sessao.Estado{Fase: sessao.Subindo, Pct: 91, Aviso: "a", Erro: "e", URL: "http://x/#k=segredo"}, false))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, quer := string(b), `{"fase":"Subindo","pct":91,"aviso":"a","erro":"e"}`; got != quer {
+	if got, quer := string(b), `{"fase":"Subindo","pct":91,"aviso":"a","erro":"e","pendrive":false}`; got != quer {
 		t.Errorf("json = %s, quer %s", got, quer)
 	}
 }

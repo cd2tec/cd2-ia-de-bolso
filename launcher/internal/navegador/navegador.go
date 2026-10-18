@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
+	"strings"
 )
 
 // URL é o endereço da conversa. O ?v=<versão> muda a cada versão para o
@@ -14,6 +15,21 @@ import (
 // não sai do navegador.
 func URL(porta int, versao, chave string) string {
 	return "http://127.0.0.1:" + strconv.Itoa(porta) + "/?v=" + versao + "#k=" + chave
+}
+
+// ComInstalar põe o instalar=1 na URL da conversa, que abre já com o modal
+// de instalação. O parâmetro entra antes do #: o que vem depois dele é a
+// chave e nunca chega ao servidor.
+func ComInstalar(url string) string {
+	base, hash := url, ""
+	if i := strings.IndexByte(url, '#'); i >= 0 {
+		base, hash = url[:i], url[i:]
+	}
+	sep := "?"
+	if strings.Contains(base, "?") {
+		sep = "&"
+	}
+	return base + sep + "instalar=1" + hash
 }
 
 // appsMac, em ordem de preferência, em /Applications.

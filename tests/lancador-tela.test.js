@@ -157,3 +157,29 @@ test('render Trancada colar com a resposta do ColarChave na linha', () => {
   assert.equal(r.linha, 'Esta chave não é deste computador.');
   assert.equal(r.campo, true);
 });
+
+const CONVITE = { pergunta: 'Quer me usar sem o pen drive?', acao: 'Instale neste computador' };
+
+test('render Pronta com convite', () => {
+  for (const modo of ['normal', 'chamada']) {
+    const r = render({ fase: 'Pronta', pendrive: true }, modo);
+    assert.deepEqual(r.convite, CONVITE);
+    assert.deepEqual(r.botoes, BOTOES);
+    // A janelinha não tem altura para a piada junto do convite.
+    assert.equal(r.piadaLista, null);
+  }
+  assert.equal(render({ fase: 'Pronta', pendrive: true }, 'chamada').titulo, 'Me chamou?');
+});
+
+test('render Pronta instalada sem convite', () => {
+  const r = render({ fase: 'Pronta', pendrive: false }, 'normal');
+  assert.equal(r.convite, null);
+  assert.equal(r.piadaLista, Mascote.PIADAS);
+  assert.equal(render({ fase: 'Pronta' }, 'chamada').convite, null);
+});
+
+test('convite só em Pronta', () => {
+  for (const fase of ['Lendo', 'Subindo', 'Dormindo', 'Dormiu', 'Erro', 'Trancada']) {
+    assert.equal(render({ fase, pendrive: true }, 'normal').convite || null, null, fase);
+  }
+});

@@ -20,6 +20,7 @@ const (
 	nomeBandeja  = "IA de Bolso"
 	itemMostrar  = "Mostrar a IA de Bolso"
 	itemNova     = "Abrir uma nova janela da conversa"
+	itemInstalar = "Instalar neste computador"
 	itemDormir   = "Colocar a IA para dormir"
 	itemFechar   = "Fechar"
 	ladoBandeja  = 44 // px; o Mac reduz para 16x16 pontos, o Windows para o tamanho da bandeja
@@ -47,15 +48,19 @@ func rotuloBandeja(e sessao.Estado) string {
 }
 
 // itensBandeja diz quais itens valem agora, na ordem do menu. Mostrar vale
-// sempre; a nova janela, só com a IA acordada; dormir, até ela começar a
-// dormir (no Erro, é o mesmo que o Fechar da janela).
-func itensBandeja(e sessao.Estado) []item {
+// sempre; a nova janela, só com a IA acordada; instalar, só acordada e do
+// pen drive; dormir, até ela começar a dormir (no Erro, é o mesmo que o
+// Fechar da janela).
+func itensBandeja(e sessao.Estado, pendrive bool) []item {
 	indoDormir := e.Fase == sessao.Dormindo || e.Fase == sessao.Dormiu
-	return []item{
+	itens := []item{
 		{itemMostrar, true},
 		{itemNova, e.Fase == sessao.Pronta},
-		{itemDormir, !indoDormir},
 	}
+	if pendrive && e.Fase == sessao.Pronta {
+		itens = append(itens, item{itemInstalar, true})
+	}
+	return append(itens, item{itemDormir, !indoDormir})
 }
 
 // iconeDoEstado escolhe o desenho: o cérebro só fica cheio e acordado em
@@ -108,7 +113,7 @@ func (a *App) montarMenu() {
 	// Todos os itens existem desde o começo; o atualizarBandeja esconde os
 	// que não valem (com a trava, só Mostrar e Fechar).
 	b.itens = map[string]*systray.MenuItem{}
-	for _, texto := range []string{itemMostrar, itemNova, itemDormir, itemFechar} {
+	for _, texto := range []string{itemMostrar, itemNova, itemInstalar, itemDormir, itemFechar} {
 		b.itens[texto] = systray.AddMenuItem(texto, "")
 	}
 	b.pronta = true
@@ -116,7 +121,8 @@ func (a *App) montarMenu() {
 	ligarCliqueSimples(a)
 	a.atualizarBandeja(a.s.Atual())
 
-	mostrar, nova, dormir, fechar := b.itens[itemMostrar], b.itens[itemNova], b.itens[itemDormir], b.itens[itemFechar]
+	mostrar, nova, instalar := b.itens[itemMostrar], b.itens[itemNova], b.itens[itemInstalar]
+	dormir, fechar := b.itens[itemDormir], b.itens[itemFechar]
 	go func() {
 		for {
 			select {
@@ -124,6 +130,8 @@ func (a *App) montarMenu() {
 				a.chamar()
 			case <-nova.ClickedCh:
 				_ = a.s.AbrirConversa()
+			case <-instalar.ClickedCh:
+				_ = a.AbrirInstalar()
 			case <-dormir.ClickedCh:
 				a.mostrar()
 				a.Dormir()
@@ -138,14 +146,15 @@ func (a *App) montarMenu() {
 // desenho. Antes de o systray ficar pronto não faz nada: o montarMenu aplica
 // o estado de agora quando ficar.
 func (a *App) atualizarBandeja(e sessao.Estado) {
-	trancada := a.estaTrancada() // antes do b.mu: nunca segurar os dois locks juntos
+	// Antes do b.mu: nunca segurar os dois locks juntos.
+	trancada, pendrive := a.estaTrancada(), a.pendrive()
 	b := &a.bandeja
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if !b.pronta {
 		return
 	}
-	r, itens := rotuloBandeja(e), itensBandeja(e)
+	r, itens := rotuloBandeja(e), itensBandeja(e, pendrive)
 	if trancada {
 		r, itens = nomeBandeja, itensBandejaTrancada()
 	}

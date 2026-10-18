@@ -24,8 +24,14 @@ func TestDeveTrancar(t *testing.T) {
 		{origem.Desconhecida, true, false},
 	}
 	for _, c := range casos {
-		if got := deveTrancar(c.o, c.valida); got != c.quer {
+		leu := false
+		valida := func() bool { leu = true; return c.valida }
+		if got := deveTrancar(c.o, valida); got != c.quer {
 			t.Errorf("deveTrancar(%s, %v) = %v, quer %v", c.o, c.valida, got, c.quer)
+		}
+		// Fora da instalada a chave nem é lida.
+		if leu != (c.o == origem.Instalada) {
+			t.Errorf("deveTrancar(%s): leu a chave = %v", c.o, leu)
 		}
 	}
 }

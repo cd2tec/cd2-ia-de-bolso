@@ -42,9 +42,10 @@ var (
 )
 
 // deveTrancar diz se a IA fica trancada: só a cópia instalada sem chave
-// válida. O pen drive e a dúvida sobem livres, para nunca trancar o teste.
-func deveTrancar(o origem.Origem, valida bool) bool {
-	return o == origem.Instalada && !valida
+// válida. O pen drive e a dúvida sobem livres, para nunca trancar o teste,
+// e nem chegam a ler a chave.
+func deveTrancar(o origem.Origem, valida func() bool) bool {
+	return o == origem.Instalada && !valida()
 }
 
 // itensBandejaTrancada é o menu do ícone com a IA trancada: não há o que

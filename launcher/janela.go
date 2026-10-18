@@ -10,6 +10,7 @@ import (
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/origem"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/cache"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/sessao"
 )
@@ -36,16 +37,22 @@ type App struct {
 	encerrado bool            // o Wails já parou: nada de falar com a janela
 	avisou    bool            // a notificação da primeira vez já saiu
 	trancada  bool            // cópia instalada sem chave: a IA não sobe
+	origem    origem.Origem   // de onde a IA roda; decidida no OnStartup
+	// trocarPara é o lançador instalado que roda depois do Dormiu (o
+	// --assumir); vazio, não há troca.
+	trocarPara string
 }
 
 // estadoTela é o Estado no formato da tela: chaves em minúsculas e a fase
 // com inicial maiúscula, como o tela.js compara. A URL fica de fora: ela
-// leva a chave da sessão, que só vai para o navegador.
+// leva a chave da sessão, que só vai para o navegador. Pendrive decide o
+// convite para instalar.
 type estadoTela struct {
-	Fase  string `json:"fase"`
-	Pct   int    `json:"pct"`
-	Aviso string `json:"aviso"`
-	Erro  string `json:"erro"`
+	Fase     string `json:"fase"`
+	Pct      int    `json:"pct"`
+	Aviso    string `json:"aviso"`
+	Erro     string `json:"erro"`
+	Pendrive bool   `json:"pendrive"`
 }
 
 var nomesFase = map[sessao.Fase]string{
@@ -53,8 +60,8 @@ var nomesFase = map[sessao.Fase]string{
 	sessao.Dormindo: "Dormindo", sessao.Dormiu: "Dormiu", sessao.Erro: "Erro",
 }
 
-func paraTela(e sessao.Estado) estadoTela {
-	return estadoTela{Fase: nomesFase[e.Fase], Pct: e.Pct, Aviso: e.Aviso, Erro: e.Erro}
+func paraTela(e sessao.Estado, pendrive bool) estadoTela {
+	return estadoTela{Fase: nomesFase[e.Fase], Pct: e.Pct, Aviso: e.Aviso, Erro: e.Erro, Pendrive: pendrive}
 }
 
 // deveMostrar diz se o estado traz a janela de volta sozinho: um erro nunca
@@ -81,9 +88,13 @@ func fecharVaiDormir(f sessao.Fase) bool { return f == sessao.Erro }
 // só volta mostrando onde o carregamento está.
 func deveChamar(f sessao.Fase) bool { return f == sessao.Pronta }
 
-func novaApp(raiz, versao string) *App {
-	a := &App{raiz: raiz}
-	a.s = sessao.Nova(sessao.DepsReais(raiz), versao, a.aoMudar)
+// novaApp prepara o app. Com --inicio a conversa não abre e o aviso do
+// primeiro fechar não sai: quem acordou com o computador não pediu janela.
+func novaApp(raiz, versao string, args Args) *App {
+	a := &App{raiz: raiz, avisou: args.Inicio}
+	d := sessao.DepsReais(raiz)
+	d.SemNavegador = args.Inicio
+	a.s = sessao.Nova(d, versao, a.aoMudar)
 	a.acordar = func() { go a.s.Rodar(context.Background()) }
 	return a
 }
@@ -102,13 +113,19 @@ func (a *App) contexto() context.Context {
 // pode chamar o Dormir síncrono aqui.
 func (a *App) aoMudar(e sessao.Estado) {
 	if ctx := a.contexto(); ctx != nil {
-		wruntime.EventsEmit(ctx, "estado", paraTela(e))
+		wruntime.EventsEmit(ctx, "estado", paraTela(e, a.pendrive()))
 	}
 	a.atualizarBandeja(e)
 	if deveMostrar(e) {
 		a.mostrar()
 	}
 	if e.Fase == sessao.Dormiu {
+		// Passando a vez para a instalada: ela espera este processo sair,
+		// então nada de esperar o "Boa noite!".
+		if a.trocar(e.Erro) {
+			go a.sair()
+			return
+		}
 		espera := esperaAntesDeSair(e)
 		go func() {
 			time.Sleep(espera)
@@ -128,12 +145,15 @@ func (a *App) sair() {
 }
 
 // iniciar decide a trava antes de subir a IA: a cópia instalada sem chave
-// fica na tela Trancada, sem Rodar, e o ícone só mostra ou fecha.
+// fica na tela Trancada, sem Rodar, e o ícone só mostra ou fecha. A origem
+// fica guardada para o convite.
 func (a *App) iniciar(ctx context.Context) {
-	tranca := deveTrancar(detectarOrigem(a.raiz), chaveValida(pastaCache()))
+	o := detectarOrigem(a.raiz)
+	tranca := deveTrancar(o, func() bool { return chaveValida(pastaCache()) })
 	a.mu.Lock()
 	a.ctx = ctx
 	a.trancada = tranca
+	a.origem = o
 	a.mu.Unlock()
 	iniciarBandeja(a)
 	if tranca {
@@ -243,7 +263,7 @@ func (a *App) Estado() estadoTela {
 	if a.estaTrancada() {
 		return estadoTela{Fase: faseTrancada}
 	}
-	return paraTela(a.s.Atual())
+	return paraTela(a.s.Atual(), a.pendrive())
 }
 
 // AbrirRegistros abre a pasta dos logs no Finder ou no Explorer.

@@ -20,6 +20,10 @@ const B_VOLTAR = 'Voltar';
 const ACAO = { [B_NOVA]: 'AbrirConversa', [B_DORMIR]: 'Dormir', [B_REGISTROS]: 'AbrirRegistros', [B_FECHAR]: 'Fechar',
   [B_LIBERAR]: 'ColarChave' };
 
+// O convite para instalar, embaixo dos botões de Pronta, só quando a IA roda do pen drive. Clicar abre a conversa
+// já com o modal de instalação (AbrirInstalar).
+const CONVITE = { pergunta: 'Quer me usar sem o pen drive?', acao: 'Instale neste computador' };
+
 // Cópia instalada sem chave (a fase Trancada vem do Go, a IA nem começou a subir).
 const T_TRANCADA = 'Esta cópia não foi instalada neste computador';
 const L_TRANCADA = 'Para me usar daqui, instale pelo pen drive. Se você já pagou por este computador, cole a sua chave.';
@@ -27,7 +31,7 @@ const L_INSTALAR = 'Espete o pen drive da IA de Bolso e abra o lançador de lá.
 const T_COLAR = 'Cole a sua chave aqui:';
 const CENA_TRISTE = { rosto: 'sono', nivel: 0 };
 
-// estado: {fase, pct, aviso, erro}; modo: 'normal' ou 'chamada' (e, na Trancada, 'instalar' ou 'colar');
+// estado: {fase, pct, aviso, erro, pendrive}; modo: 'normal' ou 'chamada' (e, na Trancada, 'instalar' ou 'colar');
 // msg: a resposta do ColarChave, mostrada no modo 'colar'.
 function render(estado, modo, msg){
   const e = estado || {};
@@ -36,9 +40,13 @@ function render(estado, modo, msg){
     case 'Subindo':
       return { titulo: '', linha: e.aviso || 'carregando o modelo de IA ... ' + (e.pct || 0) + '%',
         piadaLista: Mascote.PIADAS, botoes: [] };
-    case 'Pronta':
+    case 'Pronta': {
+      // Com o convite a piada sai: a janelinha (380 px) não tem altura para os dois junto do aviso.
+      const convite = e.pendrive ? CONVITE : null;
       return { titulo: modo === 'chamada' ? 'Me chamou?' : 'Acordei! A conversa abriu no navegador.', linha: e.aviso || '',
-        piadaLista: modo === 'chamada' ? Piadas.CHAMADA : Mascote.PIADAS, botoes: [B_NOVA, B_DORMIR] };
+        piadaLista: convite ? null : (modo === 'chamada' ? Piadas.CHAMADA : Mascote.PIADAS), botoes: [B_NOVA, B_DORMIR],
+        convite };
+    }
     case 'Dormindo':
       return { titulo: 'Colocando a IA para dormir...', linha: '', piadaLista: null, botoes: [] };
     case 'Dormiu':
@@ -90,7 +98,7 @@ if(typeof document === 'undefined') return;
 const $ = id => document.getElementById(id);
 let estado = { fase: 'Lendo', pct: 0 }, modo = 'normal';
 let passo = 0, lista = null, ultimaPiada = -1, relogioPiada = null, chegouEvento = false, msgColar = '';
-const trava = criarTrava(v => document.querySelectorAll('#botoes .btn').forEach(b => { b.disabled = v; }));
+const trava = criarTrava(v => document.querySelectorAll('#botoes .btn, #convite').forEach(b => { b.disabled = v; }));
 
 function ponte(){ return root.go && root.go.main && root.go.main.App; }
 
@@ -142,6 +150,13 @@ function desenhar(){
   campo.hidden = !mostrarCampo;
   if(apareceu){ campo.value = ''; campo.focus(); }
   if(r.piadaLista !== lista){ lista = r.piadaLista; ultimaPiada = -1; sortearPiada(); }
+  const conv = $('convite');
+  conv.hidden = !r.convite;
+  if(r.convite){
+    $('convitePergunta').textContent = r.convite.pergunta;
+    $('conviteAcao').textContent = r.convite.acao;
+    conv.disabled = trava.travado;
+  }
   const caixa = $('botoes');
   caixa.textContent = '';
   r.botoes.forEach((rotulo, i) => {
@@ -176,7 +191,13 @@ function noWails(){
   return !!root.runtime || location.protocol === 'wails:' || location.hostname === 'wails.localhost';
 }
 
+function abrirInstalar(){
+  const A = ponte();
+  if(trava.clicar('AbrirInstalar') && A && A.AbrirInstalar) A.AbrirInstalar();
+}
+
 function iniciar(){
+  $('convite').addEventListener('click', abrirInstalar);
   $('campo').addEventListener('keydown', ev => { if(ev.key === 'Enter'){ ev.preventDefault(); liberar(); } });
   const A = ponte();
   if(A && root.runtime){
@@ -187,10 +208,11 @@ function iniciar(){
       Promise.resolve(A.Estado()).then(v => { if(!chegouEvento) aoEstado(v); }).catch(() => {});
     } catch(_){}
   } else {
-    // Sem Wails: um estado de exemplo (?fase=Pronta, Erro, Dormiu, Trancada&modo=colar...), sem tocar em nada.
+    // Sem Wails: um estado de exemplo (?fase=Pronta&pendrive=1, Erro, Dormiu, Trancada&modo=colar...), sem tocar em nada.
     $('demo').hidden = false;
     const q = new URLSearchParams(location.search);
-    estado = { fase: q.get('fase') || 'Lendo', pct: Number(q.get('pct') || 62), erro: q.get('erro') || 'Não consegui acordar a IA. Os registros têm o motivo.' };
+    estado = { fase: q.get('fase') || 'Lendo', pct: Number(q.get('pct') || 62), erro: q.get('erro') || 'Não consegui acordar a IA. Os registros têm o motivo.',
+      aviso: q.get('aviso') || '', pendrive: q.get('pendrive') === '1' };
     if(q.get('modo')) modo = q.get('modo');
   }
   desenhar();
