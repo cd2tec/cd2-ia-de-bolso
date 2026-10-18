@@ -35,8 +35,11 @@ func TestDosScriptsLeOsValoresAtuais(t *testing.T) {
 	if f.ModeloURL != "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf" {
 		t.Errorf("ModeloURL = %q", f.ModeloURL)
 	}
-	if f.LlamafileReserva != "https://huggingface.co/mozilla-ai/llamafile_0.10/resolve/main/llamafile_0.10.1" {
-		t.Errorf("LlamafileReserva = %q", f.LlamafileReserva)
+	if f.LlamafileURL != "https://github.com/mozilla-ai/llamafile/releases/download/0.10.6/llamafile-0.10.6" {
+		t.Errorf("LlamafileURL = %q", f.LlamafileURL)
+	}
+	if f.LlamafileSHA256 != "d579f61dcd3a306f518e6d90e599d77793ed5f09543023d09c96ad35fcfa63f0" {
+		t.Errorf("LlamafileSHA256 = %q", f.LlamafileSHA256)
 	}
 	if f.ToolboxVersao != "1.14.0" {
 		t.Errorf("ToolboxVersao = %q", f.ToolboxVersao)
@@ -71,5 +74,13 @@ func TestDosScriptsRecusaValorAusente(t *testing.T) {
 	sh := strings.Replace(lerArquivo(t, caminhoUnix), "CTL_VERSION=", "OUTRA_COISA=", 1)
 	if _, err := DosScripts(sh, lerArquivo(t, caminhoWindows)); err == nil {
 		t.Fatal("esperava erro com valor ausente")
+	}
+}
+
+func TestDosScriptsRecusaMotorDivergente(t *testing.T) {
+	ps1 := strings.Replace(lerArquivo(t, caminhoWindows), "d579f61dcd3a", "0000000000aa", 1)
+	_, err := DosScripts(lerArquivo(t, caminhoUnix), ps1)
+	if err == nil || !strings.Contains(err.Error(), "llamafile") {
+		t.Fatalf("esperava erro citando llamafile: %v", err)
 	}
 }

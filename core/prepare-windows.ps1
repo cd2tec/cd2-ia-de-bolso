@@ -8,7 +8,10 @@ $ModelUrl  = if ($env:CD2_MODEL_URL)  { $env:CD2_MODEL_URL }  else { 'https://hu
 $ModelFile = if ($env:CD2_MODEL_FILE) { $env:CD2_MODEL_FILE } else { 'Qwen3-4B-Instruct-2507-Q4_K_M.gguf' }
 # SHA-256 do modelo padrao. Com CD2_MODEL_URL proprio, so confere se CD2_MODEL_SHA256 vier junto.
 $ModelSha  = if ($env:CD2_MODEL_SHA256) { $env:CD2_MODEL_SHA256.ToLower() } elseif ($env:CD2_MODEL_URL) { '' } else { '3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597' }
-$FallbackBin = 'https://huggingface.co/mozilla-ai/llamafile_0.10/resolve/main/llamafile_0.10.1'
+# Motor (llamafile): versao e SHA-256 fixos, os mesmos que o manifesto do instalador publica.
+# Com CD2_LLAMAFILE_URL proprio, so confere se CD2_LLAMAFILE_SHA256 vier junto.
+$LlamafileUrl = if ($env:CD2_LLAMAFILE_URL) { $env:CD2_LLAMAFILE_URL } else { 'https://github.com/mozilla-ai/llamafile/releases/download/0.10.6/llamafile-0.10.6' }
+$LlamafileSha = if ($env:CD2_LLAMAFILE_SHA256) { $env:CD2_LLAMAFILE_SHA256.ToLower() } elseif ($env:CD2_LLAMAFILE_URL) { '' } else { 'd579f61dcd3a306f518e6d90e599d77793ed5f09543023d09c96ad35fcfa63f0' }
 # MCP Toolbox for Databases: versao fixa (pen drive reprodutivel), um binario por sistema.
 $ToolboxVersion   = if ($env:CD2_TOOLBOX_VERSION)   { $env:CD2_TOOLBOX_VERSION }   else { '1.14.0' }
 $ToolboxPlatforms = if ($env:CD2_TOOLBOX_PLATFORMS) { $env:CD2_TOOLBOX_PLATFORMS -split ' ' } else { @('windows-amd64', 'darwin-arm64', 'darwin-amd64', 'linux-amd64') }
@@ -47,19 +50,35 @@ function Fetch($url, $dest) {
 }
 
 Write-Host '== Motor (llamafile)'
-$binUrl = $null
-try {
-    $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/mozilla-ai/llamafile/releases/latest' -Headers @{ 'User-Agent' = 'cd2-harness' }
-    $asset = $rel.assets | Where-Object { $_.name -match '^llamafile-\d+(\.\d+)+$' } | Select-Object -First 1
-    if ($asset) { $binUrl = $asset.browser_download_url }
-} catch { }
-if (-not $binUrl) { Write-Host 'Nao consegui resolver a ultima release; usando a URL de reserva.'; $binUrl = $FallbackBin }
-Write-Host "Origem: $binUrl"
+# O motor nunca e emendado em arquivo de outra versao (o mesmo que o baixar_motor do prepare-unix.sh):
+# o download vai para um pedaco com nome tirado da URL, que so a mesma origem retoma, e so vira
+# bin\llamafile.exe depois de conferir o SHA.
 $exe = Join-Path $Root 'bin\llamafile.exe'
 $bin = Join-Path $Root 'bin\llamafile'
-Fetch $binUrl $exe
+if ((Test-Path $exe) -and (Get-Item $exe).Length -gt 0) {
+    $ok = if ($LlamafileSha) { (Get-FileHash -Algorithm SHA256 $exe).Hash.ToLower() -eq $LlamafileSha } else { (Get-Item $exe).Length -eq (Get-RemoteSize $LlamafileUrl) }
+    if ($ok) { Write-Host 'Ja conferido, pulando: bin\llamafile.exe' }
+    else { Write-Host 'O bin\llamafile.exe e de outra versao; baixando o motor fixo.'; Remove-Item -Force $exe }
+}
+if (-not (Test-Path $exe)) {
+    $sha = [Security.Cryptography.SHA256]::Create()
+    $chave = (-join ($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($LlamafileUrl)) | ForEach-Object { $_.ToString('x2') })).Substring(0, 12)
+    $pedaco = Join-Path $Root "bin\llamafile.part-$chave"
+    Get-ChildItem (Join-Path $Root 'bin') -Filter 'llamafile.part*' | Where-Object { $_.FullName -ne $pedaco } | Remove-Item -Force
+    Write-Host "Origem: $LlamafileUrl"
+    # retoma o pedaco; se o servidor recusar o retomo, baixa inteiro
+    & $curl -L --fail -C - -o $pedaco $LlamafileUrl
+    if ($LASTEXITCODE -ne 0) { Remove-Item -Force -ErrorAction SilentlyContinue $pedaco; & $curl -L --fail -o $pedaco $LlamafileUrl }
+    if ($LASTEXITCODE -ne 0) { Remove-Item -Force -ErrorAction SilentlyContinue $pedaco; throw 'Falha ao baixar o motor. Rode de novo.' }
+    if ($LlamafileSha) {
+        $got = (Get-FileHash -Algorithm SHA256 $pedaco).Hash.ToLower()
+        if ($got -ne $LlamafileSha) { Remove-Item -Force $pedaco; throw "SHA-256 do motor nao confere ($got). Rode de novo." }
+        Write-Host 'SHA-256 do motor conferido.'
+    }
+    Move-Item -Force $pedaco $exe
+}
 # mesma binaria (APE) serve para Mac/Linux
-if (-not (Test-Path $bin) -or (Get-Item $bin).Length -ne (Get-Item $exe).Length) { Copy-Item -Force $exe $bin }
+if (-not (Test-Path $bin) -or (Get-FileHash -Algorithm SHA256 $bin).Hash -ne (Get-FileHash -Algorithm SHA256 $exe).Hash) { Copy-Item -Force $exe $bin }
 
 Write-Host '== Modelo'
 Write-Host "Origem: $ModelUrl"

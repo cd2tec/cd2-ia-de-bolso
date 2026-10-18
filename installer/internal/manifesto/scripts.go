@@ -13,9 +13,10 @@ func bytesReader(b []byte) io.Reader { return bytes.NewReader(b) }
 
 // Fixos são os valores que ficam escritos nos scripts de preparo do pen drive.
 type Fixos struct {
-	ModeloURL, ModeloNome, ModeloSHA256, LlamafileReserva string
-	ToolboxVersao, ToolboxBase, CtlVersao, CtlBase        string
-	Plataformas                                           []string
+	ModeloURL, ModeloNome, ModeloSHA256            string
+	LlamafileURL, LlamafileSHA256                  string
+	ToolboxVersao, ToolboxBase, CtlVersao, CtlBase string
+	Plataformas                                    []string
 }
 
 func achar(texto, quem string, re *regexp.Regexp) (string, error) {
@@ -57,19 +58,12 @@ func DosScripts(prepareUnix, prepareWindows string) (Fixos, error) {
 		}
 		return v
 	}
-	psFixo := func(nome string) string {
-		re := regexp.MustCompile(`(?m)^\$` + nome + `\s*=\s*'([^']*)'`)
-		v, err := achar(prepareWindows, "prepare-windows.ps1", re)
-		if err != nil {
-			erros = append(erros, err.Error())
-		}
-		return v
-	}
 
 	f.ModeloURL = sh("MODEL_URL")
 	f.ModeloNome = sh("MODEL_FILE")
 	f.ModeloSHA256 = sh("MODEL_SHA256")
-	f.LlamafileReserva = shFixo("FALLBACK_BIN_URL")
+	f.LlamafileURL = sh("LLAMAFILE_URL")
+	f.LlamafileSHA256 = sh("LLAMAFILE_SHA256")
 	f.ToolboxVersao = sh("TOOLBOX_VERSION")
 	f.CtlVersao = sh("CTL_VERSION")
 	toolboxBase := shFixo("TOOLBOX_BASE")
@@ -82,7 +76,8 @@ func DosScripts(prepareUnix, prepareWindows string) (Fixos, error) {
 	wModeloURL := ps("ModelUrl")
 	wModeloNome := ps("ModelFile")
 	wModeloSHA := ps("ModelSha")
-	wReserva := psFixo("FallbackBin")
+	wLlamaURL := ps("LlamafileUrl")
+	wLlamaSHA := ps("LlamafileSha")
 	wToolbox := ps("ToolboxVersion")
 	wCtl := ps("CtlVersion")
 	var wPlat []string
@@ -109,7 +104,8 @@ func DosScripts(prepareUnix, prepareWindows string) (Fixos, error) {
 	iguais("modelo (url)", f.ModeloURL, wModeloURL)
 	iguais("modelo (nome)", f.ModeloNome, wModeloNome)
 	iguais("modelo (sha256)", f.ModeloSHA256, strings.ToLower(wModeloSHA))
-	iguais("llamafile (reserva)", f.LlamafileReserva, wReserva)
+	iguais("llamafile (url)", f.LlamafileURL, wLlamaURL)
+	iguais("llamafile (sha256)", f.LlamafileSHA256, strings.ToLower(wLlamaSHA))
 	iguais("toolbox (versão)", f.ToolboxVersao, wToolbox)
 	iguais("toolbox (plataformas)", f.Plataformas, wPlat)
 	iguais("ctl (versão)", f.CtlVersao, wCtl)
