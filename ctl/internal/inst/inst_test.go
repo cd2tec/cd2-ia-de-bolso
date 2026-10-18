@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao"
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/ambiente"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/copiar"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/guarda"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/origem"
@@ -270,5 +271,14 @@ func TestComandoDestacadoRodaNaPastaDoLancador(t *testing.T) {
 	}
 	if c.Path != l || len(c.Args) != 2 || c.Args[1] != "--assumir" {
 		t.Errorf("comando = %q %v", c.Path, c.Args)
+	}
+}
+
+// O modal compra no Worker do build: o oficial no de produção, o de teste (-tags sandbox) no de teste.
+func TestInfoTrazOWorkerDoBuild(t *testing.T) {
+	b := novo(t, nil)
+	i := b.Info()
+	if i.Worker != ambiente.Worker || i.Sandbox != ambiente.Sandbox {
+		t.Fatalf("Info = %+v, queria Worker %q e Sandbox %v", i, ambiente.Worker, ambiente.Sandbox)
 	}
 }

@@ -1,4 +1,4 @@
-//go:build release
+//go:build release && !sandbox
 
 package chave_test
 

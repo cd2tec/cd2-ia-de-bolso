@@ -22,6 +22,13 @@ function criarBarramento(){
   };
 }
 
+test('urlComprar usa o Worker informado só se for da CD2', () => {
+  const fim = '/comprar?codigo=7F3K-Q9WD-2MXA&porta=8080';
+  assert.equal(I.urlComprar('7F3K-Q9WD-2MXA', 8080, 'https://instalariadebolso-teste.cd2.com.br'), 'https://instalariadebolso-teste.cd2.com.br' + fim);
+  for(const ruim of ['http://instalariadebolso-teste.cd2.com.br', 'https://evil.com', 'https://x.cd2.com.br.evil.com', 'https://x.cd2.com.br/', 42, undefined]){
+    assert.equal(I.urlComprar('7F3K-Q9WD-2MXA', 8080, ruim), 'https://instalariadebolso.cd2.com.br' + fim, String(ruim));
+  }
+});
 test('urlComprar', () => assert.equal(I.urlComprar('7F3K-Q9WD-2MXA', 8080),
   'https://instalariadebolso.cd2.com.br/comprar?codigo=7F3K-Q9WD-2MXA&porta=8080'));
 

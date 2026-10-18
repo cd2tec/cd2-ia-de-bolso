@@ -435,6 +435,7 @@ button.contorno:hover{background:var(--surface-100)}
 
 <dialog id="instalar" class="inst" aria-labelledby="iTitCompra">
   <span class="eyebrow eyebrow--regua">Cópia para este computador</span>
+  <span class="tag tag--atencao" id="iTeste" hidden><i></i><span>modo de teste: pagamento de mentira</span></span>
   <span class="inst__regua" aria-hidden="true"></span>
 
   <section data-tela="compra" hidden>
@@ -1243,6 +1244,7 @@ function instTela(nome){
 }
 function instErro(texto){ clearTimeout(inst.poll); $('#iErroTxt').textContent = texto; instTela('erro'); }
 function instCompra(){
+  $('#iTeste').hidden = !(inst.status && inst.status.sandbox);
   $('#iCodigo').textContent = (inst.status && inst.status.codigo) || '';
   $('#iEntendi').checked = false; $('#iPagar').disabled = true;
   instTela('compra');
@@ -1288,7 +1290,7 @@ async function abrirInstalar(){
   else instErro('Esta IA não está rodando do pen drive, então não há o que instalar daqui.');
 }
 function instPagar(){
-  window.open(CD2Instalar.urlComprar(inst.status.codigo, location.port), '_blank', 'noopener');
+  window.open(CD2Instalar.urlComprar(inst.status.codigo, location.port, inst.status.worker), '_blank', 'noopener');
   instColar('pagamento');
 }
 function instVoltar(){

@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao"
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/ambiente"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/chave"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/codigo"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/copiar"
@@ -50,6 +51,9 @@ type Info struct {
 	Codigo    string `json:"codigo"`
 	TemChave  bool   `json:"temChave"`
 	Instalada bool   `json:"instalada"`
+	// Worker é para onde o modal manda a compra; Sandbox marca o build de teste.
+	Worker  string `json:"worker"`
+	Sandbox bool   `json:"sandbox,omitempty"`
 }
 
 // Progresso é a resposta de GET /instalacao/progresso.
@@ -122,6 +126,8 @@ func (b *Backend) Info() Info {
 		Codigo:    cod,
 		TemChave:  valida(b.cache),
 		Instalada: lancadorExiste(b.lancador()),
+		Worker:    ambiente.Worker,
+		Sandbox:   ambiente.Sandbox,
 	}
 }
 

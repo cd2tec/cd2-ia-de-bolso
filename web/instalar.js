@@ -6,8 +6,12 @@
 const WORKER = 'https://instalariadebolso.cd2.com.br';
 const ALFABETO = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
-function urlComprar(codigo, porta){
-  return WORKER + '/comprar?codigo=' + encodeURIComponent(codigo) + '&porta=' + encodeURIComponent(porta);
+// O cd2-ctl informa o Worker do build (o de teste, no build -tags sandbox). Só vale endereço
+// https da CD2; qualquer outro cai no Worker de produção.
+const WORKER_VALIDO = /^https:\/\/[a-z0-9-]+\.cd2\.com\.br$/;
+function urlComprar(codigo, porta, worker){
+  const base = (typeof worker === 'string' && WORKER_VALIDO.test(worker)) ? worker : WORKER;
+  return base + '/comprar?codigo=' + encodeURIComponent(codigo) + '&porta=' + encodeURIComponent(porta);
 }
 
 // Mesma regra do Normalizar em Go: tira espaços e hífens, maiúsculas, O->0, I e L->1,

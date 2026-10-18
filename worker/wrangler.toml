@@ -8,5 +8,14 @@ routes = [{ pattern = "instalariadebolso.cd2.com.br", custom_domain = true }]
 [vars]
 BASE_URL = "https://instalariadebolso.cd2.com.br"
 
+# Worker de teste: Stripe em sandbox e assinatura com a chave do vetor de teste.
+# Publicar: npx wrangler@4 deploy --env sandbox. Segredos: os mesmos três, com --env sandbox.
+[env.sandbox]
+name = "cd2-instalacao-sandbox"
+routes = [{ pattern = "instalariadebolso-teste.cd2.com.br", custom_domain = true }]
+
+[env.sandbox.vars]
+BASE_URL = "https://instalariadebolso-teste.cd2.com.br"
+
 # Secrets (não ficam aqui): STRIPE_SECRET_KEY, STRIPE_PRICE_ID, CHAVE_PRIVADA.
 # Cadastre com `wrangler secret put <NOME>`.
