@@ -162,11 +162,20 @@ func copiarArquivo(ctx context.Context, origem, alvo, destino string, feitos *in
 	return nil
 }
 
+// limparLixo apaga ._* e .DS_Store do destino. Pasta que não abre é pulada,
+// como no "find ... 2>/dev/null" do script: no Mac, o exFAT recém-formatado
+// ganha .Spotlight-V100 e .fseventsd, que dão "operation not permitted".
 func limparLixo(destino string) error {
 	var alvos []string
 	err := filepath.WalkDir(destino, func(c string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return err
+			if c == destino || sumiu(destino) {
+				return err
+			}
+			if d != nil && d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		if lixo(d.Name()) {
 			alvos = append(alvos, c)

@@ -75,6 +75,33 @@ func TestCopiarArvore(t *testing.T) {
 	}
 }
 
+// No Mac, o exFAT recém-formatado ganha pastas do sistema (.Spotlight-V100, .fseventsd)
+// que o instalador não consegue abrir: "operation not permitted". A limpeza do lixo
+// tem de pular essas pastas, como o "find ... 2>/dev/null" do script, em vez de
+// derrubar uma gravação que já deu certo (18/10/2026, "O pen drive ficou incompleto").
+func TestCopiarIgnoraPastaDoSistemaIlegivel(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("como root a pasta 000 continua legível")
+	}
+	st := montaStage(t)
+	dst := t.TempDir()
+	escrever(t, dst, "._velho", "x")
+	for _, pasta := range []string{".Spotlight-V100", "outra-trancada"} {
+		escrever(t, dst, pasta+"/dentro", "x")
+		trancada := filepath.Join(dst, pasta)
+		if err := os.Chmod(trancada, 0); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { os.Chmod(trancada, 0o755) })
+	}
+	if err := Copiar(context.Background(), st, dst, nil); err != nil {
+		t.Fatalf("Copiar falhou por causa de uma pasta ilegível do sistema: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dst, "._velho")); err == nil {
+		t.Fatal("._velho deveria ter sido apagado")
+	}
+}
+
 func TestCopiarDestinoSumiu(t *testing.T) {
 	st := montaStage(t)
 	dst := filepath.Join(t.TempDir(), "pen")
