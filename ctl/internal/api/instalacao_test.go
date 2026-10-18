@@ -167,3 +167,14 @@ func TestSemBackendDa404(t *testing.T) {
 		t.Errorf("/status: %d", w.Code)
 	}
 }
+
+func TestForaDoPenDriveDa403(t *testing.T) {
+	h, fi := newHI()
+	fi.chaveErr, fi.instErr = inst.ErrSoPendrive, inst.ErrSoPendrive
+	for _, c := range [][2]string{{"/instalacao/chave", `{"chave":"x"}`}, {"/instalacao", `{"areaDeTrabalho":false,"inicio":false}`}} {
+		w := do(h, "POST", c[0], c[1], nil)
+		if w.Code != 403 || erro(w) != "A instalação é feita pelo pen drive." {
+			t.Errorf("%s: %d %s", c[0], w.Code, w.Body)
+		}
+	}
+}

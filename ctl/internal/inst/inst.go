@@ -27,6 +27,10 @@ var (
 	ErrChaveNaoVale = errors.New("Esta chave não é deste computador.")
 	ErrNaoInstalada = errors.New("A IA ainda não foi instalada.")
 	ErrSemChave     = instalacao.ErrSemChave
+	// ErrSoPendrive: instalar e gravar chave só valem quando a IA roda do pen drive.
+	ErrSoPendrive = errors.New("A instalação é feita pelo pen drive.")
+	// ErrSemCodigo: a identidade deste computador não pôde ser lida; a culpa não é da chave.
+	ErrSemCodigo = errors.New("Não consegui ler o código deste computador. Tente de novo.")
 )
 
 const msgCopiaRuim = "Não consegui copiar direito. Tente de novo."
@@ -108,9 +112,19 @@ func (b *Backend) Info() Info {
 
 // GravarChave confere a chave contra o código deste computador e só então a grava.
 func (b *Backend) GravarChave(k string) error {
+	if detectar(b.raiz) != origem.Pendrive {
+		return ErrSoPendrive
+	}
 	norm, ok := chave.Normalizar(k)
+	if !ok {
+		return ErrChaveNaoVale
+	}
 	cod, err := lerCodigo()
-	if !ok || err != nil || !chave.Conferir(norm, cod) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cd2-ctl: nao consegui ler o codigo deste computador: %v\n", err)
+		return ErrSemCodigo
+	}
+	if !chave.Conferir(norm, cod) {
 		return ErrChaveNaoVale
 	}
 	if err := guarda.Gravar(b.cache, norm); err != nil {
@@ -127,9 +141,12 @@ func (b *Backend) Progresso() Progresso {
 	return b.prog
 }
 
-// Instalar começa a copiar em segundo plano. ErrSemChave se não há chave válida; ErrOcupada se
-// já há uma cópia rodando.
+// Instalar começa a copiar em segundo plano. ErrSoPendrive fora do pen drive; ErrSemChave se não
+// há chave válida; ErrOcupada se já há uma cópia rodando.
 func (b *Backend) Instalar(areaDeTrabalho, inicio bool) error {
+	if detectar(b.raiz) != origem.Pendrive {
+		return ErrSoPendrive
+	}
 	if !valida(b.cache) {
 		return ErrSemChave
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/copiar"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/guarda"
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/origem"
 )
 
 func esperaFase(t *testing.T, b *Backend, fase string) Progresso {
@@ -31,10 +32,12 @@ func novo(t *testing.T, f func(context.Context, instalacao.Opcoes, func(int64, i
 	if err := os.WriteFile(filepath.Join(raiz, "VERSION"), []byte("1.2.3\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	oi, ov := instalarFn, valida
-	t.Cleanup(func() { instalarFn, valida = oi, ov })
+	oi, ov, od, ol := instalarFn, valida, detectar, lerCodigo
+	t.Cleanup(func() { instalarFn, valida, detectar, lerCodigo = oi, ov, od, ol })
 	instalarFn = f
 	valida = func(string) bool { return true }
+	detectar = func(string) origem.Origem { return origem.Pendrive }
+	lerCodigo = func() (string, error) { return "ABCD-EFGH-JKLM", nil }
 	b := New(raiz, t.TempDir())
 	t.Cleanup(b.Shutdown)
 	return b
@@ -185,6 +188,42 @@ func TestAbrirChamaOLancadorComAssumir(t *testing.T) {
 func TestGravarChaveRecusaQuemNaoVale(t *testing.T) {
 	b := novo(t, nil)
 	if err := b.GravarChave("lixo"); !errors.Is(err, ErrChaveNaoVale) {
+		t.Fatalf("%v", err)
+	}
+	if guarda.Ler(b.cache) != "" {
+		t.Error("não devia ter gravado")
+	}
+}
+
+// A instalação só sai do pen drive: a cópia instalada recusa instalar e gravar chave.
+func TestForaDoPenDriveRecusaInstalarEGravarChave(t *testing.T) {
+	for _, org := range []origem.Origem{origem.Instalada, origem.Desconhecida} {
+		chamou := false
+		b := novo(t, func(context.Context, instalacao.Opcoes, func(int64, int64)) error { chamou = true; return nil })
+		detectar = func(string) origem.Origem { return org }
+		if err := b.Instalar(false, false); !errors.Is(err, ErrSoPendrive) {
+			t.Errorf("%s: Instalar = %v", org, err)
+		}
+		if err := b.GravarChave("qualquer"); !errors.Is(err, ErrSoPendrive) {
+			t.Errorf("%s: GravarChave = %v", org, err)
+		}
+		if chamou || b.Progresso().Fase != Parada || guarda.Ler(b.cache) != "" {
+			t.Errorf("%s: não devia ter feito nada", org)
+		}
+	}
+	if ErrSoPendrive.Error() != "A instalação é feita pelo pen drive." {
+		t.Errorf("texto: %q", ErrSoPendrive.Error())
+	}
+}
+
+func TestCodigoIlegivelNaoCulpaAChave(t *testing.T) {
+	b := novo(t, nil)
+	ol := lerCodigo
+	t.Cleanup(func() { lerCodigo = ol })
+	lerCodigo = func() (string, error) { return "", errors.New("sem identidade") }
+	// Chave bem formada (a do vetor de teste): o erro só pode vir do código.
+	err := b.GravarChave("CD2-YH4D1FNNZF24C755M18TR44MVFRF9H1X8EV4JY7GAWV4PS4NFRY24BKFME9PD6HQMANW5RXDRJPCJQ5ZG1001W7W5BNMH71H8JVVA10")
+	if err == nil || errors.Is(err, ErrChaveNaoVale) || err.Error() != "Não consegui ler o código deste computador. Tente de novo." {
 		t.Fatalf("%v", err)
 	}
 	if guarda.Ler(b.cache) != "" {

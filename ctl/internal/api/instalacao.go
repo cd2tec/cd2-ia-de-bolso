@@ -43,6 +43,10 @@ func (s *server) instalacao(w http.ResponseWriter, r *http.Request) {
 				fail(w, http.StatusBadRequest, err.Error())
 				return
 			}
+			if errors.Is(err, inst.ErrSoPendrive) {
+				fail(w, http.StatusForbidden, err.Error())
+				return
+			}
 			fail(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -84,7 +88,7 @@ func (s *server) instalar(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusAccepted, map[string]bool{"ok": true})
 	case errors.Is(err, inst.ErrOcupada):
 		fail(w, http.StatusConflict, err.Error())
-	case errors.Is(err, inst.ErrSemChave):
+	case errors.Is(err, inst.ErrSemChave), errors.Is(err, inst.ErrSoPendrive):
 		fail(w, http.StatusForbidden, err.Error())
 	default:
 		fail(w, http.StatusInternalServerError, err.Error())
