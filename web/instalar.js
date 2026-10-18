@@ -49,7 +49,7 @@ function entregarChave(opts){
     const ouvir = ev => { if(ev && ev.data && ev.data.tipo === 'recebi') fim('entregue'); };
     canal.addEventListener('message', ouvir);
     id = timers.setTimeout(() => fim('sem-aba'), esperarMs);
-    canal.postMessage({ tipo: 'chave', chave });
+    try{ canal.postMessage({ tipo: 'chave', chave }); }catch(e){ fim('sem-aba'); }
   });
 }
 
@@ -57,8 +57,10 @@ function ouvirChave(opts){
   const { canal, aoReceber } = opts;
   const ouvir = ev => {
     if(!ev || !ev.data || ev.data.tipo !== 'chave') return;
+    const chave = normalizar(ev.data.chave);
+    if(chave === null) return; // lixo na rede: não confirma nem avisa
     canal.postMessage({ tipo: 'recebi' });
-    aoReceber(ev.data.chave);
+    aoReceber(chave);
   };
   canal.addEventListener('message', ouvir);
   return { parar(){ canal.removeEventListener('message', ouvir); } };

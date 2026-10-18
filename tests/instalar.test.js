@@ -86,7 +86,7 @@ test('entregarChave limpa o timer ao receber', async () => {
     setTimeout: (f, ms) => { const id = Symbol(); ativos.add(id); return id; },
     clearTimeout: id => ativos.delete(id),
   };
-  assert.equal(await I.entregarChave({ canal: volta, chave: 'x', timers }), 'entregue');
+  assert.equal(await I.entregarChave({ canal: volta, chave: v.chave, timers }), 'entregue');
   assert.equal(ativos.size, 0);
 });
 
@@ -94,4 +94,46 @@ test('textoProgresso', () => {
   assert.equal(I.textoProgresso({ feitos: 1.4e9, total: 2.4e9 }), 'copiando ... 1,4 de 2,4 GB');
   assert.equal(I.textoProgresso({ feitos: 0, total: 0 }), 'copiando ...');
   assert.equal(I.textoProgresso({}), 'copiando ...');
+});
+
+test('ouvirChave ignora mensagem sem chave valida', () => {
+  const novo = criarBarramento();
+  const aba = novo(), outro = novo();
+  let chamadas = 0, acks = 0;
+  I.ouvirChave({ canal: aba, aoReceber(){ chamadas++; } });
+  outro.addEventListener('message', ev => { if(ev.data.tipo === 'recebi') acks++; });
+  outro.postMessage({ tipo: 'chave' });
+  outro.postMessage({ tipo: 'chave', chave: 42 });
+  outro.postMessage({ tipo: 'chave', chave: 'lixo' });
+  assert.equal(chamadas, 0);
+  assert.equal(acks, 0);
+});
+
+test('ouvirChave entrega a chave normalizada', () => {
+  const novo = criarBarramento();
+  const aba = novo(), outro = novo();
+  let recebida = null;
+  I.ouvirChave({ canal: aba, aoReceber: c => { recebida = c; } });
+  outro.postMessage({ tipo: 'chave', chave: v.chave.toLowerCase() });
+  assert.equal(recebida, v.chave);
+});
+
+test('aoReceber que lanca erro nao desfaz o ack', () => {
+  const novo = criarBarramento();
+  const aba = novo(), outro = novo();
+  let acks = 0;
+  I.ouvirChave({ canal: aba, aoReceber(){ throw new Error('falhou'); } });
+  outro.addEventListener('message', ev => { if(ev.data.tipo === 'recebi') acks++; });
+  assert.throws(() => outro.postMessage({ tipo: 'chave', chave: v.chave }), /falhou/);
+  assert.equal(acks, 1);
+});
+
+test('entregarChave resolve sem-aba se postMessage lanca erro', async () => {
+  const ativos = new Set();
+  const timers = { setTimeout: () => { const i = Symbol(); ativos.add(i); return i; }, clearTimeout: i => ativos.delete(i) };
+  let removidos = 0;
+  const canal = { postMessage(){ throw new Error('canal fechado'); }, addEventListener(){}, removeEventListener(){ removidos++; } };
+  assert.equal(await I.entregarChave({ canal, chave: 'x', timers }), 'sem-aba');
+  assert.equal(ativos.size, 0);
+  assert.equal(removidos, 1);
 });
