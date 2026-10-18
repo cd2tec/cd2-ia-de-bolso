@@ -156,7 +156,8 @@ const DIALETO = {
   mariadb:   { nome:'MariaDB/MySQL (crases em nomes reservados)', mes:c => "DATE_FORMAT(" + c + ", '%Y-%m')", top:(s, o) => s + ' ' + o + ' LIMIT 10' },
   sqlserver: { nome:'SQL Server (TOP em vez de LIMIT; sem WITH; use subconsulta)', mes:c => "FORMAT(" + c + ", 'yyyy-MM')", top:(s, o) => s.replace(/^SELECT /, 'SELECT TOP (10) ') + ' ' + o },
   oracle:    { nome:'Oracle (sem LIMIT; nomes sem aspas)', mes:c => "TO_CHAR(" + c + ", 'YYYY-MM')", top:(s, o) => s + ' ' + o + ' FETCH FIRST 10 ROWS ONLY' },
-  firebird:  { nome:'Firebird (ROWS em vez de LIMIT; sem WITH; nomes como o banco devolve)', mes:c => "EXTRACT(YEAR FROM " + c + ") || '-' || LPAD(EXTRACT(MONTH FROM " + c + "), 2, '0')", top:(s, o) => s + ' ' + o + ' ROWS 10' }
+  firebird:  { nome:'Firebird (ROWS em vez de LIMIT; sem WITH; nomes como o banco devolve)', mes:c => "EXTRACT(YEAR FROM " + c + ") || '-' || LPAD(EXTRACT(MONTH FROM " + c + "), 2, '0')", top:(s, o) => s + ' ' + o + ' ROWS 10' },
+  dbf:       { nome:'DBF (consultado como SQLite; LIMIT; data em texto AAAA-MM-DD)', mes:c => "strftime('%Y-%m', " + c + ")", top:(s, o) => s + ' ' + o + ' LIMIT 10' }
 };
 function exemplos(motor){
   const d = DIALETO[motor] || DIALETO.postgres, m = d.mes('data_venda');
@@ -170,7 +171,7 @@ function exemplos(motor){
 // PostgreSQL public, SQL Server dbo, Oracle o próprio usuário; MariaDB nunca (schema é a base).
 function schemaPrefix(motor, schema, usuario){
   const s = String(schema == null ? '' : schema).trim();
-  if(!s || motor === 'mariadb' || motor === 'firebird') return '';
+  if(!s || motor === 'mariadb' || motor === 'firebird' || motor === 'dbf') return '';
   const padrao = { postgres:'public', sqlserver:'dbo', oracle:String(usuario == null ? '' : usuario).trim() }[motor] || 'public';
   return s.toLowerCase() === padrao.toLowerCase() ? '' : s + '.';
 }

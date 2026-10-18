@@ -121,6 +121,7 @@ test('defaultsFor: porta e schema padrão por motor (mesmas regras do cd2-ctl)',
   assert.deepEqual(T.defaultsFor('mariadb', 'u', 'loja'), { porta:3306, schema:'loja' });
   assert.deepEqual(T.defaultsFor('sqlserver', 'u', 'b'), { porta:1433, schema:'dbo' });
   assert.deepEqual(T.defaultsFor('firebird', 'LEITURA_RO', 'C:\\dados\\erp.fdb'), { porta:3050, schema:'' });
+  assert.deepEqual(T.defaultsFor('dbf', '', 'C:\\dados\\loja'), { porta:0, schema:'' });
   assert.deepEqual(T.defaultsFor('oracle', '', ''), { porta:1521, schema:'' });
   assert.deepEqual(T.defaultsFor('xpto', 'u', 'b'), { porta:'', schema:'' });
 });
@@ -182,6 +183,8 @@ test('placeholdersFor: exemplos genéricos por motor, sem credencial', () => {
   assert.equal(T.placeholdersFor('sqlserver', '', '').schema, 'ex.: dbo');
   assert.equal(T.placeholdersFor('firebird', '', '').base, 'ex.: C:\\dados\\erp.fdb');
   assert.equal(T.placeholdersFor('firebird', '', '').schema, 'ex.: nao usado');
+  assert.equal(T.placeholdersFor('dbf', '', '').base, 'ex.: C:\\dados\\loja');
+  assert.equal(T.placeholdersFor('dbf', '', '').schema, 'ex.: nao usado');
   for(const m of Object.keys(T.ENGINES)){
     const p = T.placeholdersFor(m, '', '');
     for(const k of ['host', 'base', 'usuario', 'schema']) assert.match(p[k], /^ex\.: /, m + '.' + k);
@@ -202,7 +205,7 @@ test('portFor: porta padrão do motor, sem sobrescrever porta digitada', () => {
 // views de fora em banco com muitas tabelas vazias, e são elas que alguém montou para relatório.
 test('db_catalog: nos motores, views vêm antes da ordem por linhas', () => {
   const fs = require('node:fs'), path = require('node:path');
-  for(const motor of ['postgres', 'mariadb', 'sqlserver', 'oracle', 'firebird']){
+  for(const motor of ['postgres', 'mariadb', 'sqlserver', 'oracle', 'firebird', 'dbf']){
     const y = fs.readFileSync(path.join(__dirname, '..', 'core', 'toolbox', motor + '.yaml'), 'utf8');
     const bloco = y.slice(y.indexOf('name: db_catalog'), y.indexOf('---', y.indexOf('name: db_catalog')));
     const ordens = [...bloco.matchAll(/ORDER BY ([^\n]+)/g)].map(m => m[1]);

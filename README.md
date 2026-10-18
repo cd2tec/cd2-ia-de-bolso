@@ -111,7 +111,7 @@ Windows e Mac modernos **não executam nada automaticamente** ao plugar o pen dr
 
 ## 3. Conectar a um banco de dados
 
-O pen drive leva o [MCP Toolbox for Databases](https://github.com/googleapis/mcp-toolbox) (v1.14.0, um binário por sistema em `bin/toolbox/`) e o `cd2-ctl`, um controle pequeno feito aqui (código em `ctl/`, um binário por sistema em `bin/ctl/`). A conexão é feita pela tela: botão **Configurações**, modo **MCP Nativo para Banco de dados**, preencha motor, host, porta, base (service name no Oracle, caminho do arquivo `.fdb` no Firebird), usuário, senha e schema, e clique em **Salvar e conectar**. O toolbox reinicia sozinho com a conexão nova. Se ela falhar, a anterior continua valendo e a tela mostra o motivo e o fim do log. **Desconectar do banco** apaga a conexão deste computador.
+O pen drive leva o [MCP Toolbox for Databases](https://github.com/googleapis/mcp-toolbox) (v1.14.0, um binário por sistema em `bin/toolbox/`) e o `cd2-ctl`, um controle pequeno feito aqui (código em `ctl/`, um binário por sistema em `bin/ctl/`). A conexão é feita pela tela: botão **Configurações**, modo **MCP Nativo para Banco de dados**, preencha motor, host, porta, base (service name no Oracle, caminho do arquivo `.fdb` no Firebird, pasta dos arquivos `.dbf` no DBF), usuário, senha e schema, e clique em **Salvar e conectar**. O toolbox reinicia sozinho com a conexão nova. Se ela falhar, a anterior continua valendo e a tela mostra o motivo e o fim do log. **Desconectar do banco** apaga a conexão deste computador.
 
 | Motor | Porta padrão | Schema padrão | Conta de leitura recomendada |
 |---|---|---|---|
@@ -120,6 +120,7 @@ O pen drive leva o [MCP Toolbox for Databases](https://github.com/googleapis/mcp
 | MariaDB / MySQL | 3306 | nome da base | `GRANT SELECT ON base.* TO ...` |
 | SQL Server | 1433 | `dbo` | membro só de `db_datareader` |
 | Firebird | 3050 | não usa | conta com só `SELECT` nas tabelas; no campo da base vai o caminho do arquivo `.fdb` |
+| DBF | não usa | não usa | não tem servidor: no campo da base vai a pasta com os arquivos `.dbf`; a leitura copia as tabelas e não altera o arquivo |
 
 A IA ganha sete ferramentas somente leitura: `db_connection_status`, `db_catalog` (o mapa do banco para os relatórios), `db_list_tables`, `db_describe_table`, `db_search_columns`, `db_sample_table` (até 20 linhas) e `db_read_only_query` (SELECT avulso, até 200 linhas). O botão **Configurações** mostra a conexão ativa e exporta em PDF o que a IA de Bolso entende do banco.
 
