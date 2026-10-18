@@ -137,3 +137,10 @@ test('entregarChave resolve sem-aba se postMessage lanca erro', async () => {
   assert.equal(ativos.size, 0);
   assert.equal(removidos, 1);
 });
+
+test('semParametros tira instalar e chave e mantém o resto', () => {
+  assert.equal(I.semParametros('?v=0.14.0&instalar=1&chave=CD2-ABC'), '?v=0.14.0');
+  assert.equal(I.semParametros('?instalar=1'), '');
+  assert.equal(I.semParametros('chave=X&v=1&outro=a%20b'), '?v=1&outro=a+b');
+  assert.equal(I.semParametros(''), '');
+});

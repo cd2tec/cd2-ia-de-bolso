@@ -34,6 +34,14 @@ function lerParametros(search){
   return { abrir: p.get('instalar') === '1', chave: p.get('chave') || null };
 }
 
+// O endereço sem instalar e chave, para o history.replaceState: o resto (como o ?v=) fica.
+function semParametros(search){
+  const p = new URLSearchParams(String(search || '').replace(/^\?/, ''));
+  p.delete('instalar'); p.delete('chave');
+  const s = p.toString();
+  return s ? '?' + s : '';
+}
+
 function entregarChave(opts){
   const { canal, chave } = opts;
   const esperarMs = opts.esperarMs == null ? 1500 : opts.esperarMs;
@@ -73,6 +81,6 @@ function textoProgresso(p){
   return 'copiando ... ' + gb(p.feitos || 0) + ' de ' + gb(p.total) + ' GB';
 }
 
-const api = { WORKER, urlComprar, normalizar, telaInicial, lerParametros, entregarChave, ouvirChave, textoProgresso };
+const api = { WORKER, urlComprar, normalizar, telaInicial, lerParametros, semParametros, entregarChave, ouvirChave, textoProgresso };
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else root.CD2Instalar = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -229,6 +229,43 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
 .lnk-btn{all:unset;cursor:pointer;color:var(--ink-brand);font-weight:600;text-decoration:underline;text-underline-offset:2px}
 .lnk-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
+/* ---------- instalação no computador (só quando a IA roda do pen drive) ---------- */
+.topbar [hidden],.inst [hidden]{display:none}
+button.contorno{border-color:var(--brand);color:var(--ink-brand)}
+button.contorno:hover{background:var(--surface-100)}
+.inst .eyebrow--regua{width:auto;padding-bottom:var(--space-2);border-bottom:0;color:var(--ink-brand)}
+.inst__regua{display:block;width:120px;height:3px;background:var(--brand)}
+.inst h2{margin:var(--space-4) 0 var(--space-2)}
+.inst h2:focus{outline:none}
+.inst p{margin:0 0 var(--space-3);font:400 14px/22px var(--font-sans);color:var(--ink)}
+.inst .tag{margin-top:var(--space-4)}
+.inst__preco{display:flex;align-items:baseline;flex-wrap:wrap;gap:var(--space-2);margin:var(--space-1) 0 var(--space-4)}
+.inst__preco b{font:800 28px/32px var(--font-sans)}
+.inst__preco span{font:500 13px/20px var(--font-sans);color:var(--ink-muted)}
+.inst__sub{margin:var(--space-4) 0 var(--space-2);font:800 13px/20px var(--font-sans)}
+.inst__lista{list-style:none;margin:0;padding:0;font:400 14px/22px var(--font-sans)}
+.inst__lista li{position:relative;padding-left:22px;margin-bottom:var(--space-2)}
+.inst__lista li::before{content:"";position:absolute;left:4px;top:7px;width:8px;height:8px;border-radius:2px;background:var(--brand)}
+.inst__lista--cuidado li::before{background:var(--accent);border:1px solid var(--on-accent)}
+.inst__codigo{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:var(--space-2);margin:var(--space-4) 0;padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);background:var(--surface-100)}
+.inst__codigo small{display:block;font:500 12px/16px var(--font-sans);color:var(--ink-muted)}
+.inst__codigo b{font:600 14px/20px var(--font-mono);letter-spacing:.5px}
+.inst__caixa{display:flex;gap:var(--space-2);align-items:flex-start;margin:var(--space-3) 0;font:500 14px/20px var(--font-sans);cursor:pointer}
+.inst__caixa--borda{padding:var(--space-3);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.inst__caixa small{display:block;margin-top:var(--space-1);font:400 13px/20px var(--font-sans);color:var(--ink-muted)}
+.inst input[type=checkbox]{accent-color:var(--brand);width:18px;height:18px;margin:1px 0 0;flex:none}
+.inst .row{margin-top:var(--space-6)}
+.inst .inst__rodape{margin:var(--space-4) 0 0;text-align:center;font:400 12px/18px var(--font-sans);color:var(--ink-muted)}
+.inst .inst__rodape .lnk-btn{font-size:13px}
+.inst__erro{margin-top:var(--space-2);font:500 13px/20px var(--font-sans);color:var(--ink)}
+.inst__erro:empty{display:none}
+.inst__trilho{height:8px;margin:var(--space-4) 0 var(--space-2);border-radius:var(--radius-pill);background:var(--surface-100);overflow:hidden}
+.inst__trilho i{display:block;height:100%;width:0;background:var(--brand);transition:width .15s}
+.inst .inst__mono{font:400 12px/18px var(--font-mono);color:var(--ink-muted)}
+.inst__chave{width:100%;margin:var(--space-2) 0 var(--space-2);padding:var(--space-2) var(--space-3);border:0;border-radius:var(--radius-sm);background:var(--surface-100);color:var(--ink);font:400 12px/18px var(--font-mono);word-break:break-all;resize:none}
+.inst__aviso{margin-top:var(--space-4);font:500 13px/20px var(--font-sans)}
+.inst__aviso .tag{margin:0 var(--space-2) 0 0}
+
 @media (max-width:1360px){ .product__txt span{display:none} }
 @media (max-width:640px){
   .tag--local{display:none}
@@ -294,8 +331,10 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
     <span class="tag tag--local" title="O modelo roda neste computador"><i></i><span>100% local</span></span>
     <span class="tag tag--backlog" id="pModel"><i></i><span>modelo de IA…</span></span>
     <span class="tag tag--backlog" id="pMcp"><i></i><span>ferramentas…</span></span>
+    <span class="tag tag--atencao" id="pPendrive" hidden><i></i><span>rodando do pen drive</span></span>
   </div>
   <div class="actions">
+    <button class="sm contorno" id="bInstalar" hidden>Instalar no computador</button>
     <button class="sm primary" id="bNew" title="Começar uma nova conversa">Nova conversa</button>
     <button class="sm" id="bCfg" title="Configurar o banco de dados e as ferramentas">Configurações</button>
   </div>
@@ -394,6 +433,115 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
   </div>
 </dialog>
 
+<dialog id="instalar" class="inst" aria-labelledby="iTitCompra">
+  <span class="eyebrow eyebrow--regua">Serviço de instalação digital</span>
+  <span class="inst__regua" aria-hidden="true"></span>
+
+  <section data-tela="compra" hidden>
+    <h2 id="iTitCompra" tabindex="-1">Instale a IA de Bolso neste computador</h2>
+    <p>Gostou do teste? Com a instalação, a IA passa a morar neste computador e abre sem o pen drive, do mesmo jeitinho que você já conhece.</p>
+    <div class="inst__preco"><b>R$ 25</b><span>pagamento único, por instalação</span></div>
+    <div class="inst__sub">O que está incluído</div>
+    <ul class="inst__lista">
+      <li>A IA copiada do pen drive para este computador, sem baixar nada de novo.</li>
+      <li>Ícone nos programas e, se você quiser, na área de trabalho.</li>
+      <li>Se você quiser, ela acorda junto com o computador (ocupa de 4 a 5 GB de memória desde que ele liga). Dá para desligar depois.</li>
+      <li>Desinstalar quando quiser.</li>
+    </ul>
+    <div class="inst__sub">Como funciona</div>
+    <ul class="inst__lista inst__lista--cuidado">
+      <li>É um serviço avulso, não uma assinatura nem uma licença.</li>
+      <li>Vale só para este computador. Copiada para outro, ela não abre.</li>
+      <li>Você recebe uma chave por e-mail. Com ela, reinstala neste mesmo computador quando precisar.</li>
+      <li>Trocou de computador ou perdeu a chave? É uma nova instalação, com um novo pagamento.</li>
+    </ul>
+    <div class="inst__codigo"><div><small>Código deste computador</small><b id="iCodigo"></b></div><small>vai junto com o pagamento</small></div>
+    <label class="inst__caixa"><input type="checkbox" id="iEntendi"> <span>Entendi que a instalação vale só para este computador.</span></label>
+    <div class="row">
+      <button id="iAgoraNao" data-fechar>Agora não</button>
+      <button class="primary" id="iPagar" disabled>Ir para o pagamento</button>
+    </div>
+    <p class="inst__rodape">Pagamento seguro pelo Stripe. Precisa de internet só agora.<br><button type="button" class="lnk-btn" id="iJaTenho">Já tenho a chave</button></p>
+  </section>
+
+  <section data-tela="colar" hidden>
+    <h2 id="iTitColar" tabindex="-1">Aguardando o pagamento...</h2>
+    <p id="iColarTxt"></p>
+    <label for="iChaveCampo">A sua chave</label>
+    <input type="text" id="iChaveCampo" spellcheck="false" autocomplete="off" placeholder="CD2-...">
+    <div class="inst__erro" id="iChaveErro" role="alert"></div>
+    <div class="row">
+      <button id="iColarVoltar">Voltar</button>
+      <button class="primary" id="iColarOk">Continuar</button>
+    </div>
+  </section>
+
+  <section data-tela="reinstalar" hidden>
+    <h2 id="iTitReinstalar" tabindex="-1">Este computador já tem a chave</h2>
+    <p>A chave deste computador já está guardada aqui. Reinstalar é livre, sem novo pagamento.</p>
+    <div class="row">
+      <button data-fechar>Agora não</button>
+      <button class="primary" id="iReinstalar">Reinstalar com a minha chave</button>
+    </div>
+  </section>
+
+  <section data-tela="perguntas" hidden>
+    <span class="tag tag--concluido" id="iPago" hidden><i></i><span>Pagamento confirmado</span></span>
+    <h2 id="iTitPerguntas" tabindex="-1">Tudo certo! Só duas perguntinhas</h2>
+    <label class="inst__caixa inst__caixa--borda"><input type="checkbox" id="iArea" checked> <span>Criar um atalho na área de trabalho<small>O ícone nos programas é criado sempre.</small></span></label>
+    <label class="inst__caixa inst__caixa--borda"><input type="checkbox" id="iInicio" checked> <span>Acordar quando o computador ligar<small>A IA fica pronta mais rápido, mas ocupa de 4 a 5 GB de memória desde que o computador liga. Dá para desligar depois, no ícone perto do relógio.</small></span></label>
+    <div class="row">
+      <button class="primary" id="iInstalarOk">Instalar</button>
+    </div>
+  </section>
+
+  <section data-tela="instalando" hidden>
+    <h2 id="iTitInstalando" tabindex="-1">Mudando para o seu computador...</h2>
+    <p>Copiando a IA do pen drive. Não tire o pen drive agora.</p>
+    <div class="inst__trilho" id="iTrilho" role="progressbar" aria-labelledby="iTitInstalando" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="iBarra"></i></div>
+    <div class="inst__mono" id="iProgresso">copiando ...</div>
+  </section>
+
+  <section data-tela="pronto" hidden>
+    <span class="tag tag--concluido"><i></i><span>Instalada</span></span>
+    <h2 id="iTitPronto" tabindex="-1">Pronto! Agora eu moro aqui</h2>
+    <p id="iProntoTxt"></p>
+    <div id="iChaveBox">
+      <p><b>A sua chave</b> (também foi para o seu e-mail):</p>
+      <textarea class="inst__chave" id="iChaveMostra" rows="3" readonly aria-label="A sua chave"></textarea>
+      <p class="inst__mono">Guarde. Ela reinstala neste computador quando precisar.</p>
+    </div>
+    <p id="iChaveGuardada" hidden>A sua chave está guardada neste computador e no seu e-mail.</p>
+    <div class="inst__aviso" id="iAviso" hidden><span class="tag tag--atencao">Atenção</span><span id="iAvisoTxt"></span></div>
+    <div class="inst__erro" id="iAbrirErro" role="status"></div>
+    <div class="row">
+      <button id="iCopiar">Copiar a chave</button>
+      <button class="primary" id="iAbrir">Abrir a IA instalada</button>
+    </div>
+  </section>
+
+  <section data-tela="entrega" hidden>
+    <h2 id="iTitEntrega" tabindex="-1"></h2>
+    <p id="iEntregaTxt"></p>
+    <div id="iEntregaChave" hidden>
+      <textarea class="inst__chave" id="iEntregaMostra" rows="3" readonly aria-label="A sua chave"></textarea>
+    </div>
+    <div class="row">
+      <button id="iEntregaCopiar" hidden>Copiar a chave</button>
+      <button class="primary" data-fechar>Fechar</button>
+    </div>
+  </section>
+
+  <section data-tela="erro" hidden>
+    <h2 id="iTitErro" tabindex="-1">Não deu certo</h2>
+    <p id="iErroTxt"></p>
+    <div class="row">
+      <button data-fechar>Fechar</button>
+      <button class="primary" id="iDeNovo">Tentar de novo</button>
+    </div>
+  </section>
+</dialog>
+
 <div id="printArea" aria-hidden="true"></div>
 <script src="mcp.js?v=0.14.0"></script>
 <script src="oauth.js?v=0.14.0"></script>
@@ -407,6 +555,7 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
 <script src="demo.js?v=0.14.0"></script>
 <script src="momento.js?v=0.14.0"></script>
 <script src="sono.js?v=0.14.0"></script>
+<script src="instalar.js?v=0.14.0"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -1070,6 +1219,179 @@ function logoutArcheo(){
   connectTools();
 }
 
+/* ---------- instalação no computador (web/instalar.js e as rotas /instalacao* do cd2-ctl) ---------- */
+// Só aparece quando o cd2-ctl diz que a IA roda do pen drive. Sem cd2-ctl, nada aparece.
+const CANAL_INSTALACAO = 'cd2-instalacao';
+const SEM_CTL = 'O controle da IA não respondeu. Feche e abra a IA de Bolso pelo pen drive.';
+const inst = { status:null, tela:null, chave:null, pago:false, area:true, poll:null, falhas:0, ocupado:false };
+function instCanal(){ return typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(CANAL_INSTALACAO) : null; }
+async function instPedir(method, path, body){ try{ return await ctlRequest(method, path, body); }catch(e){ return null; } }
+const instMsg = (r, padrao) => (r && r.data && r.data.erro) || padrao || SEM_CTL;
+function instTela(nome){
+  const d = $('#instalar');
+  let alvo = null;
+  inst.tela = nome;
+  d.querySelectorAll('section[data-tela]').forEach(s => {
+    s.hidden = s.dataset.tela !== nome;
+    if(!s.hidden) alvo = s;
+  });
+  d.setAttribute('aria-labelledby', alvo.querySelector('h2').id);
+  if(!d.open){ if($('#welcome').open) $('#welcome').close(); d.showModal(); }
+  d.scrollTop = 0;
+  const foco = alvo.querySelector('input:not([disabled]):not([readonly]), button:not([disabled]):not([hidden])') || alvo.querySelector('h2');
+  foco.focus();
+}
+function instErro(texto){ clearTimeout(inst.poll); $('#iErroTxt').textContent = texto; instTela('erro'); }
+function instCompra(){
+  $('#iCodigo').textContent = (inst.status && inst.status.codigo) || '';
+  $('#iEntendi').checked = false; $('#iPagar').disabled = true;
+  instTela('compra');
+}
+// modo 'pagamento': voltou do botão de pagar e espera a chave; 'tenho': pagou antes e vai colar.
+function instColar(modo){
+  const pag = modo === 'pagamento';
+  $('#iTitColar').textContent = pag ? 'Aguardando o pagamento...' : 'Cole a sua chave';
+  $('#iColarTxt').textContent = pag
+    ? 'Pagou? A instalação continua aqui sozinha. Se não continuar, cole a chave que chegou no seu e-mail.'
+    : 'A chave chega no seu e-mail depois do pagamento.';
+  $('#iChaveErro').textContent = '';
+  instTela('colar');
+}
+function instColarErro(chave, texto){
+  if(inst.tela !== 'colar') instColar('tenho');
+  $('#iChaveCampo').value = chave;
+  $('#iChaveErro').textContent = texto;
+}
+// Colar, receber da outra aba ou chegar pelo ?chave= dá no mesmo: POST /instalacao/chave.
+async function instColarChave(chave){
+  if(inst.ocupado || inst.tela === 'instalando') return;
+  const n = CD2Instalar.normalizar(chave);
+  if(!n) return instColarErro(chave, 'Esta chave não está completa. Confira se copiou ela inteira.');
+  inst.ocupado = true; $('#iColarOk').disabled = true;
+  let r = null;
+  try{ r = await instPedir('POST', '/instalacao/chave', { chave:n }); }
+  finally{ inst.ocupado = false; $('#iColarOk').disabled = false; }
+  if(r && r.status === 200){ inst.chave = n; inst.pago = true; $('#iChaveCampo').value = ''; instPerguntas(); return; }
+  instColarErro(chave, instMsg(r));
+}
+function instPerguntas(){ $('#iPago').hidden = !inst.pago; instTela('perguntas'); }
+async function abrirInstalar(){
+  const r = await instPedir('GET', '/instalacao');
+  if(!r || r.status !== 200) return instErro(instMsg(r));
+  inst.status = r.data;
+  const p = await instPedir('GET', '/instalacao/progresso');
+  if(p && p.status === 200 && p.data.fase === 'copiando'){ instMostrarProgresso(p.data); instTela('instalando'); return instAcompanhar(); }
+  if(p && p.status === 200 && p.data.fase === 'pronta') return instPronto(p.data);
+  const t = CD2Instalar.telaInicial(r.data);
+  if(t === 'compra') instCompra();
+  else if(t === 'reinstalar'){ inst.pago = false; instTela('reinstalar'); }
+  else instErro('Esta IA não está rodando do pen drive, então não há o que instalar daqui.');
+}
+function instPagar(){
+  window.open(CD2Instalar.urlComprar(inst.status.codigo, location.port), '_blank', 'noopener');
+  instColar('pagamento');
+}
+function instVoltar(){
+  const t = inst.status && CD2Instalar.telaInicial(inst.status);
+  if(t === 'compra') instCompra(); else if(t === 'reinstalar') instTela('reinstalar'); else $('#instalar').close();
+}
+async function instInstalar(){
+  const b = $('#iInstalarOk');
+  if(b.disabled) return;
+  b.disabled = true;
+  inst.area = $('#iArea').checked;
+  const r = await instPedir('POST', '/instalacao', { areaDeTrabalho:inst.area, inicio:$('#iInicio').checked });
+  b.disabled = false;
+  // 409: já tem uma cópia em andamento, então é só acompanhar
+  if(r && (r.status === 202 || r.status === 409)){ instMostrarProgresso({ feitos:0, total:0 }); instTela('instalando'); return instAcompanhar(); }
+  instErro(instMsg(r));
+}
+function instMostrarProgresso(p){
+  const pct = p.total ? Math.min(100, Math.round((p.feitos || 0) * 100 / p.total)) : 0;
+  $('#iBarra').style.width = pct + '%';
+  $('#iTrilho').setAttribute('aria-valuenow', String(pct));
+  $('#iProgresso').textContent = CD2Instalar.textoProgresso(p);
+}
+// Pergunta o progresso a cada 500 ms até a cópia acabar (pronta ou erro).
+function instAcompanhar(){
+  clearTimeout(inst.poll); inst.falhas = 0;
+  const passo = async () => {
+    const r = await instPedir('GET', '/instalacao/progresso');
+    if(!r || r.status !== 200){
+      if(++inst.falhas >= 10) return instErro(SEM_CTL);
+    }else{
+      inst.falhas = 0;
+      const p = r.data;
+      if(p.fase === 'pronta') return instPronto(p);
+      if(p.fase === 'erro') return instErro(p.erro || 'A cópia parou no meio. Tente de novo.');
+      if(p.fase === 'parada') return instErro('A cópia não começou. Tente de novo.');
+      instMostrarProgresso(p);
+    }
+    inst.poll = setTimeout(passo, 500);
+  };
+  inst.poll = setTimeout(passo, 500);
+}
+function instPronto(p){
+  clearTimeout(inst.poll);
+  $('#iProntoTxt').textContent = 'A partir de agora, abra a IA de Bolso pelo ícone nos programas' + (inst.area ? ' ou na área de trabalho' : '') + '. Pode tirar o pen drive.';
+  const tem = !!inst.chave;
+  $('#iChaveBox').hidden = !tem; $('#iChaveGuardada').hidden = tem; $('#iCopiar').hidden = !tem;
+  $('#iChaveMostra').value = inst.chave || '';
+  $('#iAviso').hidden = !p.aviso; $('#iAvisoTxt').textContent = p.aviso || '';
+  $('#iAbrirErro').textContent = ''; $('#iAbrir').disabled = false;
+  instTela('pronto');
+}
+// Põe a IA do pen drive para dormir e abre a instalada (o cd2-ctl cuida da ordem).
+async function instAbrir(){
+  const b = $('#iAbrir'), s = $('#iAbrirErro');
+  b.disabled = true; s.textContent = 'Abrindo a IA instalada. Esta janela vai dormir.';
+  const r = await instPedir('POST', '/instalacao/abrir');
+  if(r && r.status === 202) return;
+  b.disabled = false; s.textContent = instMsg(r);
+}
+async function instCopiar(area, botao){
+  let ok = false;
+  try{ await navigator.clipboard.writeText(area.value); ok = true; }catch(e){}
+  if(!ok){ try{ area.focus(); area.select(); ok = document.execCommand('copy'); }catch(e){} }
+  if(!ok){ area.focus(); area.select(); }
+  const antes = botao.dataset.rotulo || (botao.dataset.rotulo = botao.textContent);
+  botao.textContent = ok ? 'Chave copiada' : 'Selecionada: é só copiar';
+  clearTimeout(botao._volta); botao._volta = setTimeout(() => { botao.textContent = antes; }, 2500);
+}
+// Aba sem ctlKey que recebeu ?chave= (a volta do pagamento): entrega à aba da IA, se ela estiver aberta.
+async function instEntregar(chave){
+  const n = CD2Instalar.normalizar(chave) || chave.trim();
+  const canal = instCanal();
+  let r = 'sem-aba';
+  if(canal){ try{ r = await CD2Instalar.entregarChave({ canal, chave:n }); }finally{ canal.close(); } }
+  const entregue = r === 'entregue';
+  $('#iTitEntrega').textContent = entregue ? 'Chave entregue' : 'Falta só colar a chave';
+  $('#iEntregaTxt').textContent = entregue ? 'Pode voltar para a outra janela da IA.'
+    : 'Abra a IA de Bolso pelo pen drive e cole esta chave em Instalar no computador > Já tenho a chave.';
+  $('#iEntregaChave').hidden = entregue; $('#iEntregaCopiar').hidden = entregue;
+  $('#iEntregaMostra').value = entregue ? '' : n;
+  instTela('entrega');
+}
+async function iniciarInstalacao(){
+  const par = CD2Instalar.lerParametros(location.search);
+  if(par.abrir || par.chave){ try{ history.replaceState(null, '', location.pathname + CD2Instalar.semParametros(location.search) + location.hash); }catch(e){} }
+  if(!st.ctlKey){
+    if(par.chave) instEntregar(par.chave);
+    else if(par.abrir) instErro('Para instalar, abra a IA de Bolso pelo pen drive.');
+    return;
+  }
+  const canal = instCanal();
+  if(canal) CD2Instalar.ouvirChave({ canal, aoReceber: c => { instColarChave(c); } });
+  const r = await instPedir('GET', '/instalacao');
+  if(r && r.status === 200){
+    inst.status = r.data;
+    const mostra = !!CD2Instalar.telaInicial(r.data);
+    $('#pPendrive').hidden = !mostra; $('#bInstalar').hidden = !mostra;
+  }
+  if(par.chave) instColarChave(par.chave);
+  else if(par.abrir) abrirInstalar();
+}
+
 /* ---------- inicialização ---------- */
 async function pingModel(){
   for(let i = 0; i < 40; i++){
@@ -1136,6 +1458,7 @@ async function boot(){
   $('#tagline').textContent = st.cfg.tagline || '';
   if(window.matchMedia && matchMedia('(max-width:640px)').matches) $('#input').placeholder = 'Pergunte alguma coisa…';
   renderHero(); await handleOAuthReturn(); connectTools(); pingModel().then(ok => { if(ok) vigiarSono(); });
+  iniciarInstalacao();
 }
 $('#bSend').onclick = () => send();
 $('#bStop').onclick = () => st.ctl && st.ctl.abort();
@@ -1154,6 +1477,22 @@ $('#dbBase').addEventListener('input', syncDbForm);
 $('#bDbOff').onclick = disconnectDb;
 $('#mascote').onclick = piada;
 $('#bPerfilPdf').onclick = e => { e.preventDefault(); printPerfil(); };
+$('#bInstalar').onclick = abrirInstalar;
+document.querySelectorAll('#instalar [data-fechar]').forEach(b => { b.onclick = () => $('#instalar').close(); });
+// Durante a cópia o modal não fecha: a pessoa precisa ver o "Não tire o pen drive agora".
+$('#instalar').addEventListener('cancel', e => { if(inst.tela === 'instalando') e.preventDefault(); });
+$('#iEntendi').onchange = e => { $('#iPagar').disabled = !e.target.checked; };
+$('#iPagar').onclick = instPagar;
+$('#iJaTenho').onclick = () => instColar('tenho');
+$('#iColarVoltar').onclick = instVoltar;
+$('#iColarOk').onclick = () => instColarChave($('#iChaveCampo').value);
+$('#iChaveCampo').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); instColarChave(e.target.value); } });
+$('#iReinstalar').onclick = () => { inst.pago = false; instPerguntas(); };
+$('#iInstalarOk').onclick = instInstalar;
+$('#iCopiar').onclick = e => instCopiar($('#iChaveMostra'), e.currentTarget);
+$('#iEntregaCopiar').onclick = e => instCopiar($('#iEntregaMostra'), e.currentTarget);
+$('#iAbrir').onclick = instAbrir;
+$('#iDeNovo').onclick = abrirInstalar;
 $('#input').addEventListener('keydown', e => { if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); send(); } });
 $('#input').addEventListener('input', e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'; });
 boot();
