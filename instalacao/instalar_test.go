@@ -15,13 +15,14 @@ import (
 
 // sisFalso anota o que o orquestrador pediu ao sistema.
 type sisFalso struct {
-	chamadas []string
-	inicio   bool
+	chamadas   []string
+	inicio     bool
+	erroAtalho error
 }
 
 func (s *sisFalso) Atalhos(l string, area bool) error {
 	s.chamadas = append(s.chamadas, "Atalhos "+l+" "+sim(area))
-	return nil
+	return s.erroAtalho
 }
 
 func (s *sisFalso) LigarInicio(l string, ligar bool) error {
@@ -61,7 +62,7 @@ func trocar(t *testing.T, chaveBoa bool) (*sisFalso, string, *[]string) {
 	var copiados []string
 	velhos := []any{sistemaDo, pastaDestino, valida, planejar, copiarPara, goos}
 	sistemaDo = func(string) sistema.Sistema { return sis }
-	pastaDestino = func() string { return destino }
+	pastaDestino = func() (string, error) { return destino, nil }
 	valida = func(string) bool { return chaveBoa }
 	goos = "darwin"
 	planejar = func(raiz, g, a string) ([]copiar.Item, int64, error) {
@@ -73,7 +74,7 @@ func trocar(t *testing.T, chaveBoa bool) (*sisFalso, string, *[]string) {
 	}
 	t.Cleanup(func() {
 		sistemaDo = velhos[0].(func(string) sistema.Sistema)
-		pastaDestino = velhos[1].(func() string)
+		pastaDestino = velhos[1].(func() (string, error))
 		valida = velhos[2].(func(string) bool)
 		planejar = velhos[3].(func(string, string, string) ([]copiar.Item, int64, error))
 		copiarPara = velhos[4].(func(context.Context, []copiar.Item, string, func(int64, int64)) error)
@@ -119,7 +120,7 @@ func TestInstalarNaOrdem(t *testing.T) {
 		t.Errorf("copiou para %v, quero %s", *copiados, destino)
 	}
 	lanc := sistema.Lancador(destino, "darwin")
-	quer := []string{"Atalhos " + lanc + " sim", "LigarInicio " + lanc + " não", "Registrar " + lanc + " 1.4.0"}
+	quer := []string{"Registrar " + lanc + " 1.4.0", "Atalhos " + lanc + " sim", "LigarInicio " + lanc + " não"}
 	if !reflect.DeepEqual(sis.chamadas, quer) {
 		t.Errorf("chamadas = %q\nquero      %q", sis.chamadas, quer)
 	}
@@ -134,6 +135,57 @@ func TestInstalarErroNaCopiaParaAntesDosAtalhos(t *testing.T) {
 	}
 	if len(sis.chamadas) != 0 {
 		t.Errorf("mexeu no sistema depois de a cópia falhar: %v", sis.chamadas)
+	}
+}
+
+func TestInstalarAtalhoFalhoViraAviso(t *testing.T) {
+	sis, destino, _ := trocar(t, true)
+	sis.erroAtalho = errors.New("sem permissão")
+	err := Instalar(context.Background(), Opcoes{Raiz: t.TempDir(), Cache: t.TempDir(), Versao: "1.0.0", Inicio: true}, nil)
+	if !errors.Is(err, ErrAvisoAtalhos) {
+		t.Fatalf("err = %v, quero ErrAvisoAtalhos", err)
+	}
+	if !contem(sis.chamadas, "Registrar "+sistema.Lancador(destino, "darwin")+" 1.0.0") {
+		t.Errorf("não registrou: %v", sis.chamadas)
+	}
+	if !sis.inicio {
+		t.Error("parou antes de ligar o início")
+	}
+	if _, err := os.Stat(destino); err != nil {
+		t.Errorf("arquivos não ficaram: %v", err)
+	}
+}
+
+func TestInstalarSemPastaPessoalRecusa(t *testing.T) {
+	_, _, copiados := trocar(t, true)
+	pastaDestino = func() (string, error) { return "", sistema.ErrSemPastaPessoal }
+	err := Instalar(context.Background(), Opcoes{Raiz: t.TempDir(), Cache: t.TempDir()}, nil)
+	if !errors.Is(err, sistema.ErrSemPastaPessoal) || len(*copiados) != 0 {
+		t.Fatalf("err = %v, copiados = %v", err, *copiados)
+	}
+}
+
+func TestDestinoDoSistemaSemHome(t *testing.T) {
+	if _, err := destinoDoSistema("darwin", func(string) string { return "" }, ""); err == nil {
+		t.Error("sem home no Mac devia dar erro")
+	}
+	if _, err := destinoDoSistema("windows", func(string) string { return "" }, ""); err == nil {
+		t.Error("sem home nem LOCALAPPDATA no Windows devia dar erro")
+	}
+	d, err := destinoDoSistema("darwin", nil, "/Users/ana")
+	if err != nil || d != "/Users/ana/Applications/IA de Bolso" {
+		t.Errorf("d = %q, err = %v", d, err)
+	}
+}
+
+func TestDesinstalarRecusaPastaEstranha(t *testing.T) {
+	sis, _, _ := trocar(t, true)
+	pastaDestino = func() (string, error) { return t.TempDir(), nil }
+	if _, err := Desinstalar(t.TempDir(), 10); err == nil {
+		t.Error("devia recusar pasta que não é a da instalação")
+	}
+	if len(sis.chamadas) != 0 {
+		t.Errorf("mexeu no sistema: %v", sis.chamadas)
 	}
 }
 

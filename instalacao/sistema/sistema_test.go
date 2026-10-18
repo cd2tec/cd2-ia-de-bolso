@@ -34,6 +34,10 @@ func TestDestinos(t *testing.T) {
 			t.Errorf("Lancador(%s) = %q, quero %q", c.goos, l, c.lancador)
 		}
 	}
+	semEnv := func(string) string { return "" }
+	if d := Destino("windows", semEnv, `C:\Users\ana`); d != `C:\Users\ana\AppData\Local\Programs\CD2 IA de Bolso` {
+		t.Errorf("Destino sem LOCALAPPDATA = %q", d)
+	}
 }
 
 // regFalso guarda os valores gravados no registro, por chave.
@@ -82,8 +86,8 @@ func trocar(t *testing.T, home string, env func(string) string) (*regFalso, *[]C
 	var rodados []Comando
 	velhoReg, velhoRodar, velhoHome, velhoEnv := registro, rodar, pastaPessoal, ambiente
 	registro = reg
-	rodar = func(exe string, args ...string) error {
-		rodados = append(rodados, Comando{Exe: exe, Args: args})
+	rodar = func(c Comando) error {
+		rodados = append(rodados, c)
 		return nil
 	}
 	pastaPessoal = func() string { return home }
@@ -168,7 +172,8 @@ func TestRegistroWindowsParaDesinstalar(t *testing.T) {
 func TestAtalhosWindowsPorPowerShell(t *testing.T) {
 	_, rodados := trocar(t, `C:\Users\ana`, envWin)
 	s := Do("windows")
-	if err := s.Atalhos(`C:\Users\o'neil\AppData\Local\Programs\CD2 IA de Bolso\IA de Bolso.exe`, true); err != nil {
+	lanc := `C:\Users\o'neil’s\AppData\Local\Programs\CD2 IA de Bolso\IA de Bolso.exe`
+	if err := s.Atalhos(lanc, true); err != nil {
 		t.Fatal(err)
 	}
 	if len(*rodados) != 1 {
@@ -186,11 +191,23 @@ func TestAtalhosWindowsPorPowerShell(t *testing.T) {
 			t.Errorf("faltou %s em %q", a, c.Args)
 		}
 	}
+	for _, e := range []string{
+		`CD2_MENU=C:\Users\ana\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\CD2 IA de Bolso.lnk`,
+		"CD2_LANCADOR=" + lanc,
+		`CD2_PASTA=C:\Users\o'neil’s\AppData\Local\Programs\CD2 IA de Bolso`,
+	} {
+		if !contem(c.Env, e) {
+			t.Errorf("faltou %q no ambiente %q", e, c.Env)
+		}
+	}
 	script := c.Args[len(c.Args)-1]
+	if strings.Contains(script, `C:\`) || strings.Contains(script, "neil") {
+		t.Errorf("caminho dentro do script:\n%s", script)
+	}
 	for _, trecho := range []string{
-		`'C:\Users\ana\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\CD2 IA de Bolso.lnk'`,
-		`TargetPath = 'C:\Users\o''neil\AppData\Local\Programs\CD2 IA de Bolso\IA de Bolso.exe'`,
-		`WorkingDirectory = 'C:\Users\o''neil\AppData\Local\Programs\CD2 IA de Bolso'`,
+		"CreateShortcut($env:CD2_MENU)",
+		"TargetPath = $env:CD2_LANCADOR",
+		"WorkingDirectory = $env:CD2_PASTA",
 		`GetFolderPath('Desktop')) 'CD2 IA de Bolso.lnk'`,
 		"WScript.Shell",
 	} {
@@ -221,10 +238,14 @@ func TestRemoverWindowsTiraOsAtalhos(t *testing.T) {
 	if len(*rodados) != 1 {
 		t.Fatalf("rodou %d comandos, quero 1", len(*rodados))
 	}
-	script := (*rodados)[0].Args[len((*rodados)[0].Args)-1]
+	c := (*rodados)[0]
+	script := c.Args[len(c.Args)-1]
 	if strings.Count(script, "Remove-Item") != 2 || !strings.Contains(script, "SilentlyContinue; Remove-Item") ||
-		strings.Contains(script, ".Save()") {
+		strings.Contains(script, ".Save()") || !strings.Contains(script, "$env:CD2_MENU") {
 		t.Errorf("script de remoção:\n%s", script)
+	}
+	if !contem(c.Env, `CD2_MENU=C:\Users\ana\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\CD2 IA de Bolso.lnk`) {
+		t.Errorf("ambiente = %q", c.Env)
 	}
 }
 
@@ -232,19 +253,40 @@ func TestPlanoDeRemocaoWindowsAgendaDepoisDeSair(t *testing.T) {
 	trocar(t, `C:\Users\ana`, envWin)
 	destino := `C:\Users\ana\AppData\Local\Programs\CD2 IA de Bolso`
 	c := Do("windows").PlanoRemocao(destino, 4242)
-	if c.Exe != "cmd.exe" || len(c.Args) != 2 || c.Args[0] != "/c" {
+	if c.Exe != "powershell.exe" || !contem(c.Args, "-NonInteractive") || !contem(c.Args, "Hidden") {
 		t.Fatalf("comando = %#v", c)
 	}
-	s := c.Args[1]
-	espera := strings.Index(s, `tasklist /FI "PID eq 4242"`)
-	apaga := strings.Index(s, `rmdir /s /q "`+destino+`"`)
+	s := c.Args[len(c.Args)-1]
+	espera := strings.Index(s, "Wait-Process -Id 4242 -Timeout 30")
+	apaga := strings.Index(s, "Remove-Item -LiteralPath $env:CD2_DESTINO -Recurse -Force")
 	if espera < 0 || apaga < 0 || espera > apaga {
-		t.Fatalf("quero o laço do tasklist antes do rmdir:\n%s", s)
+		t.Fatalf("quero o Wait-Process antes do Remove-Item:\n%s", s)
 	}
-	for _, trecho := range []string{"(1,1,30)", "timeout /t 1 /nobreak >nul", `find " 4242 "`} {
-		if !strings.Contains(s, trecho) {
-			t.Errorf("faltou %q em:\n%s", trecho, s)
+	if strings.Contains(s, destino) {
+		t.Errorf("caminho dentro do script:\n%s", s)
+	}
+	if !contem(c.Env, "CD2_DESTINO="+destino) {
+		t.Errorf("ambiente = %q", c.Env)
+	}
+}
+
+func TestPlanoDeRemocaoRecusaPastaEstranha(t *testing.T) {
+	for _, c := range []struct {
+		goos, destino string
+	}{
+		{"windows", `C:\Users\ana`},
+		{"windows", `Programs\CD2 IA de Bolso`},
+		{"windows", ``},
+		{"darwin", "/Users/ana"},
+		{"darwin", "Applications/IA de Bolso"},
+		{"darwin", ""},
+	} {
+		if got := Do(c.goos).PlanoRemocao(c.destino, 10); got.Exe != "" {
+			t.Errorf("%s %q: devia recusar, veio %#v", c.goos, c.destino, got)
 		}
+	}
+	if got := Do("darwin").PlanoRemocao("/Users/ana/Applications/IA de Bolso", 0); got.Exe != "" {
+		t.Errorf("pid 0 devia recusar: %#v", got)
 	}
 }
 
@@ -293,72 +335,114 @@ func TestLaunchAgentMac(t *testing.T) {
 	}
 }
 
-func TestAtalhoMacPeloFinder(t *testing.T) {
+func TestAtalhoMacComLinkSimbolico(t *testing.T) {
 	home := t.TempDir()
 	_, rodados := trocar(t, home, func(string) string { return "" })
+	if err := os.MkdirAll(filepath.Join(home, "Desktop"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	s := Do("darwin")
 	lanc := `/Users/ana/Applications/IA de Bolso/IA de Bolso.app/Contents/MacOS/IA de Bolso`
-	if err := s.Atalhos(lanc, true); err != nil {
-		t.Fatal(err)
-	}
-	if len(*rodados) != 1 || (*rodados)[0].Exe != "/usr/bin/osascript" {
-		t.Fatalf("comandos = %#v", *rodados)
-	}
-	script := strings.Join((*rodados)[0].Args, " ")
-	for _, trecho := range []string{
-		`tell application "Finder" to make alias file to POSIX file "/Users/ana/Applications/IA de Bolso/IA de Bolso.app"`,
-		`at POSIX file "` + home + `/Desktop"`,
-		`{name:"IA de Bolso"}`,
-	} {
-		if !strings.Contains(script, trecho) {
-			t.Errorf("faltou %q em %s", trecho, script)
+	apelido := filepath.Join(home, "Desktop", "IA de Bolso")
+	for i := 0; i < 2; i++ { // a segunda vez troca o link que já existe
+		if err := s.Atalhos(lanc, true); err != nil {
+			t.Fatal(err)
 		}
 	}
+	if len(*rodados) != 0 {
+		t.Errorf("rodou comandos: %#v", *rodados)
+	}
+	alvo, err := os.Readlink(apelido)
+	if err != nil || alvo != "/Users/ana/Applications/IA de Bolso/IA de Bolso.app" {
+		t.Fatalf("link = %q, %v", alvo, err)
+	}
 
-	// Sem área de trabalho: não chama o Finder e tira o apelido que houver.
-	apelido := filepath.Join(home, "Desktop", "IA de Bolso")
-	if err := os.MkdirAll(filepath.Dir(apelido), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(apelido, []byte("alias"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	*rodados = nil
+	// Sem área de trabalho: tira o link.
 	if err := s.Atalhos(lanc, false); err != nil {
 		t.Fatal(err)
 	}
-	if len(*rodados) != 0 {
-		t.Errorf("chamou o Finder sem área de trabalho: %#v", *rodados)
-	}
-	if _, err := os.Stat(apelido); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("apelido ficou: %v", err)
+	if _, err := os.Lstat(apelido); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("link ficou: %v", err)
 	}
 
-	// Remover também tira o apelido, e não reclama se ele já não existe.
-	if err := os.WriteFile(apelido, []byte("alias"), 0o644); err != nil {
+	// Remover também tira o link, e não reclama se ele já não existe.
+	if err := s.Atalhos(lanc, true); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Remover(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(apelido); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("Remover deixou o apelido: %v", err)
+	if _, err := os.Lstat(apelido); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("Remover deixou o link: %v", err)
 	}
 	if err := s.Remover(); err != nil {
 		t.Fatal(err)
 	}
 }
 
+func TestAtalhoMacNaoApagaArquivoDaPessoa(t *testing.T) {
+	home := t.TempDir()
+	trocar(t, home, func(string) string { return "" })
+	arq := filepath.Join(home, "Desktop", "IA de Bolso")
+	if err := os.MkdirAll(filepath.Dir(arq), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(arq, []byte("meu"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := Do("darwin")
+	if err := s.Remover(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Atalhos("/x/IA de Bolso.app/Contents/MacOS/IA de Bolso", false); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Atalhos("/x/IA de Bolso.app/Contents/MacOS/IA de Bolso", true); err == nil {
+		t.Error("devia avisar que não criou o link por cima do arquivo")
+	}
+	if b, err := os.ReadFile(arq); err != nil || string(b) != "meu" {
+		t.Errorf("o arquivo da pessoa mudou: %q, %v", b, err)
+	}
+}
+
 func TestPlanoDeRemocaoMac(t *testing.T) {
-	c := Do("darwin").PlanoRemocao("/Users/d'ana/Applications/IA de Bolso", 77)
+	destino := "/Users/d'ana/Applications/IA de Bolso"
+	c := Do("darwin").PlanoRemocao(destino, 77)
 	if c.Exe != "/bin/sh" || len(c.Args) != 2 || c.Args[0] != "-c" {
 		t.Fatalf("comando = %#v", c)
 	}
 	s := c.Args[1]
 	espera := strings.Index(s, "kill -0 77")
-	apaga := strings.Index(s, `rm -rf '/Users/d'\''ana/Applications/IA de Bolso'`)
+	apaga := strings.Index(s, `rm -rf "$CD2_DESTINO"`)
 	if espera < 0 || apaga < 0 || espera > apaga {
 		t.Errorf("quero esperar o 77 antes do rm -rf:\n%s", s)
+	}
+	if strings.Contains(s, "ana") || !contem(c.Env, "CD2_DESTINO="+destino) {
+		t.Errorf("caminho fora do ambiente: %#v", c)
+	}
+}
+
+func TestPlanoDeRemocaoMacDeVerdade(t *testing.T) {
+	if _, err := os.Stat("/bin/sh"); err != nil {
+		t.Skip("sem /bin/sh")
+	}
+	destino := filepath.Join(t.TempDir(), "d'a \"$x", "IA de Bolso")
+	if err := os.MkdirAll(filepath.Join(destino, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	irma := filepath.Join(filepath.Dir(destino), "fica.txt")
+	if err := os.WriteFile(irma, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := Do("darwin").PlanoRemocao(destino, 999999)
+	if err := rodar(c); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(destino); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("pasta ficou: %v", err)
+	}
+	if _, err := os.Stat(irma); err != nil {
+		t.Errorf("apagou o que não devia: %v", err)
 	}
 }
 
@@ -389,7 +473,7 @@ func TestRodarCortaComandoTravado(t *testing.T) {
 	limiteComando = 100 * time.Millisecond
 	t.Cleanup(func() { limiteComando = velho })
 	inicio := time.Now()
-	if err := rodar("/bin/sleep", "5"); err == nil {
+	if err := rodar(Comando{Exe: "/bin/sleep", Args: []string{"5"}}); err == nil {
 		t.Fatal("comando travado não deu erro")
 	}
 	if time.Since(inicio) > 3*time.Second {

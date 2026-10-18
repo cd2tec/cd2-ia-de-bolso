@@ -16,13 +16,13 @@ import (
 // Comando é o que o lançador dispara antes de sair para apagar a pasta da
 // instalação. É só dado: quem roda é o lançador.
 //
-// No Windows, Args é {"/c", linha}, e a linha tem aspas que o cmd.exe precisa
-// receber como estão. O escape padrão do Go (\") estraga essas aspas, então o
-// lançador deve montar a linha de comando crua (SysProcAttr.CmdLine) como
-// `cmd.exe /c ` + linha.
+// Caminhos nunca vão dentro do texto do script: vão em Env ("NOME=valor"),
+// que quem roda acrescenta ao ambiente atual. Assim nenhum caractere do nome
+// da pasta precisa de escape.
 type Comando struct {
 	Exe  string
 	Args []string
+	Env  []string
 }
 
 // Sistema é o que muda entre Windows e Mac na instalação.
@@ -37,7 +37,8 @@ type Sistema interface {
 	Registrar(lancador, versao string) error
 	// Remover desfaz Atalhos e Registrar. Não reclama do que já não existe.
 	Remover() error
-	// PlanoRemocao devolve o comando que espera o lançador sair e apaga destino.
+	// PlanoRemocao devolve o comando que espera o lançador sair e apaga
+	// destino. Devolve Comando{} se destino não for a pasta da instalação.
 	PlanoRemocao(destino string, pidLancador int) Comando
 }
 
@@ -50,21 +51,26 @@ const (
 // ErrSistema indica um sistema em que a instalação não existe.
 var ErrSistema = errors.New("A instalação só funciona no Windows e no Mac.")
 
+// ErrSemPastaPessoal indica que não deu para saber a pasta do usuário.
+var ErrSemPastaPessoal = errors.New("Não consegui achar a pasta do usuário neste computador.")
+
 // Efeitos de sistema em variáveis, para os testes trocarem.
 var (
-	rodar = func(exe string, args ...string) error {
+	rodar = func(c Comando) error {
 		ctx, cancelar := context.WithTimeout(context.Background(), limiteComando)
 		defer cancelar()
-		c := exec.CommandContext(ctx, exe, args...)
-		esconderJanela(c)
-		err := c.Run()
+		cmd := exec.CommandContext(ctx, c.Exe, c.Args...)
+		if len(c.Env) > 0 {
+			cmd.Env = append(os.Environ(), c.Env...)
+		}
+		esconderJanela(cmd)
+		err := cmd.Run()
 		if ctx.Err() != nil {
 			return errors.New("o sistema demorou demais para responder")
 		}
 		return err
 	}
-	// limiteComando corta um comando que trava, como o osascript esperando a
-	// pessoa responder ao pedido de permissão para controlar o Finder.
+	// limiteComando corta um comando que trava em vez de prender a instalação.
 	limiteComando = time.Minute
 	pastaPessoal  = func() string {
 		h, _ := os.UserHomeDir()
@@ -75,15 +81,30 @@ var (
 
 // Destino devolve a pasta da instalação. O caminho usa o separador do goos
 // informado, não o da máquina em que o código roda, para os testes rodarem
-// em qualquer lugar.
+// em qualquer lugar. Sem LOCALAPPDATA, o Windows cai em <home>\AppData\Local.
 func Destino(goos string, env func(string) string, home string) string {
 	switch goos {
 	case "windows":
-		return env("LOCALAPPDATA") + `\Programs\` + pastaWindows
+		base := ""
+		if env != nil {
+			base = env("LOCALAPPDATA")
+		}
+		if base == "" {
+			base = home + `\AppData\Local`
+		}
+		return base + `\Programs\` + pastaWindows
 	case "darwin":
 		return home + "/Applications/" + pastaMac
 	}
 	return home + "/.local/share/" + pastaMac
+}
+
+// NomePasta devolve o nome da pasta da instalação no goos informado.
+func NomePasta(goos string) string {
+	if goos == "windows" {
+		return pastaWindows
+	}
+	return pastaMac
 }
 
 // Lancador devolve o executável do lançador dentro da pasta da instalação.
@@ -114,6 +135,11 @@ func pai(caminho, sep string) string {
 		return caminho[:i]
 	}
 	return caminho
+}
+
+// base devolve o último elemento do caminho, pelo separador informado.
+func base(caminho, sep string) string {
+	return caminho[strings.LastIndex(caminho, sep)+1:]
 }
 
 // removerSeHouver apaga um arquivo e trata "não existe" como sucesso.

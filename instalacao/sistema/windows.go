@@ -31,54 +31,58 @@ var registro regUsuario = registroDoSistema{}
 
 type windows struct{}
 
-// ps escreve s como texto literal do PowerShell, entre aspas simples.
-func ps(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
-}
-
 func atalhoMenu() string {
 	return ambiente("APPDATA") + `\Microsoft\Windows\Start Menu\Programs\` + nomeAtalho
 }
 
-// scriptAtalhos monta o PowerShell que cria os atalhos com o WScript.Shell.
+// powershell monta o Comando que roda o script. Os caminhos vão em env e o
+// script os lê por $env:NOME, sem nenhum caminho dentro do texto.
+func powershell(script string, env ...string) Comando {
+	return Comando{
+		Exe:  "powershell.exe",
+		Args: []string{"-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script},
+		Env:  env,
+	}
+}
+
 // A área de trabalho vem do GetFolderPath, que acerta quando o OneDrive a
 // mudou de lugar.
-func scriptAtalhos(lancador, menu string, areaDeTrabalho bool) string {
-	pasta := pai(lancador, `\`)
+const linhaMesa = "$mesa = Join-Path ([Environment]::GetFolderPath('Desktop')) '" + nomeAtalho + "'; "
+
+// comandoAtalhos monta o PowerShell que cria os atalhos com o WScript.Shell.
+func comandoAtalhos(lancador, menu string, areaDeTrabalho bool) Comando {
 	var b strings.Builder
 	b.WriteString("$ErrorActionPreference = 'Stop'; ")
 	b.WriteString("$w = New-Object -ComObject WScript.Shell; ")
-	b.WriteString("$mesa = Join-Path ([Environment]::GetFolderPath('Desktop')) " + ps(nomeAtalho) + "; ")
-	alvos := []string{ps(menu)}
+	b.WriteString(linhaMesa)
+	alvos := []string{"$env:CD2_MENU"}
 	if areaDeTrabalho {
 		alvos = append(alvos, "$mesa")
 	}
 	for _, alvo := range alvos {
 		b.WriteString("$a = $w.CreateShortcut(" + alvo + "); ")
-		b.WriteString("$a.TargetPath = " + ps(lancador) + "; ")
-		b.WriteString("$a.WorkingDirectory = " + ps(pasta) + "; ")
-		b.WriteString("$a.IconLocation = " + ps(lancador+",0") + "; ")
+		b.WriteString("$a.TargetPath = $env:CD2_LANCADOR; ")
+		b.WriteString("$a.WorkingDirectory = $env:CD2_PASTA; ")
+		b.WriteString("$a.IconLocation = $env:CD2_LANCADOR + ',0'; ")
 		b.WriteString("$a.Save(); ")
 	}
 	if !areaDeTrabalho {
 		b.WriteString("Remove-Item -LiteralPath $mesa -Force -ErrorAction SilentlyContinue; ")
 	}
-	return b.String()
+	return powershell(b.String(),
+		"CD2_MENU="+menu, "CD2_LANCADOR="+lancador, "CD2_PASTA="+pai(lancador, `\`))
 }
 
-// scriptRemoverAtalhos monta o PowerShell que tira os dois atalhos.
-func scriptRemoverAtalhos(menu string) string {
-	return "$mesa = Join-Path ([Environment]::GetFolderPath('Desktop')) " + ps(nomeAtalho) + "; " +
-		"Remove-Item -LiteralPath " + ps(menu) + " -Force -ErrorAction SilentlyContinue; " +
-		"Remove-Item -LiteralPath $mesa -Force -ErrorAction SilentlyContinue"
-}
-
-func powershell(script string) error {
-	return rodar("powershell.exe", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script)
+// comandoRemoverAtalhos monta o PowerShell que tira os dois atalhos.
+func comandoRemoverAtalhos(menu string) Comando {
+	return powershell(linhaMesa+
+		"Remove-Item -LiteralPath $env:CD2_MENU -Force -ErrorAction SilentlyContinue; "+
+		"Remove-Item -LiteralPath $mesa -Force -ErrorAction SilentlyContinue",
+		"CD2_MENU="+menu)
 }
 
 func (windows) Atalhos(lancador string, areaDeTrabalho bool) error {
-	if err := powershell(scriptAtalhos(lancador, atalhoMenu(), areaDeTrabalho)); err != nil {
+	if err := rodar(comandoAtalhos(lancador, atalhoMenu(), areaDeTrabalho)); err != nil {
 		return fmt.Errorf("não consegui criar os atalhos: %w", err)
 	}
 	return nil
@@ -125,17 +129,29 @@ func (windows) Remover() error {
 	if err := registro.ApagarChave(chaveDesinst); err != nil {
 		return fmt.Errorf("não consegui tirar o registro da instalação: %w", err)
 	}
-	if err := powershell(scriptRemoverAtalhos(atalhoMenu())); err != nil {
+	if err := rodar(comandoRemoverAtalhos(atalhoMenu())); err != nil {
 		return fmt.Errorf("não consegui tirar os atalhos: %w", err)
 	}
 	return nil
 }
 
-// PlanoRemocao espera até 30 s o lançador sair (tasklist em laço) e apaga a
-// pasta. Sai da pasta antes, porque o cmd não apaga a pasta em que está.
+// destinoWindowsValido aceita só um caminho absoluto (C:\... ou \\...) que
+// termina na pasta da instalação.
+func destinoWindowsValido(d string) bool {
+	abs := strings.HasPrefix(d, `\\`) ||
+		(len(d) >= 3 && d[1] == ':' && d[2] == '\\' && (d[0]|0x20) >= 'a' && (d[0]|0x20) <= 'z')
+	return abs && base(d, `\`) == pastaWindows
+}
+
+// PlanoRemocao espera até 30 s o lançador sair e apaga a pasta, tudo em
+// PowerShell (o timeout do cmd falha sem console). Sai da pasta antes,
+// porque não dá para apagar a pasta em que se está.
 func (windows) PlanoRemocao(destino string, pid int) Comando {
-	p := fmt.Sprint(pid)
-	linha := `cd /d "%TEMP%" & (for /l %i in (1,1,30) do @(tasklist /FI "PID eq ` + p + `" /NH | find " ` + p +
-		` " >nul && timeout /t 1 /nobreak >nul)) & rmdir /s /q "` + destino + `"`
-	return Comando{Exe: "cmd.exe", Args: []string{"/c", linha}}
+	if !destinoWindowsValido(destino) || pid <= 0 {
+		return Comando{}
+	}
+	return powershell(fmt.Sprintf("Wait-Process -Id %d -Timeout 30 -ErrorAction SilentlyContinue; "+
+		"Set-Location -LiteralPath $env:TEMP; "+
+		"Remove-Item -LiteralPath $env:CD2_DESTINO -Recurse -Force -ErrorAction SilentlyContinue", pid),
+		"CD2_DESTINO="+destino)
 }

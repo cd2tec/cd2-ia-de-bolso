@@ -19,6 +19,11 @@ import (
 // ErrSemChave indica que a chave guardada não vale para este computador.
 var ErrSemChave = errors.New("Falta a chave deste computador.")
 
+// ErrAvisoAtalhos vem junto (errors.Join) quando a IA ficou instalada e
+// registrada, mas algum atalho ou o início com o computador falhou. Quem
+// chama trata como "instalada, com aviso", não como falha.
+var ErrAvisoAtalhos = errors.New("A IA foi instalada, mas não consegui criar todos os atalhos.")
+
 // Opcoes é o que a pessoa escolheu na tela de instalação.
 type Opcoes struct {
 	Raiz   string // raiz do pen drive
@@ -37,45 +42,73 @@ var (
 	valida       = guarda.Valida
 	planejar     = copiar.Planejar
 	copiarPara   = copiar.Copiar
-	pastaDestino = func() string {
+	pastaDestino = func() (string, error) {
 		home, _ := os.UserHomeDir()
-		return sistema.Destino(goos, os.Getenv, home)
+		return destinoDoSistema(goos, os.Getenv, home)
 	}
 )
 
+// destinoDoSistema é o sistema.Destino com recusa quando não dá para saber
+// a pasta do usuário (sem isso, o Mac cairia em /Applications).
+func destinoDoSistema(goos string, env func(string) string, home string) (string, error) {
+	if home == "" && (goos != "windows" || env == nil || env("LOCALAPPDATA") == "") {
+		return "", sistema.ErrSemPastaPessoal
+	}
+	return sistema.Destino(goos, env, home), nil
+}
+
 // Instalar copia a IA de Bolso do pen drive para o computador e a deixa
 // pronta para abrir. Sem chave válida, devolve ErrSemChave sem mexer em nada.
+// Logo depois da cópia registra a instalação, para ela sempre poder ser
+// desinstalada; falha em atalho ou no início vira aviso (ErrAvisoAtalhos).
 func Instalar(ctx context.Context, o Opcoes, prog func(feitos, total int64)) error {
 	if !valida(o.Cache) {
 		return ErrSemChave
+	}
+	destino, err := pastaDestino()
+	if err != nil {
+		return err
 	}
 	itens, _, err := planejar(o.Raiz, goos, goarch)
 	if err != nil {
 		return err
 	}
-	destino := pastaDestino()
 	if err := copiarPara(ctx, itens, destino, prog); err != nil {
 		return err
 	}
 	s := sistemaDo(goos)
 	lancador := sistema.Lancador(destino, goos)
-	if err := s.Atalhos(lancador, o.AreaDeTrabalho); err != nil {
+	if err := s.Registrar(lancador, o.Versao); err != nil {
 		return err
+	}
+	var avisos []error
+	if err := s.Atalhos(lancador, o.AreaDeTrabalho); err != nil {
+		avisos = append(avisos, err)
 	}
 	if err := s.LigarInicio(lancador, o.Inicio); err != nil {
-		return err
+		avisos = append(avisos, err)
 	}
-	return s.Registrar(lancador, o.Versao)
+	if len(avisos) > 0 {
+		return errors.Join(append([]error{ErrAvisoAtalhos}, avisos...)...)
+	}
+	return nil
 }
 
 // Desinstalar desliga o início, tira atalhos e registro, apaga o db.env do
 // cache e devolve o comando que apaga a pasta da instalação depois que o
 // lançador (pidLancador) sair. A chave fica, para reinstalar sem comprar de
 // novo. Pode ser chamada de novo depois de um erro: cada passo aceita o que
-// já foi desfeito.
+// já foi desfeito. Recusa, sem mexer em nada, uma pasta que não seja a da
+// instalação.
 func Desinstalar(cache string, pidLancador int) (sistema.Comando, error) {
+	destino, err := pastaDestino()
+	if err != nil {
+		return sistema.Comando{}, err
+	}
+	if !filepath.IsAbs(destino) || filepath.Base(destino) != sistema.NomePasta(goos) {
+		return sistema.Comando{}, fmt.Errorf("a pasta %q não parece a da instalação; não vou apagar", destino)
+	}
 	s := sistemaDo(goos)
-	destino := pastaDestino()
 	if err := s.LigarInicio(sistema.Lancador(destino, goos), false); err != nil {
 		return sistema.Comando{}, err
 	}
@@ -85,5 +118,9 @@ func Desinstalar(cache string, pidLancador int) (sistema.Comando, error) {
 	if err := os.Remove(filepath.Join(cache, "db.env")); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return sistema.Comando{}, fmt.Errorf("não consegui apagar a configuração do banco: %w", err)
 	}
-	return s.PlanoRemocao(destino, pidLancador), nil
+	c := s.PlanoRemocao(destino, pidLancador)
+	if c.Exe == "" {
+		return sistema.Comando{}, fmt.Errorf("não consegui montar a remoção da pasta %q", destino)
+	}
+	return c, nil
 }
