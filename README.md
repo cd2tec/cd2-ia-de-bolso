@@ -198,6 +198,7 @@ Regras de texto que valem para qualquer mudança: português do Brasil, frases c
 - **Linux.** Se der erro de `run-detectors`/WINE, é `binfmt_misc`; a doc do llamafile traz o registro do `ape`.
 - **Pen drive.** exFAT não guarda permissão de execução, então Mac/Linux rodam o motor a partir de uma cópia em `~/.cache/cd2-harness` (ou `~/Library/Caches/cd2-harness`). Nada é instalado e nada fica no sistema além desse cache.
 - **Oracle.** Driver Go puro: sem wallet, Kerberos ou TNS. **SQL Server** em Docker para teste é amd64; no Apple Silicon ligue Rosetta.
+- **Firebird.** No campo da base vai o caminho do arquivo `.fdb` no servidor (ex.: `C:\dados\erp.fdb`); não há schema. A consulta avulsa é um único SELECT, sem WITH (use subconsulta), e a lista de tabelas vem sem contagem de linhas, que o catálogo do Firebird não guarda.
 - **Modelo pequeno erra.** O aviso na tela é proposital. Em números do Archeo, o dado vem da ferramenta; o texto em volta é do modelo.
 
 ## 7. Licenças e origem dos componentes
