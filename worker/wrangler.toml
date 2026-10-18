@@ -1,5 +1,7 @@
 name = "cd2-instalacao"
 main = "src/index.js"
+# Conta onde mora a zona cd2.com.br (o domínio personalizado exige a mesma conta).
+account_id = "6cb9883b03e0e94fb939ffb53d382955"
 compatibility_date = "2026-10-01"
 routes = [{ pattern = "instalariadebolso.cd2.com.br", custom_domain = true }]
 
