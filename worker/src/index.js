@@ -50,7 +50,16 @@ export function criar({ fetch: buscar }) {
     } catch {
       return falha();
     }
-    if (!resp.ok) return falha();
+    if (!resp.ok) {
+      // Só para o log do Worker (wrangler tail / painel): o motivo do Stripe, sem chaves.
+      try {
+        const e = ((await resp.json()) || {}).error || {};
+        console.error('stripe recusou o checkout', resp.status, e.type, e.code, e.param, e.message);
+      } catch {
+        console.error('stripe recusou o checkout', resp.status);
+      }
+      return falha();
+    }
     let sessao;
     try { sessao = await resp.json(); } catch { return falha(); }
     if (!sessao || typeof sessao.url !== 'string' || !sessao.url.startsWith('https://')) return falha();
