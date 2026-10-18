@@ -22,6 +22,8 @@ type Options struct {
 	Key         string
 	HarnessPort int
 	CtlPort     int
+	// Instalacao liga as rotas /instalacao*; nil as deixa em 404.
+	Instalacao Instalacao
 }
 
 // Backend é o que a API controla (*control.Controller).
@@ -33,6 +35,7 @@ type Backend interface {
 
 type server struct {
 	b       Backend
+	inst    Instalacao
 	auth    []byte
 	origins map[string]bool
 	hosts   map[string]bool
@@ -43,6 +46,7 @@ func Handler(opt Options, b Backend) http.Handler {
 	h, c := strconv.Itoa(opt.HarnessPort), strconv.Itoa(opt.CtlPort)
 	return &server{
 		b:       b,
+		inst:    opt.Instalacao,
 		auth:    []byte("Bearer " + opt.Key),
 		origins: map[string]bool{"http://127.0.0.1:" + h: true, "http://localhost:" + h: true},
 		hosts:   map[string]bool{"127.0.0.1:" + c: true, "localhost:" + c: true},
@@ -108,6 +112,12 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			notAllowed(w, "POST, DELETE")
 		}
+	case "/instalacao", "/instalacao/chave", "/instalacao/progresso", "/instalacao/abrir":
+		if s.inst == nil {
+			fail(w, http.StatusNotFound, "rota não encontrada")
+			return
+		}
+		s.instalacao(w, r)
 	default:
 		fail(w, http.StatusNotFound, "rota não encontrada")
 	}
@@ -118,22 +128,31 @@ func notAllowed(w http.ResponseWriter, allow string) {
 	fail(w, http.StatusMethodNotAllowed, "método não permitido")
 }
 
-func (s *server) post(w http.ResponseWriter, r *http.Request) {
+// decodeJSON confere o Content-Type e lê o corpo (limite MaxBody, sem campos desconhecidos).
+// Se falhar, já respondeu e devolve false.
+func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mt != "application/json" {
 		fail(w, http.StatusUnsupportedMediaType, "use Content-Type: application/json")
-		return
+		return false
 	}
-	var in dbconf.Input
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, MaxBody))
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&in); err != nil {
+	if err := dec.Decode(v); err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
 			fail(w, http.StatusRequestEntityTooLarge, "corpo: acima de 8 KB")
-			return
+			return false
 		}
 		fail(w, http.StatusBadRequest, "corpo: JSON inválido")
+		return false
+	}
+	return true
+}
+
+func (s *server) post(w http.ResponseWriter, r *http.Request) {
+	var in dbconf.Input
+	if !decodeJSON(w, r, &in) {
 		return
 	}
 	st, err := s.b.Apply(in)
