@@ -114,7 +114,7 @@ Windows e Mac modernos **não executam nada automaticamente** ao plugar o pen dr
 
 Gostou e quer usar a IA sem o pen drive? Com a IA aberta pelo pen drive, clique em **Instalar no computador** (na barra de cima da conversa ou na janelinha do lançador).
 
-- **Quanto custa:** R$ 25 por computador, em pagamento único, pelo Stripe. É um serviço avulso, não é assinatura nem licença.
+- **Quanto custa:** R$ 25 por computador, em pagamento único, pelo Stripe. É uma cópia avulsa para este computador, não é assinatura nem licença.
 - **O que você leva:** a IA copiada do pen drive para o computador, que abre sem o pen drive, com ícone nos programas e atalho na área de trabalho se você quiser. Se quiser, ela acorda junto com o computador (ocupa de 4 a 5 GB de memória desde que ele liga, e dá para desligar). E dá para desinstalar quando quiser.
 - **A chave:** chega por e-mail e na tela, depois do pagamento. Guarde. Ela reinstala no mesmo computador, sem pagar de novo.
 - **As regras:** vale para um computador (todas as contas de usuário dele). Trocou de computador ou perdeu a chave, é uma nova instalação, com novo pagamento.

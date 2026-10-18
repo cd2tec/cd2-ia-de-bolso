@@ -6,7 +6,7 @@ Data: 2026-10-17. Status: rascunho para aprovação.
 
 Hoje a IA de Bolso só roda do pen drive. Nada fica instalado no computador além de um cache. Quem testou, gostou e quer usar todo dia sem o pen drive não tem como fazer isso.
 
-A ideia é oferecer, de dentro da própria IA, um **serviço de instalação digital avulsa**: por R$ 25, a IA é copiada do pen drive para aquele computador e passa a abrir sem o pen drive. É também um jeito de o projeto receber uma contribuição de quem acha a IA útil.
+A ideia é oferecer, de dentro da própria IA, uma **cópia para este computador** (nome em uso desde 18/10/2026; antes "serviço de instalação digital"): por R$ 25, a IA é copiada do pen drive para aquele computador e passa a abrir sem o pen drive. É também um jeito de o projeto receber uma contribuição de quem acha a IA útil.
 
 ## Objetivos
 
@@ -37,7 +37,7 @@ A ideia é oferecer, de dentro da própria IA, um **serviço de instalação dig
 
 ## Regras do serviço (decididas pelo Gabriel)
 
-- **Nome:** "serviço de instalação digital". Não é doação nem licença. A palavra "doação" foi descartada: com contrapartida obrigatória, juridicamente é venda de serviço. **Nota fiscal: fica para depois (decisão do Gabriel).** Tudo é construído e testado no modo de teste do Stripe; cobrar de verdade só depois de a contadora da CD2 responder sobre a nota fiscal de serviço, o enquadramento e o que o Checkout precisa coletar do tomador.
+- **Nome:** "cópia para este computador" (decisão do Gabriel em 18/10/2026; substituiu "serviço de instalação digital"). Não é doação nem licença. A palavra "doação" foi descartada: com contrapartida obrigatória, juridicamente é venda de serviço. **Nota fiscal: fica para depois (decisão do Gabriel).** Tudo é construído e testado no modo de teste do Stripe; cobrar de verdade só depois de a contadora da CD2 responder sobre a nota fiscal de serviço, o enquadramento e o que o Checkout precisa coletar do tomador.
 - **Preço:** R$ 25, pagamento único, por instalação.
 - **Vale para um computador.** A chave fica presa ao código daquele computador.
 - **Reinstalar no mesmo computador com a chave é livre.** Perdeu a chave ou trocou de computador, é uma nova instalação, com novo pagamento. Não há recuperação manual pelo WhatsApp.
@@ -63,11 +63,11 @@ O mesmo modal nos dois lugares. **Escolha minha:** a janelinha do lançador é p
 
 Conteúdo, como aprovado no rascunho:
 
-- Sobretítulo "Serviço de instalação digital", com a régua azul do SectionHeader. Título "Instale a IA de Bolso neste computador".
+- Sobretítulo "Cópia para este computador", com a régua azul do SectionHeader. Título "Instale a IA de Bolso neste computador".
 - A frase "Gostou do teste? Com a instalação, a IA passa a morar neste computador e abre sem o pen drive, do mesmo jeitinho que você já conhece."
 - **R$ 25**, com "pagamento único, por instalação".
 - **O que está incluído:** a IA copiada do pen drive sem baixar nada; o ícone nos programas e, se a pessoa quiser, na área de trabalho; acordar junto com o computador, se ela quiser, com o aviso de que ocupa de 4 a 5 GB de memória desde que o computador liga e de que dá para desligar depois; desinstalar quando quiser.
-- **Como funciona:** é um serviço avulso, não assinatura nem licença; vale só para este computador e, copiada para outro, não abre; a chave chega por e-mail e reinstala neste mesmo computador; trocou de computador ou perdeu a chave, é uma nova instalação, com novo pagamento.
+- **Como funciona:** é uma cópia avulsa, paga uma vez, não assinatura nem licença; vale só para este computador e, copiada para outro, não abre; a chave chega por e-mail e reinstala neste mesmo computador; trocou de computador ou perdeu a chave, é uma nova instalação, com novo pagamento.
 - O **código deste computador** num bloco cinza, com a nota "vai junto com o pagamento".
 - A caixa **"Entendi que a instalação vale só para este computador."** O botão **"Ir para o pagamento"** só acende com ela marcada. Ao lado fica "Agora não".
 - No rodapé: "Pagamento seguro pelo Stripe. Precisa de internet só agora."
