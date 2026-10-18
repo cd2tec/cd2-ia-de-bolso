@@ -262,3 +262,68 @@ func TestEspacoLivreReal(t *testing.T) {
 		t.Errorf("EspacoLivre = %d, %v", n, err)
 	}
 }
+
+func TestRenomearFalhaDaErrEmUso(t *testing.T) {
+	raiz := penDriveFalso(t, "1.0.0")
+	itens, _, _ := Planejar(raiz, "darwin", "arm64")
+	dest := filepath.Join(t.TempDir(), "IA")
+	escrever(t, dest, "VERSION", "0.14.0", 0o644)
+	velhoR, velhoE := renomear, esperaRenomear
+	chamadas := 0
+	renomear = func(a, b string) error { chamadas++; return errors.New("Access is denied.") }
+	esperaRenomear = 0
+	defer func() { renomear, esperaRenomear = velhoR, velhoE }()
+	err := Copiar(context.Background(), itens, dest, nil)
+	if !errors.Is(err, ErrEmUso) {
+		t.Fatalf("esperava ErrEmUso, veio %v", err)
+	}
+	if chamadas != 3 {
+		t.Errorf("tentativas = %d", chamadas)
+	}
+	b, _ := os.ReadFile(filepath.Join(dest, "VERSION"))
+	if string(b) != "0.14.0" {
+		t.Errorf("VERSION = %q", b)
+	}
+	if _, e := os.Stat(dest + ".novo"); !os.IsNotExist(e) {
+		t.Error(".novo devia ter sido apagado")
+	}
+}
+
+func TestPlanejarExigeChecksumEmBin(t *testing.T) {
+	raiz := penDriveFalso(t, "1.0.0")
+	b, _ := os.ReadFile(filepath.Join(raiz, "CHECKSUMS.sha256"))
+	var ls []string
+	for _, l := range strings.Split(string(b), "\n") {
+		if !strings.HasSuffix(l, "  bin/llamafile") {
+			ls = append(ls, l)
+		}
+	}
+	escrever(t, raiz, "CHECKSUMS.sha256", strings.Join(ls, "\n"), 0o644)
+	_, _, err := Planejar(raiz, "darwin", "arm64")
+	if err == nil || !strings.Contains(err.Error(), "bin/llamafile") {
+		t.Fatalf("esperava erro citando bin/llamafile, veio %v", err)
+	}
+}
+
+func TestRestauraVelhoOrfao(t *testing.T) {
+	raiz := penDriveFalso(t, "1.0.0")
+	itens, _, _ := Planejar(raiz, "darwin", "arm64")
+	dest := filepath.Join(t.TempDir(), "IA")
+	escrever(t, dest+".velho", "VERSION", "0.14.0", 0o644)
+	ctx, cancela := context.WithCancel(context.Background())
+	cancela()
+	if err := Copiar(ctx, itens, dest, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("esperava cancelamento, veio %v", err)
+	}
+	b, _ := os.ReadFile(filepath.Join(dest, "VERSION"))
+	if string(b) != "0.14.0" {
+		t.Errorf("VERSION = %q, .velho não foi restaurado", b)
+	}
+}
+
+func TestDestinoNaoLocalRecusado(t *testing.T) {
+	err := Copiar(context.Background(), []Item{{Origem: "x", Destino: "../fora"}}, filepath.Join(t.TempDir(), "IA"), nil)
+	if err == nil {
+		t.Error("devia recusar destino fora da pasta")
+	}
+}

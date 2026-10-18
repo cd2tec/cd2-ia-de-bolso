@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 // ErrCopiaRuim indica que um arquivo copiado não bate com o SHA-256 esperado.
@@ -24,6 +25,29 @@ var ErrCopiaRuim = errors.New("Não consegui copiar direito. Tente de novo.")
 
 // ErrSemEspaco indica que o disco de destino não comporta a instalação.
 var ErrSemEspaco = errors.New("Falta espaço no computador. Libere uns 3 GB e tente de novo.")
+
+// ErrEmUso indica que a instalação anterior não pôde ser trocada (arquivo aberto).
+var ErrEmUso = errors.New("A IA de Bolso instalada ainda está aberta. Coloque-a para dormir e tente de novo.")
+
+// renomear, tentativasRenomear e esperaRenomear ficam em variáveis para o teste trocar.
+var (
+	renomear           = os.Rename
+	tentativasRenomear = 3
+	esperaRenomear     = 200 * time.Millisecond
+)
+
+func renomearComTentativas(de, para string) error {
+	var err error
+	for i := 0; i < tentativasRenomear; i++ {
+		if err = renomear(de, para); err == nil {
+			return nil
+		}
+		if i < tentativasRenomear-1 {
+			time.Sleep(esperaRenomear)
+		}
+	}
+	return ErrEmUso
+}
 
 // Item é um arquivo a copiar. Destino é relativo à pasta de instalação, com
 // barras normais. SHA256 fica vazio para quem não está no CHECKSUMS.sha256.
@@ -90,6 +114,9 @@ func Planejar(raiz, goos, goarch string) ([]Item, int64, error) {
 		if err != nil {
 			return fmt.Errorf("falta %s no pen drive: %w", rel, err)
 		}
+		if sums[rel] == "" && (strings.HasPrefix(rel, "bin/") || strings.HasPrefix(rel, "models/")) {
+			return fmt.Errorf("o CHECKSUMS.sha256 do pen drive não tem a linha de %s", rel)
+		}
 		itens = append(itens, Item{Origem: filepath.Join(raiz, filepath.FromSlash(rel)), Destino: rel, Tamanho: fi.Size(), SHA256: sums[rel]})
 		total += fi.Size()
 		return nil
@@ -112,6 +139,9 @@ func Planejar(raiz, goos, goarch string) ([]Item, int64, error) {
 				return nil
 			}
 			if d.IsDir() {
+				return nil
+			}
+			if d.Type()&fs.ModeSymlink != 0 {
 				return nil
 			}
 			r, err := filepath.Rel(raiz, p)
@@ -187,7 +217,19 @@ func pedirEspaco(destino string) (int64, error) {
 func Copiar(ctx context.Context, itens []Item, destino string, prog func(feitos, total int64)) (err error) {
 	var total int64
 	for _, it := range itens {
+		if !filepath.IsLocal(filepath.FromSlash(it.Destino)) {
+			return fmt.Errorf("destino inválido no plano: %q", it.Destino)
+		}
 		total += it.Tamanho
+	}
+	// Queda entre as duas trocas de uma instalação anterior: o .velho é a
+	// única cópia boa, então volta para o lugar antes de qualquer coisa.
+	if _, e := os.Stat(destino); os.IsNotExist(e) {
+		if _, e2 := os.Stat(destino + ".velho"); e2 == nil {
+			if err := renomearComTentativas(destino+".velho", destino); err != nil {
+				return err
+			}
+		}
 	}
 	livre, err := pedirEspaco(destino)
 	if err != nil {
@@ -202,7 +244,8 @@ func Copiar(ctx context.Context, itens []Item, destino string, prog func(feitos,
 		return err
 	}
 	if err := os.RemoveAll(velho); err != nil {
-		return err
+		// .velho preso (Windows): usa um nome novo em vez de travar a reinstalação.
+		velho = fmt.Sprintf("%s.velho%d", destino, time.Now().UnixNano())
 	}
 	if err := os.MkdirAll(novo, 0o755); err != nil {
 		return err
@@ -230,10 +273,10 @@ func Copiar(ctx context.Context, itens []Item, destino string, prog func(feitos,
 	avisar()
 
 	if _, e := os.Stat(destino); e == nil {
-		if err = os.Rename(destino, velho); err != nil {
+		if err = renomearComTentativas(destino, velho); err != nil {
 			return err
 		}
-		if err = os.Rename(novo, destino); err != nil {
+		if err = renomearComTentativas(novo, destino); err != nil {
 			os.Rename(velho, destino)
 			return err
 		}
