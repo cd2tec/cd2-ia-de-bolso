@@ -32,14 +32,21 @@ jobs:
         run: |
           VERSAO="$(tr -d ' \r\n' < ../VERSION)"
           wails build -clean -trimpath -platform darwin/universal -ldflags "-X main.versao=$VERSAO"
-      - name: Assinar (ad hoc) e empacotar com o ditto
+      - name: Assinar e notarizar (Developer ID, ou ad hoc sem os secrets)
+        working-directory: launcher/build/bin
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/assinar-mac.sh" app "IA de Bolso.app"
+      - name: Empacotar com o ditto
         working-directory: launcher/build/bin
         run: |
-          # O Apple Silicon exige ao menos a assinatura ad hoc. O ditto guarda permissões e links do .app,
-          # que um zip comum perderia. Sem atributos estendidos nem resource fork: senão entram ._ no
-          # ZIP, que viram lixo no pen drive (e a quarentena iria junto).
-          codesign --force --deep -s - "IA de Bolso.app"
-          codesign --verify --deep --strict "IA de Bolso.app"
+          # O ditto guarda permissões e links do .app, que um zip comum perderia. Sem atributos estendidos
+          # nem resource fork: senão entram ._ no ZIP, que viram lixo no pen drive (e a quarentena iria
+          # junto). O ticket da notarização não se perde: o stapler o grava em Contents/CodeResources.
           ditto -c -k --norsrc --noextattr --keepParent "IA de Bolso.app" lancador-mac.zip
       - uses: actions/upload-artifact@v4
         with:
@@ -190,12 +197,20 @@ jobs:
         run: |
           VERSAO="$(tr -d ' \r\n' < ../VERSION)"
           wails build -clean -trimpath -platform darwin/universal -ldflags "-X main.versao=$VERSAO"
-      - name: Assinar (ad hoc) e montar o dmg
+      - name: Assinar e notarizar o app e o dmg (Developer ID, ou ad hoc sem os secrets)
         working-directory: installer/build/bin
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
-          # O Apple Silicon exige ao menos a assinatura ad hoc para abrir o app.
-          codesign --force --deep -s - "CD2 IA de Bolso.app"
+          # O app é notarizado antes de entrar no dmg, para levar o próprio ticket: quem o arrasta para
+          # Aplicativos e abre sem internet não depende do ticket do dmg.
+          bash "$GITHUB_WORKSPACE/.github/scripts/assinar-mac.sh" app "CD2 IA de Bolso.app"
           hdiutil create -volname "CD2 IA de Bolso" -srcfolder "CD2 IA de Bolso.app" -ov -format UDZO CD2-IA-de-Bolso-Mac.dmg
+          bash "$GITHUB_WORKSPACE/.github/scripts/assinar-mac.sh" dmg CD2-IA-de-Bolso-Mac.dmg
       - name: Publicar na release iadebolso
         if: github.ref == 'refs/heads/main'
         env:
