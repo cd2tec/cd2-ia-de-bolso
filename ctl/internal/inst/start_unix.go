@@ -2,14 +2,11 @@
 
 package inst
 
-import (
-	"os/exec"
-	"syscall"
-)
+import "syscall"
 
 // iniciarDestacado roda o programa em outro grupo de processos e não espera por ele.
 func iniciarDestacado(caminho string, args ...string) error {
-	c := exec.Command(caminho, args...)
+	c := comandoDestacado(caminho, args...)
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := c.Start(); err != nil {
 		return err

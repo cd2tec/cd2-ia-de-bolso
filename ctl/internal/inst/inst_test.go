@@ -260,3 +260,15 @@ func TestProgressoDizOQueEstaCopiando(t *testing.T) {
 		esperaFase(t, b, "pronta")
 	}
 }
+
+// O lançador instalado roda com a pasta dele como diretório atual, não a do cd2-ctl no pen drive.
+func TestComandoDestacadoRodaNaPastaDoLancador(t *testing.T) {
+	l := filepath.Join(t.TempDir(), "IA de Bolso", "IA de Bolso.exe")
+	c := comandoDestacado(l, "--assumir")
+	if c.Dir != filepath.Dir(l) {
+		t.Errorf("Dir = %q, quero %q", c.Dir, filepath.Dir(l))
+	}
+	if c.Path != l || len(c.Args) != 2 || c.Args[1] != "--assumir" {
+		t.Errorf("comando = %q %v", c.Path, c.Args)
+	}
+}

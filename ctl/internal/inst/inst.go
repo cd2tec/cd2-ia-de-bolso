@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -224,4 +225,12 @@ func (b *Backend) Abrir() error {
 		return errors.New("Não consegui abrir a IA instalada.")
 	}
 	return nil
+}
+
+// comandoDestacado monta o comando do lançador instalado rodando na pasta
+// dele, e não na do cd2-ctl, que fica no pen drive.
+func comandoDestacado(caminho string, args ...string) *exec.Cmd {
+	c := exec.Command(caminho, args...)
+	c.Dir = filepath.Dir(caminho)
+	return c
 }
