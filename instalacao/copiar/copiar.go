@@ -109,18 +109,21 @@ func Planejar(raiz, goos, goarch string) ([]Item, int64, error) {
 	var itens []Item
 	var total int64
 
-	add := func(rel string) error {
-		fi, err := os.Stat(filepath.Join(raiz, filepath.FromSlash(rel)))
+	// addComo copia origem (no pen drive) para destino, conferindo pela linha
+	// soma do CHECKSUMS.
+	addComo := func(origem, destino, soma string) error {
+		fi, err := os.Stat(filepath.Join(raiz, filepath.FromSlash(origem)))
 		if err != nil {
-			return fmt.Errorf("falta %s no pen drive: %w", rel, err)
+			return fmt.Errorf("falta %s no pen drive: %w", origem, err)
 		}
-		if sums[rel] == "" && (strings.HasPrefix(rel, "bin/") || strings.HasPrefix(rel, "models/")) {
-			return fmt.Errorf("o CHECKSUMS.sha256 do pen drive não tem a linha de %s", rel)
+		if sums[soma] == "" && (strings.HasPrefix(soma, "bin/") || strings.HasPrefix(soma, "models/")) {
+			return fmt.Errorf("o CHECKSUMS.sha256 do pen drive não tem a linha de %s", soma)
 		}
-		itens = append(itens, Item{Origem: filepath.Join(raiz, filepath.FromSlash(rel)), Destino: rel, Tamanho: fi.Size(), SHA256: sums[rel]})
+		itens = append(itens, Item{Origem: filepath.Join(raiz, filepath.FromSlash(origem)), Destino: destino, Tamanho: fi.Size(), SHA256: sums[soma]})
 		total += fi.Size()
 		return nil
 	}
+	add := func(rel string) error { return addComo(rel, rel, rel) }
 	andar := func(rel string) error {
 		base := filepath.Join(raiz, filepath.FromSlash(rel))
 		if fi, err := os.Stat(base); err != nil || !fi.IsDir() {
@@ -165,10 +168,25 @@ func Planejar(raiz, goos, goarch string) ([]Item, int64, error) {
 		return nil
 	}
 
-	for _, rel := range []string{"VERSION", "LICENSE", "bin/llamafile"} {
+	for _, rel := range []string{"VERSION", "LICENSE"} {
 		if err := add(rel); err != nil {
 			return nil, 0, err
 		}
+	}
+	// O motor: no Windows o lançador procura bin\llamafile.exe. O pen drive
+	// traz bin/llamafile e bin/llamafile.exe com os mesmos bytes, e o CHECKSUMS
+	// só tem a linha de bin/llamafile, que serve para os dois.
+	if goos == "windows" {
+		origem := "bin/llamafile.exe"
+		if _, e := os.Stat(filepath.Join(raiz, "bin", "llamafile.exe")); e != nil {
+			origem = "bin/llamafile"
+		}
+		err = addComo(origem, "bin/llamafile.exe", "bin/llamafile")
+	} else {
+		err = add("bin/llamafile")
+	}
+	if err != nil {
+		return nil, 0, err
 	}
 	modelos, _ := filepath.Glob(filepath.Join(raiz, "models", "*.gguf"))
 	if len(modelos) == 0 {

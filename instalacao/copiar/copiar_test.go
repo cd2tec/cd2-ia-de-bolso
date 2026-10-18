@@ -124,6 +124,45 @@ func TestPlanejarWindows(t *testing.T) {
 	}
 }
 
+// No Windows o lançador procura bin\llamafile.exe na instalação. O pen drive
+// traz os dois nomes com os mesmos bytes; o CHECKSUMS só tem bin/llamafile.
+func TestPlanejarWindowsMotorExe(t *testing.T) {
+	for _, comExe := range []bool{true, false} {
+		raiz := penDriveFalso(t, "1.0.0")
+		if comExe {
+			escrever(t, raiz, "bin/llamafile.exe", "llamafile", 0o644)
+		}
+		itens, _, err := Planejar(raiz, "windows", "amd64")
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := sha256.Sum256([]byte("llamafile"))
+		var achou bool
+		for _, it := range itens {
+			if it.Destino == "bin/llamafile" {
+				t.Errorf("comExe=%v: o Windows não devia planejar bin/llamafile", comExe)
+			}
+			if it.Destino != "bin/llamafile.exe" {
+				continue
+			}
+			achou = true
+			origem := "llamafile"
+			if comExe {
+				origem = "llamafile.exe"
+			}
+			if filepath.Base(it.Origem) != origem {
+				t.Errorf("comExe=%v: origem %s, queria %s", comExe, it.Origem, origem)
+			}
+			if it.SHA256 != hex.EncodeToString(s[:]) {
+				t.Errorf("comExe=%v: sha %q", comExe, it.SHA256)
+			}
+		}
+		if !achou {
+			t.Errorf("comExe=%v: faltou bin/llamafile.exe no plano: %v", comExe, destinos(itens))
+		}
+	}
+}
+
 func TestPlanejarFaltaPeca(t *testing.T) {
 	for _, rel := range []string{"models/modelo.gguf", "bin/llamafile", "IA de Bolso.app", "bin/toolbox/darwin-amd64", "bin/ctl/darwin-amd64", "web", "core"} {
 		raiz := penDriveFalso(t, "1.0.0")
