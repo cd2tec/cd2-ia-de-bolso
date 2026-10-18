@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -81,8 +82,14 @@ func dormirNoSinal(a *App) {
 }
 
 func main() {
+	args := lerArgs(os.Args[1:])
+	if args.Esperar > 0 {
+		// O lançador do pen drive passou a vez e está saindo: só depois dele
+		// a trava de cópia única fica livre.
+		esperarProcesso(args.Esperar, prazoEsperar, 100*time.Millisecond, processoVivo)
+	}
 	r := acharRaiz()
-	app := novaApp(r, lerVersao(versao, r))
+	app := novaApp(r, lerVersao(versao, r), args)
 	dormirNoSinal(app)
 	err := wails.Run(&options.App{
 		Title:             "CD2 IA de Bolso",
@@ -90,6 +97,7 @@ func main() {
 		Height:            altura,
 		DisableResize:     true,
 		HideWindowOnClose: !escondePeloAntesDeFechar,
+		StartHidden:       args.Inicio, // acordou com o computador: só o ícone
 		BackgroundColour:  &options.RGBA{R: 0x0d, G: 0x12, B: 0x33, A: 255},
 		AssetServer:       &assetserver.Options{Assets: telas},
 		OnStartup:         app.iniciar,
@@ -98,8 +106,9 @@ func main() {
 		Bind:              []interface{}{app},
 		Windows:           &windows.Options{Messages: mensagensWebView2()},
 		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId:               idUnico,
-			OnSecondInstanceLaunch: func(options.SecondInstanceData) { go app.chamar() },
+			UniqueId: idUnico,
+			// Args vem sem o nome do programa (os.Args[1:] da outra cópia).
+			OnSecondInstanceLaunch: func(d options.SecondInstanceData) { go app.segundaCopia(d.Args) },
 		},
 	})
 	if err != nil {

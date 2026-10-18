@@ -10,6 +10,7 @@ import (
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/origem"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/cache"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/sessao"
 )
@@ -27,22 +28,46 @@ const (
 type App struct {
 	s       *sessao.Sessao
 	bandeja bandeja
+	raiz    string
+	acordar func() // sobe a IA; trocado no teste
 
 	mu        sync.Mutex
 	ctx       context.Context // do Wails; nil até o OnStartup
 	podeSair  bool            // a IA já dormiu: o próximo pedido de saída vale
 	encerrado bool            // o Wails já parou: nada de falar com a janela
 	avisou    bool            // a notificação da primeira vez já saiu
+	trancada  bool            // cópia instalada sem chave: a IA não sobe
+	origem    origem.Origem   // de onde a IA roda; decidida no OnStartup
+	// trocarPara é o lançador instalado que roda depois do Dormiu (o
+	// --assumir); vazio, não há troca.
+	trocarPara string
+	naoAbriu   bool // a troca foi pedida e a instalada não abriu
+	// semNavegador é o --inicio: a conversa não abriu sozinha.
+	semNavegador bool
+	versao       string
+
+	inicioLigado  bool   // a marcação do "Acordar quando o computador ligar"
+	avisoInicio   string // o acordar com o computador não mudou
+	perguntando   bool   // a tela pergunta se pode desinstalar
+	desinstalando bool   // o próximo Dormiu é o da desinstalação
+	desinstalada  bool   // a remoção foi disparada: só falta sair
+	ficou         bool   // a desinstalação falhou: a IA dorme e o app fica
+	erroFicou     string
+	ultimaFase    sessao.Fase // para saber quando a fase muda
 }
 
 // estadoTela é o Estado no formato da tela: chaves em minúsculas e a fase
 // com inicial maiúscula, como o tela.js compara. A URL fica de fora: ela
-// leva a chave da sessão, que só vai para o navegador.
+// leva a chave da sessão, que só vai para o navegador. Pendrive decide o
+// convite para instalar; SemNavegador, o título de Pronta (a conversa não
+// abriu sozinha com o --inicio).
 type estadoTela struct {
-	Fase  string `json:"fase"`
-	Pct   int    `json:"pct"`
-	Aviso string `json:"aviso"`
-	Erro  string `json:"erro"`
+	Fase         string `json:"fase"`
+	Pct          int    `json:"pct"`
+	Aviso        string `json:"aviso"`
+	Erro         string `json:"erro"`
+	Pendrive     bool   `json:"pendrive"`
+	SemNavegador bool   `json:"semNavegador"`
 }
 
 var nomesFase = map[sessao.Fase]string{
@@ -50,8 +75,23 @@ var nomesFase = map[sessao.Fase]string{
 	sessao.Dormindo: "Dormindo", sessao.Dormiu: "Dormiu", sessao.Erro: "Erro",
 }
 
-func paraTela(e sessao.Estado) estadoTela {
-	return estadoTela{Fase: nomesFase[e.Fase], Pct: e.Pct, Aviso: e.Aviso, Erro: e.Erro}
+func paraTela(e sessao.Estado, pendrive, semNavegador bool) estadoTela {
+	return estadoTela{Fase: nomesFase[e.Fase], Pct: e.Pct, Aviso: e.Aviso, Erro: e.Erro, Pendrive: pendrive,
+		SemNavegador: semNavegador}
+}
+
+// telaDe é o estado como a tela recebe, com a origem, o --inicio e a falha
+// de abrir a instalada.
+func (a *App) telaDe(e sessao.Estado) estadoTela {
+	t := paraTela(a.comDormiu(e), a.pendrive(), a.semNavegador)
+	carregando := e.Fase == sessao.Lendo || e.Fase == sessao.Subindo
+	a.mu.Lock()
+	// O aviso do acordar com o computador nunca toma a linha do carregamento.
+	if t.Aviso == "" && !carregando {
+		t.Aviso = a.avisoInicio
+	}
+	a.mu.Unlock()
+	return t
 }
 
 // deveMostrar diz se o estado traz a janela de volta sozinho: um erro nunca
@@ -78,9 +118,15 @@ func fecharVaiDormir(f sessao.Fase) bool { return f == sessao.Erro }
 // só volta mostrando onde o carregamento está.
 func deveChamar(f sessao.Fase) bool { return f == sessao.Pronta }
 
-func novaApp(raiz, versao string) *App {
-	a := &App{}
-	a.s = sessao.Nova(sessao.DepsReais(raiz), versao, a.aoMudar)
+// novaApp prepara o app. Com --inicio a conversa não abre e o aviso do
+// primeiro fechar não sai: quem acordou com o computador não pediu janela.
+// Com --desinstalar a IA nem acorda: a janela abre na pergunta.
+func novaApp(raiz, versao string, args Args) *App {
+	a := &App{raiz: raiz, avisou: args.Inicio, semNavegador: args.Inicio, versao: versao, perguntando: args.Desinstalar}
+	d := sessao.DepsReais(raiz)
+	d.SemNavegador = args.Inicio
+	a.s = sessao.Nova(d, versao, a.aoMudar)
+	a.acordar = func() { go a.s.Rodar(context.Background()) }
 	return a
 }
 
@@ -97,14 +143,32 @@ func (a *App) contexto() context.Context {
 // aoMudar recebe cada estado da sessão, na goroutine de entrega dela: não
 // pode chamar o Dormir síncrono aqui.
 func (a *App) aoMudar(e sessao.Estado) {
-	if ctx := a.contexto(); ctx != nil {
-		wruntime.EventsEmit(ctx, "estado", paraTela(e))
+	a.novaFase(e.Fase)
+	if e.Fase == sessao.Dormiu && a.estaDesinstalando() {
+		a.atualizarBandeja(e)
+		a.terminarDesinstalar(e.Erro)
+		return
+	}
+	// Passando a vez para a instalada: ela espera este processo sair, então
+	// nada de esperar o "Boa noite!". Se ela não abriu, o Dormiu vira aviso.
+	t := semTroca
+	if e.Fase == sessao.Dormiu {
+		t = a.trocar(e.Erro)
+		e = a.comDormiu(e)
+	}
+	// Com a pergunta na tela, os estados esperam a resposta.
+	if ctx := a.contexto(); ctx != nil && !a.naPergunta() {
+		wruntime.EventsEmit(ctx, "estado", a.telaDe(e))
 	}
 	a.atualizarBandeja(e)
 	if deveMostrar(e) {
 		a.mostrar()
 	}
 	if e.Fase == sessao.Dormiu {
+		if t == trocou {
+			go a.sair()
+			return
+		}
 		espera := esperaAntesDeSair(e)
 		go func() {
 			time.Sleep(espera)
@@ -123,21 +187,33 @@ func (a *App) sair() {
 	}
 }
 
+// iniciar decide a trava antes de subir a IA: a cópia instalada sem chave
+// fica na tela Trancada, sem Rodar, e o ícone só mostra ou fecha. A origem
+// fica guardada para o convite.
 func (a *App) iniciar(ctx context.Context) {
+	o := detectarOrigem(a.raiz)
+	tranca := deveTrancar(o, func() bool { return chaveValida(pastaCache()) })
 	a.mu.Lock()
 	a.ctx = ctx
 	a.mu.Unlock()
+	a.guardarOrigem(o, tranca)
 	iniciarBandeja(a)
-	go a.s.Rodar(context.Background())
+	// Trancada ou com a pergunta do --desinstalar, a IA não acorda.
+	if t, ok := a.telaEspecial(); ok {
+		wruntime.EventsEmit(ctx, "estado", t)
+		return
+	}
+	a.acordar()
 }
 
 // antesDeFechar é todo pedido de saída que não veio do Dormiu (Cmd+Q, logout,
 // o X da janela no Windows). A IA dorme antes; a saída de verdade vem pelo
 // aoMudar, 3 s depois do Dormiu. No Windows o X só esconde, menos com o erro
-// na tela: aí vale o Fechar, sem o balão de "Continuo acordada".
+// na tela: aí vale o Fechar, sem o balão de "Continuo acordada". Trancada
+// não há IA para dormir: a saída vale na hora.
 func (a *App) antesDeFechar(ctx context.Context) (impedir bool) {
 	a.mu.Lock()
-	pode := a.podeSair
+	pode := a.podeSair || a.trancada || a.ficou
 	a.mu.Unlock()
 	if pode {
 		return false
@@ -156,9 +232,9 @@ func (a *App) antesDeFechar(ctx context.Context) (impedir bool) {
 }
 
 // janelaFechada é o X da janela no Mac, que o Wails trata escondendo o app
-// (HideWindowOnClose): com o erro na tela, vale o Fechar.
+// (HideWindowOnClose): com o erro na tela ou trancada, vale o Fechar.
 func (a *App) janelaFechada() {
-	if fecharVaiDormir(a.s.Atual().Fase) {
+	if a.fecharSai() {
 		a.Fechar()
 	}
 }
@@ -215,11 +291,24 @@ func (a *App) AbrirConversa() error { return a.s.AbrirConversa() }
 func (a *App) Dormir() { go a.s.Dormir() }
 
 // Fechar é o botão da tela de erro: dorme (parando o que tiver subido) e sai.
-func (a *App) Fechar() { a.Dormir() }
+// Trancada, nada subiu: sai direto, sem o "Boa noite! Pode tirar o pen drive".
+// Depois da desinstalação que falhou, a IA já dorme: sai direto também.
+func (a *App) Fechar() {
+	if a.estaTrancada() || a.ficouViva() {
+		go a.sair()
+		return
+	}
+	a.Dormir()
+}
 
-// Estado é o estado de agora, que a tela pede ao abrir (o evento pode ter
+// Estado é o estado de agora (ou a tela que não é da sessão), que a tela pede ao abrir (o evento pode ter
 // saído antes de a página carregar).
-func (a *App) Estado() estadoTela { return paraTela(a.s.Atual()) }
+func (a *App) Estado() estadoTela {
+	if t, ok := a.telaEspecial(); ok {
+		return t
+	}
+	return a.telaDe(a.s.Atual())
+}
 
 // AbrirRegistros abre a pasta dos logs no Finder ou no Explorer.
 func (a *App) AbrirRegistros() error {

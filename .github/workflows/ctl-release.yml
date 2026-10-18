@@ -15,6 +15,11 @@ jobs:
         with:
           go-version-file: ctl/go.mod
           cache: false
+      # Guarda de release: o cd2-ctl embute chave.Publica, então nunca sai com a chave pública
+      # PROVISÓRIA do vetor de teste (a privada dela está no repositório). Mesma guarda do ZIP.
+      - name: Conferir que a chave pública não é a de teste
+        working-directory: instalacao
+        run: go test -tags release ./chave/
       - name: Testes
         working-directory: ctl
         run: go test ./...

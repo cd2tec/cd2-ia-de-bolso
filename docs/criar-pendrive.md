@@ -104,6 +104,18 @@ Se passou, está aprovado. Grave os outros com o mesmo script ou copie todo o co
 - **Checksum diferente no final.** Não use esse pen drive. Formate e grave de novo; se repetir, troque o pen drive.
 - **Pen drive lento.** O script já baixa no disco do computador e só copia o resultado, então o tempo que sobra é só o da cópia dos 3 GB.
 
+## Atualizar uma IA instalada
+
+A IA instalada no computador não se atualiza sozinha. Para pôr a versão do pen drive mais novo no lugar:
+
+1. Coloque a IA instalada para dormir: ícone perto do relógio (ou na barra de menus do Mac), **Colocar a IA para dormir**.
+2. Abra o lançador do pen drive mais novo.
+3. Clique em **Instalar no computador** e depois em **Reinstalar com a minha chave**. Não cobra de novo.
+
+## Desinstalar
+
+No ícone da IA instalada, escolha **Desinstalar...** e confirme. No Windows, também dá para desinstalar em Configurações, Aplicativos, com a IA do pen drive fechada. A chave guardada no computador continua valendo, então reinstalar depois é livre.
+
 ## O jeito manual (o que fizemos na primeira vez)
 
 Serve para entender o que o script faz, ou para quando ele não puder rodar.

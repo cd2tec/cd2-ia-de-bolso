@@ -24,6 +24,7 @@ import (
 
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/api"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/control"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/inst"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/toolbox"
 )
 
@@ -104,8 +105,9 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	}
 	ctl := control.New(filepath.Join(*cache, "db.env"), sup)
 	ctl.BootAsync()
+	instalacao := inst.New(*root, *cache)
 	srv := &http.Server{
-		Handler:           api.Handler(api.Options{Key: key, HarnessPort: *hport, CtlPort: ctlPort}, ctl),
+		Handler:           api.Handler(api.Options{Key: key, HarnessPort: *hport, CtlPort: ctlPort, Instalacao: instalacao}, ctl),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	go func() { _ = srv.Serve(ln) }()
@@ -124,6 +126,7 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)
+	instalacao.Shutdown()
 	ctl.Shutdown()
 	fmt.Fprintln(stdout, "cd2-ctl encerrado")
 	return 0

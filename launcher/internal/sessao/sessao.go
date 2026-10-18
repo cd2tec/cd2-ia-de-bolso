@@ -63,6 +63,9 @@ type Deps struct {
 	SubirCtl       func(ctx context.Context, exe string, args []string, chave string, portaCtl int) (Processo, error)
 	AbrirNavegador func(url string) error
 	Agora          func() time.Time
+	// SemNavegador é o --inicio: a IA acorda com o computador e fica só no
+	// ícone, sem abrir a conversa. A URL vale do mesmo jeito em Pronta.
+	SemNavegador bool
 }
 
 // Sessao é uma IA acordada (ou acordando) neste computador.
@@ -267,7 +270,9 @@ func (s *Sessao) carregar(ctx context.Context) (Processo, bool) {
 
 	url := navegador.URL(porta, s.versao, k)
 	// Sem navegador a IA segue acordada: o botão de abrir outra janela tenta de novo.
-	_ = d.AbrirNavegador(url)
+	if !d.SemNavegador {
+		_ = d.AbrirNavegador(url)
+	}
 	if ctx.Err() != nil {
 		return nil, false
 	}
@@ -339,6 +344,16 @@ func (s *Sessao) AbrirConversa() error {
 		return ErrNaoPronta
 	}
 	return s.d.AbrirNavegador(e.URL)
+}
+
+// AbrirInstalar abre a conversa já com o modal de instalação. Só vale em
+// Pronta, como o AbrirConversa.
+func (s *Sessao) AbrirInstalar() error {
+	e := s.Atual()
+	if e.Fase != Pronta {
+		return ErrNaoPronta
+	}
+	return s.d.AbrirNavegador(navegador.ComInstalar(e.URL))
 }
 
 // Dormir cancela o carregamento, para o cd2-ctl e depois o motor, e anuncia

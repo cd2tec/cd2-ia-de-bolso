@@ -718,3 +718,46 @@ func TestSessaoIAAnteriorAindaFechando(t *testing.T) {
 		t.Fatalf("Erro = %q", e.Erro)
 	}
 }
+
+// Com SemNavegador (o --inicio), a IA chega a Pronta sem abrir a conversa,
+// e a URL continua valendo para "Abrir uma nova janela da conversa".
+func TestSemNavegadorNaoAbre(t *testing.T) {
+	c := novoCenario()
+	c.deps.SemNavegador = true
+	esp := novoEspiao(c.ordem)
+	s := Nova(c.deps, "0.14.0", esp.aoMudar)
+	rodar(t, s)
+	if p := esp.esperar(t, "Pronta", fase(Pronta)); p.URL != urlTeste {
+		t.Fatalf("Pronta = %+v", p)
+	}
+	select {
+	case u := <-c.abriu:
+		t.Fatalf("abriu o navegador: %q", u)
+	default:
+	}
+	if err := s.AbrirConversa(); err != nil {
+		t.Fatal(err)
+	}
+	if u := <-c.abriu; u != urlTeste {
+		t.Fatalf("nova janela abriu %q", u)
+	}
+}
+
+// AbrirInstalar abre a conversa com o modal de instalação, só em Pronta.
+func TestAbrirInstalar(t *testing.T) {
+	c := novoCenario()
+	esp := novoEspiao(c.ordem)
+	s := Nova(c.deps, "0.14.0", esp.aoMudar)
+	if err := s.AbrirInstalar(); err == nil {
+		t.Fatal("AbrirInstalar antes de Pronta devia falhar")
+	}
+	rodar(t, s)
+	esp.esperar(t, "Pronta", fase(Pronta))
+	<-c.abriu
+	if err := s.AbrirInstalar(); err != nil {
+		t.Fatal(err)
+	}
+	if u, quer := <-c.abriu, "http://127.0.0.1:8080/?v=0.14.0&instalar=1#k="+chaveTeste; u != quer {
+		t.Fatalf("abriu %q, quer %q", u, quer)
+	}
+}

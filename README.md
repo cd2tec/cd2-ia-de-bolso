@@ -60,6 +60,7 @@ Só no repositório (não vão para o pen drive):
   docs/index.html             <- o site do projeto (GitHub Pages)
   ctl/                        <- código do cd2-ctl (Go), compilado pelo GitHub Actions
   launcher/                   <- código do lançador IA de Bolso (Go + Wails), compilado pelo GitHub Actions
+  worker/                     <- Worker da Cloudflare que abre o pagamento e assina a chave de instalação
 ```
 
 ## Configuração recomendada
@@ -108,6 +109,17 @@ Fechar a janelinha **não** encerra a IA: ela continua acordada no ícone perto 
 **Plano B técnico.** O `INICIAR-CD2-Windows.bat` e o `INICIAR-CD2-Mac.command` ficam em `core/`. Os dois fazem a mesma coisa pelo terminal (para encerrar: ENTER na janela do Windows, Ctrl+C ou fechar o terminal no Mac). Se o pen drive foi gravado sem o lançador de um sistema, o INICIAR dele fica na raiz. No Linux não há lançador: use `sh ia-de-bolso.sh`.
 
 Windows e Mac modernos **não executam nada automaticamente** ao plugar o pen drive. O "plugou e abriu" é, na prática, um duplo clique. Por isso o lançador fica na raiz, com nome grande e visível; o resto fica nas subpastas.
+
+## Instalar no computador
+
+Gostou e quer usar a IA sem o pen drive? Com a IA aberta pelo pen drive, clique em **Instalar no computador** (na barra de cima da conversa ou na janelinha do lançador).
+
+- **Quanto custa:** R$ 25 por computador, em pagamento único, pelo Stripe. É uma cópia avulsa para este computador, não é assinatura nem licença.
+- **O que você leva:** a IA copiada do pen drive para o computador, que abre sem o pen drive, com ícone nos programas e atalho na área de trabalho se você quiser. Se quiser, ela acorda junto com o computador (ocupa de 4 a 5 GB de memória desde que ele liga, e dá para desligar). E dá para desinstalar quando quiser.
+- **A chave:** chega por e-mail e na tela, depois do pagamento. Guarde. Ela reinstala no mesmo computador, sem pagar de novo.
+- **As regras:** vale para um computador (todas as contas de usuário dele). Trocou de computador ou perdeu a chave, é uma nova instalação, com novo pagamento.
+
+O teste pelo pen drive continua livre e completo. As condições completas estão em [condicoes-instalacao.html](https://cd2tec.github.io/cd2-ia-de-bolso/condicoes-instalacao.html).
 
 ## 3. Conectar a um banco de dados
 
