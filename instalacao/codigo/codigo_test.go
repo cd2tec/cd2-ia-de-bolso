@@ -34,3 +34,11 @@ func TestExtrairUUIDDoIoreg(t *testing.T) {
 		t.Fatal("deveria falhar sem IOPlatformUUID")
 	}
 }
+
+// Par fixo identidade -> código, conferido fora deste código. Se a derivação mudar, as chaves
+// já vendidas deixam de valer: este teste tem de quebrar.
+func TestDerivarValorFixo(t *testing.T) {
+	if got := codigo.Derivar("4C4C4544-0042-3510-8051-B4C04F4B4E32"); got != "BCNK-0X06-DV8S" {
+		t.Fatalf("Derivar = %s, quero BCNK-0X06-DV8S", got)
+	}
+}
