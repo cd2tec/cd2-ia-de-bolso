@@ -87,6 +87,12 @@ test('voltouPagaMostraChaveEVolta', async () => {
   const t = await r.text();
   assert.ok(t.includes(v.chave));
   assert.ok(t.includes('http://127.0.0.1:8080/?chave=' + encodeURIComponent(v.chave)));
+  assert.match(t, /Voltar para a IA/);
+  // Só o botão volta: nada de redirecionar sozinho, a página sempre fica com a chave.
+  assert.ok(!t.includes('setTimeout'));
+  assert.ok(!t.includes('location.href'));
+  assert.ok(!/http-equiv="?refresh/i.test(t));
+  assert.ok(!t.includes('3 segundos'));
   assert.equal(pedidos[0].method, 'GET');
   assert.equal(pedidos[0].url, 'https://api.stripe.com/v1/checkout/sessions/' + SESSAO);
   assert.equal(pedidos[0].headers.Authorization, 'Bearer sk_test_x');

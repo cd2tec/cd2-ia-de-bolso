@@ -79,7 +79,7 @@ Conteúdo, como aprovado no rascunho:
 1. "Ir para o pagamento" abre, numa aba nova, o Worker com o código do computador e a porta da IA. O Worker cria a sessão de pagamento no Stripe e redireciona para ela.
 2. A pessoa paga no Stripe.
 3. O Stripe devolve a pessoa ao Worker. O Worker confere com o Stripe que a sessão está paga e gera a chave.
-4. O Worker mostra uma página simples, com a identidade da CD2, contendo a chave, um botão "Copiar a chave" e um botão **"Voltar para a IA"**, que leva de volta à IA em `127.0.0.1` com a chave. Se a IA ainda estiver aberta, a volta é automática depois de poucos segundos.
+4. O Worker mostra uma página simples, com a identidade da CD2, contendo a chave, um botão "Copiar a chave" e um botão **"Voltar para a IA"**, que leva de volta à IA em `127.0.0.1` com a chave. A volta é só pelo botão: a página não redireciona sozinha, para a chave ficar sempre à vista.
 5. A chave também chega por e-mail (ver "Como a chave chega por e-mail").
 
 Enquanto isso, a janela da conversa que abriu o modal mostra "Aguardando o pagamento...", com o campo para colar a chave como reserva.

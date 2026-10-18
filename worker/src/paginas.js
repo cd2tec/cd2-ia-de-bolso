@@ -56,7 +56,7 @@ export function paginaCancelou() {
 export function paginaChave(chave, porta) {
   const voltar = porta ? `http://127.0.0.1:${porta}/?chave=${encodeURIComponent(chave)}` : null;
   const aviso = voltar
-    ? '<p>Estamos te levando de volta para a IA em 3 segundos. Se não acontecer, use o botão abaixo.</p>'
+    ? '<p>Guarde a chave e depois use o botão para voltar para a IA.</p>'
     : '<p>Copie a chave e cole na tela de instalação da IA de Bolso.</p>';
   const botaoVoltar = voltar ? `<a class="botao vazado" id="voltar" href="${esc(voltar)}">Voltar para a IA</a>` : '';
   const script = `<script>
@@ -69,8 +69,6 @@ export function paginaChave(chave, porta) {
     else{var r=document.createRange();r.selectNodeContents(document.getElementById('chave'));
       var s=getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand('copy');ok();}catch(e){}}
   });
-  var v=document.getElementById('voltar');
-  if(v){setTimeout(function(){location.href=v.href;},3000);}
 })();
 </script>`;
   return pagina('Sua chave de instalação',
