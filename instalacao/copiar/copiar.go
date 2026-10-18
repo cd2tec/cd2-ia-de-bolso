@@ -175,13 +175,10 @@ func Planejar(raiz, goos, goarch string) ([]Item, int64, error) {
 	}
 	// O motor: no Windows o lançador procura bin\llamafile.exe. O pen drive
 	// traz bin/llamafile e bin/llamafile.exe com os mesmos bytes, e o CHECKSUMS
-	// só tem a linha de bin/llamafile, que serve para os dois.
+	// só tem a linha de bin/llamafile. A cópia sai sempre dele, o arquivo
+	// conferido: um .exe de motor antigo daria "cópia ruim" sem motivo claro.
 	if goos == "windows" {
-		origem := "bin/llamafile.exe"
-		if _, e := os.Stat(filepath.Join(raiz, "bin", "llamafile.exe")); e != nil {
-			origem = "bin/llamafile"
-		}
-		err = addComo(origem, "bin/llamafile.exe", "bin/llamafile")
+		err = addComo("bin/llamafile", "bin/llamafile.exe", "bin/llamafile")
 	} else {
 		err = add("bin/llamafile")
 	}

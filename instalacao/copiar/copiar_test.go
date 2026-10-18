@@ -146,10 +146,9 @@ func TestPlanejarWindowsMotorExe(t *testing.T) {
 				continue
 			}
 			achou = true
+			// A origem é sempre bin/llamafile, o arquivo que o CHECKSUMS confere:
+			// o .exe pode ter ficado de uma versão anterior do motor.
 			origem := "llamafile"
-			if comExe {
-				origem = "llamafile.exe"
-			}
 			if filepath.Base(it.Origem) != origem {
 				t.Errorf("comExe=%v: origem %s, queria %s", comExe, it.Origem, origem)
 			}
