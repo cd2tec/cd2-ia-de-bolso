@@ -27,12 +27,15 @@ const (
 type App struct {
 	s       *sessao.Sessao
 	bandeja bandeja
+	raiz    string
+	acordar func() // sobe a IA; trocado no teste
 
 	mu        sync.Mutex
 	ctx       context.Context // do Wails; nil até o OnStartup
 	podeSair  bool            // a IA já dormiu: o próximo pedido de saída vale
 	encerrado bool            // o Wails já parou: nada de falar com a janela
 	avisou    bool            // a notificação da primeira vez já saiu
+	trancada  bool            // cópia instalada sem chave: a IA não sobe
 }
 
 // estadoTela é o Estado no formato da tela: chaves em minúsculas e a fase
@@ -79,8 +82,9 @@ func fecharVaiDormir(f sessao.Fase) bool { return f == sessao.Erro }
 func deveChamar(f sessao.Fase) bool { return f == sessao.Pronta }
 
 func novaApp(raiz, versao string) *App {
-	a := &App{}
+	a := &App{raiz: raiz}
 	a.s = sessao.Nova(sessao.DepsReais(raiz), versao, a.aoMudar)
+	a.acordar = func() { go a.s.Rodar(context.Background()) }
 	return a
 }
 
@@ -123,21 +127,30 @@ func (a *App) sair() {
 	}
 }
 
+// iniciar decide a trava antes de subir a IA: a cópia instalada sem chave
+// fica na tela Trancada, sem Rodar, e o ícone só mostra ou fecha.
 func (a *App) iniciar(ctx context.Context) {
+	tranca := deveTrancar(detectarOrigem(a.raiz), chaveValida(pastaCache()))
 	a.mu.Lock()
 	a.ctx = ctx
+	a.trancada = tranca
 	a.mu.Unlock()
 	iniciarBandeja(a)
-	go a.s.Rodar(context.Background())
+	if tranca {
+		wruntime.EventsEmit(ctx, "estado", estadoTela{Fase: faseTrancada})
+		return
+	}
+	a.acordar()
 }
 
 // antesDeFechar é todo pedido de saída que não veio do Dormiu (Cmd+Q, logout,
 // o X da janela no Windows). A IA dorme antes; a saída de verdade vem pelo
 // aoMudar, 3 s depois do Dormiu. No Windows o X só esconde, menos com o erro
-// na tela: aí vale o Fechar, sem o balão de "Continuo acordada".
+// na tela: aí vale o Fechar, sem o balão de "Continuo acordada". Trancada
+// não há IA para dormir: a saída vale na hora.
 func (a *App) antesDeFechar(ctx context.Context) (impedir bool) {
 	a.mu.Lock()
-	pode := a.podeSair
+	pode := a.podeSair || a.trancada
 	a.mu.Unlock()
 	if pode {
 		return false
@@ -156,9 +169,9 @@ func (a *App) antesDeFechar(ctx context.Context) (impedir bool) {
 }
 
 // janelaFechada é o X da janela no Mac, que o Wails trata escondendo o app
-// (HideWindowOnClose): com o erro na tela, vale o Fechar.
+// (HideWindowOnClose): com o erro na tela ou trancada, vale o Fechar.
 func (a *App) janelaFechada() {
-	if fecharVaiDormir(a.s.Atual().Fase) {
+	if a.fecharSai() {
 		a.Fechar()
 	}
 }
@@ -215,11 +228,23 @@ func (a *App) AbrirConversa() error { return a.s.AbrirConversa() }
 func (a *App) Dormir() { go a.s.Dormir() }
 
 // Fechar é o botão da tela de erro: dorme (parando o que tiver subido) e sai.
-func (a *App) Fechar() { a.Dormir() }
+// Trancada, nada subiu: sai direto, sem o "Boa noite! Pode tirar o pen drive".
+func (a *App) Fechar() {
+	if a.estaTrancada() {
+		go a.sair()
+		return
+	}
+	a.Dormir()
+}
 
 // Estado é o estado de agora, que a tela pede ao abrir (o evento pode ter
 // saído antes de a página carregar).
-func (a *App) Estado() estadoTela { return paraTela(a.s.Atual()) }
+func (a *App) Estado() estadoTela {
+	if a.estaTrancada() {
+		return estadoTela{Fase: faseTrancada}
+	}
+	return paraTela(a.s.Atual())
+}
 
 // AbrirRegistros abre a pasta dos logs no Finder ou no Explorer.
 func (a *App) AbrirRegistros() error {

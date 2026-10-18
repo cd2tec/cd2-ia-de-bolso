@@ -12,11 +12,24 @@ const B_NOVA = 'Abrir uma nova janela da conversa';
 const B_DORMIR = 'Colocar a IA para dormir';
 const B_REGISTROS = 'Abrir a pasta dos registros';
 const B_FECHAR = 'Fechar';
-// Texto do botão -> método do Go (Task 9).
-const ACAO = { [B_NOVA]: 'AbrirConversa', [B_DORMIR]: 'Dormir', [B_REGISTROS]: 'AbrirRegistros', [B_FECHAR]: 'Fechar' };
+const B_INSTALAR = 'Instalar neste computador';
+const B_JA_TENHO = 'Já tenho a chave';
+const B_LIBERAR = 'Liberar';
+const B_VOLTAR = 'Voltar';
+// Texto do botão -> método do Go (Task 9). Instalar, Já tenho e Voltar só trocam o modo da tela.
+const ACAO = { [B_NOVA]: 'AbrirConversa', [B_DORMIR]: 'Dormir', [B_REGISTROS]: 'AbrirRegistros', [B_FECHAR]: 'Fechar',
+  [B_LIBERAR]: 'ColarChave' };
 
-// estado: {fase, pct, aviso, erro}; modo: 'normal' ou 'chamada'.
-function render(estado, modo){
+// Cópia instalada sem chave (a fase Trancada vem do Go, a IA nem começou a subir).
+const T_TRANCADA = 'Esta cópia não foi instalada neste computador';
+const L_TRANCADA = 'Para me usar daqui, instale pelo pen drive. Se você já pagou por este computador, cole a sua chave.';
+const L_INSTALAR = 'Espete o pen drive da IA de Bolso e abra o lançador de lá. A instalação é feita por ele.';
+const T_COLAR = 'Cole a sua chave aqui:';
+const CENA_TRISTE = { rosto: 'sono', nivel: 0 };
+
+// estado: {fase, pct, aviso, erro}; modo: 'normal' ou 'chamada' (e, na Trancada, 'instalar' ou 'colar');
+// msg: a resposta do ColarChave, mostrada no modo 'colar'.
+function render(estado, modo, msg){
   const e = estado || {};
   switch(e.fase){
     case 'Lendo':
@@ -34,6 +47,11 @@ function render(estado, modo){
       return { titulo: 'Boa noite! Pode tirar o pen drive.', linha: '', piadaLista: Piadas.DESPEDIDA, botoes: [] };
     case 'Erro':
       return { titulo: e.erro || 'Algo deu errado.', linha: '', piadaLista: null, botoes: [B_REGISTROS, B_FECHAR] };
+    case 'Trancada':
+      if(modo === 'colar') return { titulo: T_COLAR, linha: msg || '', piadaLista: null, botoes: [B_LIBERAR, B_VOLTAR],
+        campo: true, cena: CENA_TRISTE };
+      return { titulo: T_TRANCADA, linha: modo === 'instalar' ? L_INSTALAR : L_TRANCADA, piadaLista: null,
+        botoes: [B_INSTALAR, B_JA_TENHO], cena: CENA_TRISTE };
     default:
       return { titulo: '', linha: '', piadaLista: null, botoes: [] };
   }
@@ -71,7 +89,7 @@ if(typeof document === 'undefined') return;
 // ---------- DOM ----------
 const $ = id => document.getElementById(id);
 let estado = { fase: 'Lendo', pct: 0 }, modo = 'normal';
-let passo = 0, lista = null, ultimaPiada = -1, relogioPiada = null, chegouEvento = false;
+let passo = 0, lista = null, ultimaPiada = -1, relogioPiada = null, chegouEvento = false, msgColar = '';
 const trava = criarTrava(v => document.querySelectorAll('#botoes .btn').forEach(b => { b.disabled = v; }));
 
 function ponte(){ return root.go && root.go.main && root.go.main.App; }
@@ -86,15 +104,33 @@ function sortearPiada(){
   relogioPiada = setInterval(sortearPiada, 6000);
 }
 
-function cena(){
+function cena(r){
   const f = estado.fase, el = $('cena');
   if(f === 'Lendo' || f === 'Subindo'){ el.className = 'cena larga'; el.innerHTML = Cena.svgCarregando(estado.pct || 0, passo); }
+  else if(r && r.cena){ el.className = 'cena'; el.innerHTML = Cena.svgCerebro(r.cena.rosto, r.cena.nivel); }
   else { el.className = 'cena'; el.innerHTML = Cena.svgCerebro(f === 'Pronta' ? 'acordado' : 'sono', f === 'Erro' ? 0 : 6); }
 }
 
+// Botões da tela trancada que só trocam o modo, sem chamar o Go.
+const LOCAL = {
+  [B_INSTALAR]: () => { modo = 'instalar'; },
+  [B_JA_TENHO]: () => { modo = 'colar'; msgColar = ''; },
+  [B_VOLTAR]: () => { modo = 'normal'; msgColar = ''; }
+};
+
+// Liberar: o Go confere e grava a chave. Aceita, o próximo estado (Lendo) troca a tela; recusada, o motivo vai para a linha.
+function liberar(){
+  const A = ponte();
+  if(!trava.clicar('ColarChave') || !A || !A.ColarChave) return;
+  Promise.resolve(A.ColarChave($('campo').value)).then(txt => {
+    if(!txt) return;
+    msgColar = txt; trava.liberar(); desenhar();
+  }).catch(() => trava.liberar());
+}
+
 function desenhar(){
-  const r = render(estado, modo), carregando = estado.fase === 'Lendo' || estado.fase === 'Subindo';
-  cena();
+  const r = render(estado, modo, msgColar), carregando = estado.fase === 'Lendo' || estado.fase === 'Subindo';
+  cena(r);
   $('titulo').textContent = r.titulo;
   $('titulo').hidden = !r.titulo;
   $('trilho').hidden = !carregando;
@@ -102,6 +138,9 @@ function desenhar(){
   $('linha').textContent = r.linha;
   $('linha').hidden = !r.linha;
   $('linha').className = 'linha' + (carregando ? '' : ' centro');
+  const campo = $('campo'), mostrarCampo = !!r.campo, apareceu = mostrarCampo && campo.hidden;
+  campo.hidden = !mostrarCampo;
+  if(apareceu){ campo.value = ''; campo.focus(); }
   if(r.piadaLista !== lista){ lista = r.piadaLista; ultimaPiada = -1; sortearPiada(); }
   const caixa = $('botoes');
   caixa.textContent = '';
@@ -111,6 +150,8 @@ function desenhar(){
     b.className = 'btn ' + (i === 0 ? 'primario' : 'secundario');
     b.textContent = rotulo;
     b.addEventListener('click', () => {
+      if(LOCAL[rotulo]){ LOCAL[rotulo](); desenhar(); return; }
+      if(rotulo === B_LIBERAR) return liberar();
       const A = ponte(), nome = ACAO[rotulo];
       if(trava.clicar(nome) && A && A[nome]) A[nome]();
     });
@@ -125,7 +166,7 @@ function aoEstado(bruto){
   if(!novo) return;
   chegouEvento = true;
   // Só uma troca de fase libera os botões: um estado repetido (o pct andando) não destrava.
-  if(novo.fase !== estado.fase){ modo = 'normal'; trava.liberar(); }
+  if(novo.fase !== estado.fase){ modo = 'normal'; msgColar = ''; trava.liberar(); }
   estado = novo;
   desenhar();
 }
@@ -136,6 +177,7 @@ function noWails(){
 }
 
 function iniciar(){
+  $('campo').addEventListener('keydown', ev => { if(ev.key === 'Enter'){ ev.preventDefault(); liberar(); } });
   const A = ponte();
   if(A && root.runtime){
     root.runtime.EventsOn('estado', aoEstado);
@@ -145,11 +187,11 @@ function iniciar(){
       Promise.resolve(A.Estado()).then(v => { if(!chegouEvento) aoEstado(v); }).catch(() => {});
     } catch(_){}
   } else {
-    // Sem Wails: um estado de exemplo (?fase=Pronta, Erro, Dormiu...), sem tocar em nada.
+    // Sem Wails: um estado de exemplo (?fase=Pronta, Erro, Dormiu, Trancada&modo=colar...), sem tocar em nada.
     $('demo').hidden = false;
     const q = new URLSearchParams(location.search);
     estado = { fase: q.get('fase') || 'Lendo', pct: Number(q.get('pct') || 62), erro: q.get('erro') || 'Não consegui acordar a IA. Os registros têm o motivo.' };
-    if(q.get('modo') === 'chamada') modo = 'chamada';
+    if(q.get('modo')) modo = q.get('modo');
   }
   desenhar();
   setInterval(() => { passo++; if(estado.fase === 'Lendo' || estado.fase === 'Subindo') cena(); }, 300);

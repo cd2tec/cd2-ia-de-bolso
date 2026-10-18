@@ -21,6 +21,7 @@ const (
 	itemMostrar  = "Mostrar a IA de Bolso"
 	itemNova     = "Abrir uma nova janela da conversa"
 	itemDormir   = "Colocar a IA para dormir"
+	itemFechar   = "Fechar"
 	ladoBandeja  = 44 // px; o Mac reduz para 16x16 pontos, o Windows para o tamanho da bandeja
 	iconeCarrega = "carregando"
 	iconeAcorda  = "acordada"
@@ -92,7 +93,7 @@ type bandeja struct {
 	mu        sync.Mutex
 	pronta    bool
 	cabecalho *systray.MenuItem
-	itens     []*systray.MenuItem
+	itens     map[string]*systray.MenuItem // pelo texto: o menu muda com a trava
 	icone     string
 }
 
@@ -104,15 +105,18 @@ func (a *App) montarMenu() {
 	b.cabecalho = systray.AddMenuItem(nomeBandeja, "")
 	b.cabecalho.Disable()
 	systray.AddSeparator()
-	for _, it := range itensBandeja(sessao.Estado{Fase: sessao.Lendo}) {
-		b.itens = append(b.itens, systray.AddMenuItem(it.Texto, ""))
+	// Todos os itens existem desde o começo; o atualizarBandeja esconde os
+	// que não valem (com a trava, só Mostrar e Fechar).
+	b.itens = map[string]*systray.MenuItem{}
+	for _, texto := range []string{itemMostrar, itemNova, itemDormir, itemFechar} {
+		b.itens[texto] = systray.AddMenuItem(texto, "")
 	}
 	b.pronta = true
 	b.mu.Unlock()
 	ligarCliqueSimples(a)
 	a.atualizarBandeja(a.s.Atual())
 
-	mostrar, nova, dormir := b.itens[0], b.itens[1], b.itens[2]
+	mostrar, nova, dormir, fechar := b.itens[itemMostrar], b.itens[itemNova], b.itens[itemDormir], b.itens[itemFechar]
 	go func() {
 		for {
 			select {
@@ -123,6 +127,8 @@ func (a *App) montarMenu() {
 			case <-dormir.ClickedCh:
 				a.mostrar()
 				a.Dormir()
+			case <-fechar.ClickedCh:
+				a.Fechar()
 			}
 		}
 	}()
@@ -132,20 +138,33 @@ func (a *App) montarMenu() {
 // desenho. Antes de o systray ficar pronto não faz nada: o montarMenu aplica
 // o estado de agora quando ficar.
 func (a *App) atualizarBandeja(e sessao.Estado) {
+	trancada := a.estaTrancada() // antes do b.mu: nunca segurar os dois locks juntos
 	b := &a.bandeja
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if !b.pronta {
 		return
 	}
-	r := rotuloBandeja(e)
+	r, itens := rotuloBandeja(e), itensBandeja(e)
+	if trancada {
+		r, itens = nomeBandeja, itensBandejaTrancada()
+	}
 	systray.SetTooltip(r)
 	b.cabecalho.SetTitle(r)
-	for i, it := range itensBandeja(e) {
+	valem := map[string]bool{}
+	for _, it := range itens {
+		valem[it.Texto] = true
+		m := b.itens[it.Texto]
+		m.Show()
 		if it.Ligado {
-			b.itens[i].Enable()
+			m.Enable()
 		} else {
-			b.itens[i].Disable()
+			m.Disable()
+		}
+	}
+	for texto, m := range b.itens {
+		if !valem[texto] {
+			m.Hide()
 		}
 	}
 	if ic := iconeDoEstado(e); ic != b.icone {

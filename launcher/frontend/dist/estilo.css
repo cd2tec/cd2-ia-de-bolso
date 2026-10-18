@@ -35,3 +35,5 @@ body{display:flex;flex-direction:column;justify-content:center;padding:18px 22px
 .rosto.acordado{animation:piscar 3s steps(1) infinite}
 @media (prefers-reduced-motion:reduce){.rosto.acordado{animation:none}.preenche{transition:none}}
 .linha.centro{text-align:center;margin-top:4px}
+.campo{display:block;width:100%;margin-top:10px;padding:7px 12px;border-radius:999px;border:1px solid var(--linha);background:var(--vazio);color:var(--texto);font:11px/16px var(--mono);outline:none}
+.campo:focus{border-color:var(--amarelo)}

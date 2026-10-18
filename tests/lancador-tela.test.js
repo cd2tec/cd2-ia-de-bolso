@@ -122,3 +122,38 @@ test('trava: AbrirRegistros destrava sozinha, Dormir e Fechar não', () => {
   assert.equal(fn, null);
   assert.equal(t.travado, true);
 });
+
+test('render Trancada', () => {
+  const r = render({ fase: 'Trancada' }, 'normal');
+  assert.equal(r.titulo, 'Esta cópia não foi instalada neste computador');
+  assert.equal(r.linha, 'Para me usar daqui, instale pelo pen drive. Se você já pagou por este computador, cole a sua chave.');
+  assert.deepEqual(r.botoes, ['Instalar neste computador', 'Já tenho a chave']);
+  assert.deepEqual(r.cena, { rosto: 'sono', nivel: 0 });
+  assert.equal(r.piadaLista, null);
+  assert.equal(!!r.campo, false);
+});
+
+test('render Trancada em chamada é a tela normal', () => {
+  assert.deepEqual(render({ fase: 'Trancada' }, 'chamada'), render({ fase: 'Trancada' }, 'normal'));
+});
+
+test('render Trancada instalar explica que é pelo pen drive', () => {
+  const r = render({ fase: 'Trancada' }, 'instalar');
+  assert.equal(r.titulo, 'Esta cópia não foi instalada neste computador');
+  assert.equal(r.linha, 'Espete o pen drive da IA de Bolso e abra o lançador de lá. A instalação é feita por ele.');
+  assert.deepEqual(r.botoes, ['Instalar neste computador', 'Já tenho a chave']);
+});
+
+test('render Trancada colar mostra o campo, Liberar e Voltar', () => {
+  const r = render({ fase: 'Trancada' }, 'colar');
+  assert.equal(r.campo, true);
+  assert.deepEqual(r.botoes, ['Liberar', 'Voltar']);
+  assert.equal(r.linha, '');
+  assert.deepEqual(r.cena, { rosto: 'sono', nivel: 0 });
+});
+
+test('render Trancada colar com a resposta do ColarChave na linha', () => {
+  const r = render({ fase: 'Trancada' }, 'colar', 'Esta chave não é deste computador.');
+  assert.equal(r.linha, 'Esta chave não é deste computador.');
+  assert.equal(r.campo, true);
+});
