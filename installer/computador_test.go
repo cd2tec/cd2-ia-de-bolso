@@ -59,6 +59,9 @@ type maquina struct {
 	chaves        chan EventoChave
 	reabriu       []string
 	erroReabrir   error
+	semSinal      bool     // a instância nova não dá sinal
+	esperou       []string // sinais esperados
+	sinalizou     []string // sinais dados no início
 	elevado       bool
 	abriuLancador string
 }
@@ -100,6 +103,15 @@ func (m *maquina) app() *App {
 	a.reabrir = func(exe string, args []string) error {
 		m.reabriu = append([]string{exe}, args...)
 		return m.erroReabrir
+	}
+	a.novoSinal = func() (string, error) { return "0123456789abcdef0123456789abcdef", nil }
+	a.esperarSinal = func(n string) bool {
+		m.esperou = append(m.esperou, n)
+		return !m.semSinal
+	}
+	a.sinalizar = func(n string) error {
+		m.sinalizou = append(m.sinalizou, n)
+		return nil
 	}
 	a.abrirLancador = func(caminho string) error {
 		m.abriuLancador = caminho
@@ -362,6 +374,8 @@ func TestIrParaPagamentoDuasVezesDeixaUmServidor(t *testing.T) {
 	}
 }
 
+const sinalDeTeste = "0123456789abcdef0123456789abcdef"
+
 func TestEscolherInstalar(t *testing.T) {
 	// Sem administrador (ou fora do Windows) não reabre nada.
 	m := novaMaquina(t)
@@ -370,28 +384,92 @@ func TestEscolherInstalar(t *testing.T) {
 		t.Fatalf("EscolherInstalar = %q, reabriu %q, saiu %d", got, m.reabriu, m.saiu)
 	}
 
-	// Como administrador, reabre com --instalar e sai.
+	// Como administrador, reabre com --instalar e o sinal, espera o sinal e sai.
 	m.elevado = true
 	a = m.app()
 	if got := a.EscolherInstalar(); got != "" {
 		t.Fatalf("EscolherInstalar = %q", got)
 	}
-	if len(m.reabriu) != 2 || m.reabriu[0] == "" || m.reabriu[1] != "--instalar" || m.saiu != 1 {
+	if len(m.reabriu) != 3 || m.reabriu[0] == "" || m.reabriu[1] != "--instalar" ||
+		m.reabriu[2] != "--sinal="+sinalDeTeste || m.saiu != 1 {
 		t.Fatalf("reabriu %q, saiu %d", m.reabriu, m.saiu)
 	}
+	if len(m.esperou) != 1 || m.esperou[0] != sinalDeTeste {
+		t.Fatalf("esperou %q", m.esperou)
+	}
+	if a.InfoInstalar().Bloqueio != "" {
+		t.Fatal("bloqueou com o sinal chegando")
+	}
+}
 
-	// Se não deu para reabrir, bloqueia o caminho de instalar e não sai.
-	m.erroReabrir = errors.New("sem Explorer")
-	a = m.app()
-	quer := "Abra o instalador de novo sem ser como administrador (clique duplo normal) para instalar neste computador."
-	if got := a.EscolherInstalar(); got != quer {
+const querBloqueio = "Abra o instalador de novo sem ser como administrador (clique duplo normal) para instalar neste computador."
+
+func TestEscolherInstalarSemSinalBloqueia(t *testing.T) {
+	// Reabriu, mas a instância nova não deu sinal: não sai e bloqueia.
+	m := novaMaquina(t)
+	m.elevado, m.semSinal = true, true
+	a := m.app()
+	if got := a.EscolherInstalar(); got != querBloqueio {
 		t.Fatalf("EscolherInstalar = %q", got)
 	}
-	if m.saiu != 1 {
-		t.Fatal("saiu sem ter reaberto")
+	if m.saiu != 0 || len(m.esperou) != 1 {
+		t.Fatalf("saiu %d, esperou %q", m.saiu, m.esperou)
 	}
-	if got := a.InfoInstalar().Bloqueio; got != quer {
+	if got := a.InfoInstalar().Bloqueio; got != querBloqueio {
 		t.Fatalf("Bloqueio = %q", got)
+	}
+}
+
+func TestEscolherInstalarReabrirFalhaBloqueia(t *testing.T) {
+	m := novaMaquina(t)
+	m.elevado = true
+	m.erroReabrir = errors.New("sem Explorer")
+	a := m.app()
+	if got := a.EscolherInstalar(); got != querBloqueio {
+		t.Fatalf("EscolherInstalar = %q", got)
+	}
+	if m.saiu != 0 || len(m.esperou) != 0 {
+		t.Fatalf("saiu %d, esperou %q", m.saiu, m.esperou)
+	}
+	if got := a.InfoInstalar().Bloqueio; got != querBloqueio {
+		t.Fatalf("Bloqueio = %q", got)
+	}
+}
+
+func TestEscolherInstalarJaReabertoNaoReabre(t *testing.T) {
+	// A instância que já veio com --instalar nunca reabre de novo, mesmo que
+	// o Windows a tenha elevado.
+	m := novaMaquina(t)
+	m.elevado = true
+	a := m.app()
+	a.comInstalar = true
+	if got := a.EscolherInstalar(); got != "" || m.reabriu != nil || m.saiu != 0 || m.esperou != nil {
+		t.Fatalf("EscolherInstalar = %q, reabriu %q, saiu %d", got, m.reabriu, m.saiu)
+	}
+}
+
+func TestIniciarComArgs(t *testing.T) {
+	m := novaMaquina(t)
+	a := m.app()
+	t.Setenv("__COMPAT_LAYER", "RunAsInvoker")
+	a.iniciarComArgs([]string{"--instalar", "--sinal=" + sinalDeTeste})
+	if !a.IniciouComInstalar() {
+		t.Fatal("sem comInstalar")
+	}
+	if len(m.sinalizou) != 1 || m.sinalizou[0] != sinalDeTeste {
+		t.Fatalf("sinalizou %q", m.sinalizou)
+	}
+	if _, tem := os.LookupEnv("__COMPAT_LAYER"); tem {
+		t.Fatal("__COMPAT_LAYER continua no ambiente")
+	}
+
+	// Sem --instalar, nada muda: nem sinal, nem ambiente.
+	m2 := novaMaquina(t)
+	b := m2.app()
+	t.Setenv("__COMPAT_LAYER", "x")
+	b.iniciarComArgs([]string{"--sinal=" + sinalDeTeste})
+	if b.IniciouComInstalar() || m2.sinalizou != nil || os.Getenv("__COMPAT_LAYER") != "x" {
+		t.Fatalf("comInstalar %v, sinalizou %q", b.IniciouComInstalar(), m2.sinalizou)
 	}
 }
 

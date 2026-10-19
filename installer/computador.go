@@ -91,16 +91,42 @@ func urlCompra(worker, codigo string, porta int) string {
 // foi reaberto sem administrador para seguir direto para a instalação.
 func (a *App) IniciouComInstalar() bool { return a.comInstalar }
 
+// iniciarComArgs lê os argumentos antes de a janela abrir. Com --instalar,
+// tira o __COMPAT_LAYER herdado da reabertura (os filhos não precisam dele)
+// e dá o sinal que a instância elevada está esperando para sair.
+func (a *App) iniciarComArgs(args []string) {
+	instalar, sinal := elevacao.LerArgs(args)
+	a.comInstalar = instalar
+	if !instalar {
+		return
+	}
+	os.Unsetenv("__COMPAT_LAYER")
+	if sinal != "" {
+		if err := a.sinalizar(sinal); err != nil {
+			log.Printf("sinal da reabertura: %v", err)
+		}
+	}
+}
+
 // EscolherInstalar roda quando a pessoa escolhe instalar neste computador.
 // No Windows como administrador, reabre o instalador sem administrador com
-// --instalar e fecha este. Se não der, devolve o aviso de bloqueio.
+// --instalar e um sinal, espera a instância nova dar o sinal e só então
+// fecha esta. Se a reabertura falhar ou o sinal não vier, devolve o aviso de
+// bloqueio. A instância que já veio com --instalar nunca reabre.
 func (a *App) EscolherInstalar() string {
-	if !a.elevado() {
+	if a.comInstalar || !a.elevado() {
 		return ""
 	}
 	exe, err := os.Executable()
+	var nonce string
 	if err == nil {
-		err = a.reabrir(exe, []string{elevacao.ArgInstalar})
+		nonce, err = a.novoSinal()
+	}
+	if err == nil {
+		err = a.reabrir(exe, []string{elevacao.ArgInstalar, elevacao.ArgSinal + nonce})
+	}
+	if err == nil && !a.esperarSinal(nonce) {
+		err = errors.New("a instância reaberta não deu sinal no prazo")
 	}
 	if err != nil {
 		log.Printf("reabrir sem administrador: %v", err)

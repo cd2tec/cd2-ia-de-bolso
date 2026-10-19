@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
+	"time"
 	"unsafe"
 
 	ole "github.com/go-ole/go-ole"
@@ -25,6 +26,52 @@ func Elevado() bool {
 // Destacar solta o programa do grupo e do console do instalador.
 func Destacar(c *exec.Cmd) {
 	c.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
+}
+
+// sinal é o mutex da instância reaberta. Fica aberto até o processo sair:
+// é ele que diz à instância elevada que a reabertura deu certo.
+var sinal windows.Handle
+
+// Sinalizar cria o mutex nomeado do nonce. Roda na instância reaberta, sem
+// administrador, para a elevada conseguir abri-lo.
+func Sinalizar(nonce string) error {
+	if !sinalValido(nonce) {
+		return errors.New("sinal com formato errado")
+	}
+	nome, err := windows.UTF16PtrFromString(nomeSinal(nonce))
+	if err != nil {
+		return err
+	}
+	h, err := windows.CreateMutex(nil, false, nome)
+	if err != nil && h == 0 {
+		return fmt.Errorf("CreateMutex: %w", err)
+	}
+	sinal = h
+	return nil
+}
+
+// EsperarSinal procura o mutex do nonce a cada 100 ms, até o prazo. Acesso
+// negado também conta: o objeto existe, só foi criado por outra conta.
+func EsperarSinal(nonce string, prazo time.Duration) bool {
+	nome, err := windows.UTF16PtrFromString(nomeSinal(nonce))
+	if err != nil {
+		return false
+	}
+	fim := time.Now().Add(prazo)
+	for {
+		h, err := windows.OpenMutex(windows.SYNCHRONIZE, false, nome)
+		if err == nil {
+			windows.CloseHandle(h)
+			return true
+		}
+		if errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+			return true
+		}
+		if time.Now().After(fim) {
+			return false
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 // GUIDs da técnica "pedir ao Explorer que abra o programa": a janela do

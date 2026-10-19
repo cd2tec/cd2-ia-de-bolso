@@ -143,3 +143,24 @@ func TestVoltaRecusaOutroHost(t *testing.T) {
 		t.Fatalf("localhost: status %d", cod)
 	}
 }
+
+// Quem recebe a chave fecha o servidor na hora; a página "Pronto" tem que
+// chegar inteira mesmo assim.
+func TestVoltaFecharNaoCortaAPagina(t *testing.T) {
+	limpa := chaveDoVetor(t)
+	for i := 0; i < 20; i++ {
+		s, err := Ouvir(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		go func() {
+			<-s.Chaves()
+			s.Fechar()
+		}()
+		cod, corpo, _ := pedir(t, s, "/?chave="+url.QueryEscape(limpa), "")
+		if cod != 200 || !strings.Contains(corpo, textoPronto) || !strings.Contains(corpo, "</html>") {
+			t.Fatalf("rodada %d: status %d, corpo %q", i, cod, corpo)
+		}
+		s.Fechar()
+	}
+}

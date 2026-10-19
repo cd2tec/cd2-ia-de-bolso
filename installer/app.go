@@ -49,6 +49,9 @@ type App struct {
 	sair          func(ctx context.Context)
 	elevado       func() bool
 	reabrir       func(exe string, args []string) error
+	novoSinal     func() (string, error)
+	esperarSinal  func(nonce string) bool
+	sinalizar     func(nonce string) error
 	abrirLancador func(caminho string) error
 
 	comInstalar bool // abriu com --instalar
@@ -78,6 +81,9 @@ func NovaApp() *App {
 		sair:          runtime.Quit,
 		elevado:       elevacao.Elevado,
 		reabrir:       elevacao.ReabrirSemAdmin,
+		novoSinal:     elevacao.NovoSinal,
+		esperarSinal:  func(n string) bool { return elevacao.EsperarSinal(n, elevacao.PrazoSinal) },
+		sinalizar:     elevacao.Sinalizar,
 		abrirLancador: abrirSolto,
 	}
 }

@@ -61,9 +61,19 @@ func (s *Servidor) Porta() int { return s.porta }
 // Chaves entrega a chave já normalizada, uma vez.
 func (s *Servidor) Chaves() <-chan string { return s.chaves }
 
-// Fechar desliga o servidor. Pode ser chamado mais de uma vez.
+// prazoFechar é quanto Fechar espera uma resposta em andamento terminar.
+const prazoFechar = 2 * time.Second
+
+// Fechar desliga o servidor, deixando terminar a resposta em andamento (até
+// prazoFechar). Pode ser chamado mais de uma vez.
 func (s *Servidor) Fechar() {
-	s.fechar.Do(func() { s.srv.Close() })
+	s.fechar.Do(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), prazoFechar)
+		defer cancel()
+		if err := s.srv.Shutdown(ctx); err != nil {
+			s.srv.Close()
+		}
+	})
 }
 
 func (s *Servidor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -82,8 +92,13 @@ func (s *Servidor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		pagina(w, http.StatusBadRequest, textoRuim)
 		return
 	}
-	s.uma.Do(func() { s.chaves <- c })
+	// A página vai antes da chave: quem recebe a chave fecha o servidor, e a
+	// pessoa tem que ver o "Pronto" inteiro.
 	pagina(w, http.StatusOK, textoPronto)
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
+	s.uma.Do(func() { s.chaves <- c })
 }
 
 // pagina responde com um HTML simples de uma frase.
