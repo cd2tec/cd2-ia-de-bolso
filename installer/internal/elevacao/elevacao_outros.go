@@ -28,3 +28,8 @@ func Sinalizar(nonce string) error { return nil }
 
 // EsperarSinal é sempre false fora do Windows.
 func EsperarSinal(nonce string, prazo time.Duration) bool { return false }
+
+// AbrirComoAdmin só existe no Windows.
+func AbrirComoAdmin(exe string, args []string) error {
+	return errors.New("abrir como administrador só existe no Windows")
+}

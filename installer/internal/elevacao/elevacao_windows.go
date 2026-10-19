@@ -223,3 +223,36 @@ func metodo(obj *ole.IUnknown, idx int) uintptr {
 	vtbl := (*[32]uintptr)(unsafe.Pointer(obj.RawVTable))
 	return vtbl[idx]
 }
+
+// AbrirComoAdmin abre exe com args pedindo administrador ao Windows, sem
+// janela de console. Volta quando a pessoa responde; ErrRecusou se ela disser
+// "Não" ou fechar a pergunta.
+func AbrirComoAdmin(exe string, args []string) error {
+	verbo, _ := windows.UTF16PtrFromString("runas")
+	arquivo, err := windows.UTF16PtrFromString(exe)
+	if err != nil {
+		return err
+	}
+	params, err := windows.UTF16PtrFromString(windows.ComposeCommandLine(args))
+	if err != nil {
+		return err
+	}
+	dir, _ := windows.UTF16PtrFromString(filepath.Dir(exe))
+	pronto := make(chan error, 1)
+	go func() {
+		runtime.LockOSThread()
+		defer runtime.UnlockOSThread()
+		// O ShellExecute pede COM iniciado na thread.
+		if err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED); err == nil {
+			defer ole.CoUninitialize()
+		}
+		pronto <- windows.ShellExecute(0, verbo, arquivo, params, dir, swHide)
+	}()
+	if err := <-pronto; err != nil {
+		if errors.Is(err, windows.ERROR_CANCELLED) {
+			return ErrRecusou
+		}
+		return fmt.Errorf("abrir como administrador: %w", err)
+	}
+	return nil
+}

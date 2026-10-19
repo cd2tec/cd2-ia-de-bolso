@@ -70,7 +70,7 @@ type App struct {
 func NovaApp() *App {
 	return &App{
 		ctx:        context.Background(),
-		sistema:    discos.Padrao(),
+		sistema:    sistemaPadrao(),
 		emitir:     runtime.EventsEmit,
 		gravar:     gravar.Gravar,
 		pastaCache: gravar.PastaCache,
