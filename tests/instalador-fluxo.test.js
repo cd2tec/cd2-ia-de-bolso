@@ -494,6 +494,19 @@ test('Pagamento confirmado só depois de pagar ou colar a chave', () => {
   assert.equal(F.passo(pagou, { tipo: 'inicio' }).pago, false);
 });
 
+test('instalado com aviso dos atalhos não promete atalho', () => {
+  const aviso = 'A IA foi instalada, mas não consegui criar todos os atalhos.';
+  const e = F.passo(ateInstalando(), { tipo: 'fim', ok: true, frase: aviso, aviso });
+  assert.equal(e.tela, 'instalado');
+  assert.equal(e.aviso, aviso);
+  assert.equal(F.textoInstalado(e.area, e.aviso), 'A IA de Bolso está instalada neste computador.');
+  assert.doesNotMatch(F.textoInstalado(true, aviso), /área de trabalho|ícone/);
+  // sem aviso, o texto de sempre; e o aviso não vaza para a próxima instalação
+  const ok = F.passo(ateInstalando(), { tipo: 'fim', ok: true, frase: 'Pronto. A IA de Bolso está instalada neste computador.' });
+  assert.equal(ok.aviso, '');
+  assert.equal(F.textoInstalado(true, ok.aviso), 'A partir de agora, abra a IA de Bolso pelo ícone nos programas ou na área de trabalho.');
+});
+
 test('gb legível', () => {
   assert.equal(F.gb(7.6e9), '7,6');
   assert.equal(F.gb(0), '0,0');

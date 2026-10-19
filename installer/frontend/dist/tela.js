@@ -32,7 +32,8 @@ function backendWails(){
 // Demonstração: dois discos (um bom e um pequeno), uma gravação simulada de uns 10 segundos e o
 // caminho de instalar com pagamento e instalação de mentira.
 // Variações pelo endereço: ?demo=um, ?demo=aviso, ?demo=nenhum, ?demo=muitos, ?demo=erro, ?demo=falha
-// (pen drive) e ?demo=chave, ?demo=cheio, ?demo=bloqueio, ?demo=reaberta, ?demo=erroInstalar (instalar).
+// (pen drive) e ?demo=chave, ?demo=cheio, ?demo=bloqueio, ?demo=reaberta, ?demo=erroInstalar,
+// ?demo=atalhos (instalar).
 function backendDemo(){
   const modo = new URLSearchParams(location.search).get('demo') || '';
   const bom = { id: 'disk4', nome: 'SanDisk Ultra', bytes: 32e9, situacao: 'ok', arquivos: 3, maisDe: false, rotulo: 'SanDisk 32 GB' };
@@ -63,6 +64,11 @@ function backendDemo(){
       if(fracao < 0.5) emitir('progresso', { etapa: 'baixando', frase: 'Baixando o modelo (' + gb(fracao * 2 * 3.9) + ' de 3,9 GB)', fracao, restante });
       else if(fracao < 0.85) emitir('progresso', { etapa: 'copiando', frase: meio, fracao, restante });
       else if(fracao < 1) emitir('progresso', { etapa: 'conferindo', frase: 'Conferindo o que foi gravado', fracao, restante: Math.round((1 - fracao) * 200) });
+      else if(cancelado === 'instalar' && modo === 'atalhos'){
+        const aviso = 'A IA foi instalada, mas não consegui criar todos os atalhos.';
+        emitir('progresso', { etapa: 'pronto', frase: aviso, fracao: 1, restante: 0 });
+        clearInterval(relogio); relogio = null; emitir('fim', { ok: true, frase: aviso, aviso });
+      }
       else { emitir('progresso', { etapa: 'pronto', frase: 'Pronto.', fracao: 1, restante: 0 }); fim(true, 'Pronto.'); }
     }, 250);
     return Promise.resolve(null);
@@ -235,7 +241,8 @@ const telas = {
   instalado: {
     montar: e => '<div class="final"><div class="cabeca-final"><div class="selo ok">' + ICONE_OK + '</div>'
       + '<h1 tabindex="-1">Pronto! Agora eu moro aqui</h1></div>'
-      + '<p class="texto">' + esc(F.textoInstalado(e.area)) + '</p>'
+      + '<p class="texto">' + esc(F.textoInstalado(e.area, e.aviso)) + '</p>'
+      + (e.aviso ? '<p class="aviso-erro" role="status">' + esc(e.aviso) + '</p>' : '')
       + '<div id="blocoChave" class="bloco-final"></div>'
       + '<p class="aviso-erro" id="erroAbrir" role="status" hidden></p></div>'
       + '<div class="acoes"><button type="button" class="btn secundario" data-acao="copiar" hidden>Copiar a chave</button>'
@@ -571,7 +578,7 @@ async function iniciar(){
   if(window.go && window.go.main && window.go.main.App) backend = backendWails();
   else { backend = backendDemo(); $('demo').hidden = false; }
   backend.ouvir('progresso', ev => despachar({ tipo: 'progresso', evento: ev }));
-  backend.ouvir('fim', f => despachar({ tipo: 'fim', ok: !!(f && f.ok), frase: (f && f.frase) || '' }));
+  backend.ouvir('fim', f => despachar({ tipo: 'fim', ok: !!(f && f.ok), frase: (f && f.frase) || '', aviso: (f && f.aviso) || '' }));
   backend.ouvir('chave', c => despachar({ tipo: 'chave', ok: !!(c && c.ok), erro: (c && c.erro) || '' }));
   // Reaberta com --instalar (Windows, sem administrador): vai direto para instalar e não formata.
   let reaberta = false;

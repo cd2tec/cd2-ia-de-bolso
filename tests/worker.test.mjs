@@ -68,6 +68,8 @@ test('comprarRecusaCodigoInvalido', async () => {
     const r = await app.fetch(new Request(BASE + '/comprar?' + q), env);
     assert.equal(r.status, 400, q);
     assert.equal(pedidos.length, 0, q);
+    // O texto serve para quem veio da IA e para quem veio do instalador.
+    assert.match(await r.text(), /Volte para a IA de Bolso ou para o instalador e tente de novo\./, q);
   }
 });
 

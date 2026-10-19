@@ -22,7 +22,7 @@ export function criar({ fetch: buscar }) {
     const codigo = url.searchParams.get('codigo');
     const porta = url.searchParams.get('porta');
     if (!codigoValido(codigo) || !portaValida(porta)) {
-      return html(paginaErro('Link inválido', 'Este link de compra não está completo. Volte para a IA de Bolso e tente de novo.'), 400);
+      return html(paginaErro('Link inválido', 'Este link de compra não está completo. Volte para a IA de Bolso ou para o instalador e tente de novo.'), 400);
     }
     const chave = await assinar(codigo, env.CHAVE_PRIVADA);
     const doInstalador = url.searchParams.get('de') === 'instalador';

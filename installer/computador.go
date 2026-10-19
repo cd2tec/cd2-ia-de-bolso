@@ -31,6 +31,11 @@ const (
 	fraseNaoAbriuIA      = "Não consegui abrir a IA de Bolso. Abra pelo ícone nos programas."
 )
 
+// maxVoltas é quantos servidores da volta do pagamento ficam ouvindo ao mesmo
+// tempo. Cada "Abrir o pagamento de novo" abre mais um, e o mais antigo fecha
+// quando passa disso.
+const maxVoltas = 5
+
 // tempoEspaco limita a conta de espaço, que baixa o manifesto.
 const tempoEspaco = 30 * time.Second
 
@@ -225,9 +230,10 @@ func (a *App) ColarChave(k string) string {
 }
 
 // IrParaPagamento abre a página de pagamento no navegador e espera a chave
-// voltar pela porta local. Quando ela chega, é conferida e guardada, e a
-// tela recebe o evento "chave". Clicar de novo troca o servidor da volta:
-// nunca ficam dois ligados.
+// voltar pela porta local. Quando ela chega, é conferida e guardada, a tela
+// recebe o evento "chave" e todos os servidores da volta fecham. Clicar de
+// novo abre outro servidor, mas os anteriores continuam ouvindo (até
+// maxVoltas): a pessoa pode pagar na aba que abriu primeiro.
 func (a *App) IrParaPagamento() error {
 	cod, err := a.lerCodigo()
 	if err != nil {
@@ -235,9 +241,9 @@ func (a *App) IrParaPagamento() error {
 		return errors.New(fraseGenerica)
 	}
 	a.mu.Lock()
-	if a.pararVolta != nil {
-		a.pararVolta()
-		a.pararVolta = nil
+	if len(a.voltas) >= maxVoltas {
+		a.voltas[0]()
+		a.voltas = a.voltas[1:]
 	}
 	ctx, cancel := context.WithCancel(a.ctx)
 	s, err := volta.Ouvir(ctx)
@@ -251,32 +257,37 @@ func (a *App) IrParaPagamento() error {
 		cancel()
 		s.Fechar()
 	}
-	a.pararVolta = parar
+	a.voltas = append(a.voltas, parar)
 	a.mu.Unlock()
-	go a.esperarChave(ctx, s, parar)
+	go a.esperarChave(ctx, s)
 	a.abrirURL(a.ctx, urlCompra(ambiente.Worker, cod, s.Porta()))
 	return nil
 }
 
-func (a *App) esperarChave(ctx context.Context, s *volta.Servidor, parar func()) {
+func (a *App) esperarChave(ctx context.Context, s *volta.Servidor) {
 	select {
 	case k := <-s.Chaves():
 		erro := a.ColarChave(k)
 		a.emitir(a.ctx, "chave", EventoChave{Ok: erro == "", Erro: erro})
+		a.fecharVoltas()
 	case <-ctx.Done():
+		// Fechado por fecharVoltas, pelo limite ou pelo fim da janela.
 	}
-	parar()
 }
 
-// encerrar roda quando a janela fecha: desliga o servidor da volta.
-func (a *App) encerrar(context.Context) {
+// fecharVoltas desliga todos os servidores da volta do pagamento.
+func (a *App) fecharVoltas() {
 	a.mu.Lock()
-	defer a.mu.Unlock()
-	if a.pararVolta != nil {
-		a.pararVolta()
-		a.pararVolta = nil
+	vs := a.voltas
+	a.voltas = nil
+	a.mu.Unlock()
+	for _, parar := range vs {
+		parar()
 	}
 }
+
+// encerrar roda quando a janela fecha: desliga os servidores da volta.
+func (a *App) encerrar(context.Context) { a.fecharVoltas() }
 
 // opcoesComputador monta as opções da instalação com as pastas de verdade.
 func (a *App) opcoesComputador(areaDeTrabalho, inicio bool) (gravar.OpcoesComputador, error) {

@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/ambiente"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/chave"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/guarda"
@@ -204,7 +205,7 @@ func TestColarChaveDepoisDeReabrir(t *testing.T) {
 	}
 	select {
 	case f := <-fim:
-		if !f.Ok || f.Frase != "Pronto. A IA de Bolso está instalada neste computador." {
+		if !f.Ok || f.Frase != "Pronto. A IA de Bolso está instalada neste computador." || f.Aviso != "" {
 			t.Fatalf("fim = %+v", f)
 		}
 	case <-time.After(3 * time.Second):
@@ -327,37 +328,48 @@ func TestIrParaPagamentoChaveDeOutroComputador(t *testing.T) {
 	}
 }
 
-func TestIrParaPagamentoDuasVezesDeixaUmServidor(t *testing.T) {
-	m := novaMaquina(t)
-	_, _, chv := vetor(t)
-	a := m.app()
-	if err := a.IrParaPagamento(); err != nil {
-		t.Fatal(err)
+// vivo diz se o servidor da volta na porta p ainda responde.
+func vivo(p int) bool {
+	r, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/", p))
+	if err != nil {
+		return false
 	}
-	if err := a.IrParaPagamento(); err != nil {
-		t.Fatal(err)
-	}
-	m.mu.Lock()
-	u1, u2 := m.urls[0], m.urls[1]
-	m.mu.Unlock()
-	p1, p2 := portaDa(t, u1), portaDa(t, u2)
-	if p1 == p2 {
-		t.Fatalf("a mesma porta duas vezes: %d", p1)
-	}
-	// O primeiro servidor fecha (a conexão é recusada).
-	prazo := time.Now().Add(2 * time.Second)
-	for {
-		r, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/", p1))
-		if err != nil {
-			break
-		}
-		r.Body.Close()
+	r.Body.Close()
+	return true
+}
+
+// fechou espera o servidor da porta p deixar de responder.
+func fechou(t *testing.T, p int) {
+	t.Helper()
+	prazo := time.Now().Add(3 * time.Second)
+	for vivo(p) {
 		if time.Now().After(prazo) {
-			t.Fatal("o primeiro servidor continua vivo")
+			t.Fatalf("o servidor da porta %d continua vivo", p)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	if st := voltar(t, p2, chv); st != 200 {
+}
+
+func TestIrParaPagamentoDuasVezesAceitaAPrimeiraPorta(t *testing.T) {
+	m := novaMaquina(t)
+	_, _, chv := vetor(t)
+	a := m.app()
+	// "Abrir o pagamento de novo": a pessoa pode pagar na primeira aba.
+	for i := 0; i < 2; i++ {
+		if err := a.IrParaPagamento(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m.mu.Lock()
+	p1, p2 := portaDa(t, m.urls[0]), portaDa(t, m.urls[1])
+	m.mu.Unlock()
+	if p1 == p2 {
+		t.Fatalf("a mesma porta duas vezes: %d", p1)
+	}
+	if !vivo(p1) || !vivo(p2) {
+		t.Fatal("as duas portas deviam continuar ouvindo")
+	}
+	if st := voltar(t, p1, chv); st != 200 {
 		t.Fatalf("status %d", st)
 	}
 	select {
@@ -368,9 +380,39 @@ func TestIrParaPagamentoDuasVezesDeixaUmServidor(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("o evento chave não chegou")
 	}
+	if !a.InfoInstalar().TemChave {
+		t.Fatal("a chave da primeira porta não foi guardada")
+	}
+	// Chegou a chave: as duas portas fecham.
+	fechou(t, p1)
+	fechou(t, p2)
+}
+
+func TestIrParaPagamentoGuardaNoMaximoCincoPortas(t *testing.T) {
+	m := novaMaquina(t)
+	a := m.app()
+	for i := 0; i < 6; i++ {
+		if err := a.IrParaPagamento(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m.mu.Lock()
+	var portas []int
+	for _, u := range m.urls {
+		portas = append(portas, portaDa(t, u))
+	}
+	m.mu.Unlock()
+	// A mais antiga fecha; as outras cinco continuam.
+	fechou(t, portas[0])
+	for _, p := range portas[1:] {
+		if !vivo(p) {
+			t.Fatalf("a porta %d fechou cedo", p)
+		}
+	}
+	// Ao fechar a janela, todas fecham.
 	a.encerrar(context.Background())
-	if _, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/", p2)); err == nil {
-		t.Fatal("o servidor continua vivo depois de encerrar")
+	for _, p := range portas[1:] {
+		fechou(t, p)
 	}
 }
 
@@ -522,5 +564,36 @@ func TestMinhaChave(t *testing.T) {
 	m.codigo = "ZZZZ-0X06-DV8S"
 	if got := m.app().MinhaChave(); got != "" {
 		t.Fatalf("chave de outro computador: MinhaChave = %q", got)
+	}
+}
+
+func TestFimComAvisoDeAtalhos(t *testing.T) {
+	m := novaMaquina(t)
+	_, _, chv := vetor(t)
+	a := m.app()
+	if got := a.ColarChave(chv); got != "" {
+		t.Fatalf("ColarChave = %q", got)
+	}
+	aviso := instalacao.ErrAvisoAtalhos.Error()
+	a.instalar = func(_ context.Context, _ gravar.OpcoesComputador, ev func(gravar.Evento)) error {
+		ev(gravar.Evento{Etapa: "pronto", Frase: aviso, Fracao: 1})
+		return nil
+	}
+	fim := make(chan Fim, 1)
+	a.emitir = func(_ context.Context, nome string, dados ...any) {
+		if nome == "fim" {
+			fim <- dados[0].(Fim)
+		}
+	}
+	if err := a.InstalarComputador(true, true); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case f := <-fim:
+		if !f.Ok || f.Aviso != aviso {
+			t.Fatalf("fim = %+v", f)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("o evento fim não chegou")
 	}
 }

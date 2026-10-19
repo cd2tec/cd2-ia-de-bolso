@@ -38,7 +38,8 @@ function inicial(opcoes){
     // instalar neste computador
     // chave: a guardada e conferida (MinhaChave), nunca a colada crua; pago: chegou às perguntas
     // depois de pagar ou colar a chave; cancelando: a pessoa pediu para parar a instalação
-    info: null, entendi: false, erro: '', chave: '', area: true, inicio: true, pago: false, cancelando: false,
+    // aviso: a instalação terminou, mas com um porém (o Go manda no "fim", como os atalhos)
+    info: null, entendi: false, erro: '', chave: '', area: true, inicio: true, pago: false, cancelando: false, aviso: '',
   };
 }
 
@@ -172,7 +173,8 @@ function passo(estado, acao){
       if(t === 'instalando'){
         // Cancelada pela pessoa: volta para as perguntas, com a chave já guardada.
         if(!acao.ok && estado.cancelando) return { ...estado, tela: 'perguntas', progresso: null, frase: '', erro: '', cancelando: false };
-        return { ...estado, tela: acao.ok ? 'instalado' : 'naoInstalou', frase: acao.frase || '', erro: '', cancelando: false };
+        return { ...estado, tela: acao.ok ? 'instalado' : 'naoInstalou', frase: acao.frase || '', erro: '', cancelando: false,
+          aviso: acao.ok && acao.aviso ? String(acao.aviso) : '' };
       }
       if(t !== 'gravando') return estado;
       return { ...estado, tela: acao.ok ? 'pronto' : 'erro', frase: acao.frase || '' };
@@ -208,7 +210,9 @@ function tituloInstalando(progresso){
   return 'Instalando... ' + porcentagem(progresso) + '%';
 }
 
-function textoInstalado(area){
+// Com aviso (os atalhos podem não ter sido criados), não promete ícone nem atalho.
+function textoInstalado(area, aviso){
+  if(aviso) return 'A IA de Bolso está instalada neste computador.';
   return 'A partir de agora, abra a IA de Bolso pelo ícone nos programas' + (area ? ' ou na área de trabalho' : '') + '.';
 }
 

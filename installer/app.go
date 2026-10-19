@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/chave"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/codigo"
 	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/discos"
@@ -22,10 +23,12 @@ const fraseGenerica = "Não deu certo. Tente de novo."
 // tempoListar limita uma listagem de discos; a tela tenta de novo logo depois.
 const tempoListar = 30 * time.Second
 
-// Fim é o último evento da gravação, como a tela recebe.
+// Fim é o último evento da gravação, como a tela recebe. Aviso só vem na
+// instalação no computador que terminou, mas com um porém (os atalhos).
 type Fim struct {
 	Ok    bool   `json:"ok"`
 	Frase string `json:"frase"`
+	Aviso string `json:"aviso,omitempty"`
 }
 
 // App é a ponte entre a janela e os pacotes do instalador. Os métodos
@@ -60,7 +63,7 @@ type App struct {
 	cancelar   context.CancelFunc // não nil enquanto uma gravação ou instalação roda
 	instalando bool               // o que roda é a instalação no computador
 	bloqueio   string             // não deu para reabrir sem administrador
-	pararVolta func()             // desliga o servidor da volta do pagamento
+	voltas     []func()           // desligam os servidores da volta do pagamento, do mais antigo ao mais novo
 }
 
 // NovaApp monta a App com o sistema e as funções de verdade.
@@ -145,6 +148,10 @@ func (a *App) rodar(ctx context.Context, cancel context.CancelFunc, trabalho fun
 		}
 	} else if ultimo.Etapa == "pronto" {
 		fim.Frase = ultimo.Frase
+		// A instalação deu certo, mas sem todos os atalhos: a tela avisa.
+		if ultimo.Frase == instalacao.ErrAvisoAtalhos.Error() {
+			fim.Aviso = ultimo.Frase
+		}
 	}
 	// Libera antes de avisar a tela, para "Gravar outro" funcionar na hora.
 	a.mu.Lock()
