@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao"
+	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/baixar"
+	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/manifesto"
 	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/preparo"
 )
 
@@ -19,7 +21,18 @@ func trocarInstalar(t *testing.T, f func(context.Context, instalacao.Opcoes, fun
 	t.Cleanup(func() { instalarFn = antigo })
 }
 
+// trocarChave faz a conferência da chave responder valida durante o teste.
+func trocarChave(t *testing.T, valida bool) {
+	t.Helper()
+	antigo := validaChaveFn
+	validaChaveFn = func(string) bool { return valida }
+	t.Cleanup(func() { validaChaveFn = antigo })
+}
+
+// opcoesComputador já deixa a chave valendo; o teste que quer sem chave
+// chama trocarChave(t, false) depois.
 func (a *ambiente) opcoesComputador() OpcoesComputador {
+	trocarChave(a.t, true)
 	return OpcoesComputador{
 		Cache: a.cache, CacheChave: filepath.Join(a.t.TempDir(), "chave"),
 		URLManifesto: a.url, HTTP: a.srv.Client(),
@@ -99,6 +112,32 @@ func TestInstalarNoComputadorAvisoNaoEhErro(t *testing.T) {
 
 func TestInstalarNoComputadorSemChave(t *testing.T) {
 	a := novoAmbiente(t)
+	o := a.opcoesComputador()
+	trocarChave(t, false)
+	chamou := false
+	trocarInstalar(t, func(context.Context, instalacao.Opcoes, func(int64, int64)) error {
+		chamou = true
+		return nil
+	})
+	err := InstalarNoComputador(context.Background(), o, nil)
+	if got := fraseDe(t, err); got != "Falta a chave deste computador." {
+		t.Fatalf("frase = %q", got)
+	}
+	if !errors.Is(err, instalacao.ErrSemChave) {
+		t.Fatalf("perdeu a causa: %v", err)
+	}
+	// Nem o manifesto foi pedido: o Montar nunca rodou.
+	if n := a.requisicoes(); n != 0 {
+		t.Fatalf("baixou sem chave: %d requisições", n)
+	}
+	if chamou {
+		t.Fatal("chamou o Instalar sem chave")
+	}
+}
+
+// A chave que vence entre a conferência e a cópia ainda vira a frase certa.
+func TestInstalarNoComputadorSemChaveNoInstalar(t *testing.T) {
+	a := novoAmbiente(t)
 	trocarInstalar(t, func(context.Context, instalacao.Opcoes, func(int64, int64)) error {
 		return instalacao.ErrSemChave
 	})
@@ -106,8 +145,41 @@ func TestInstalarNoComputadorSemChave(t *testing.T) {
 	if got := fraseDe(t, err); got != "Falta a chave deste computador." {
 		t.Fatalf("frase = %q", got)
 	}
-	if !errors.Is(err, instalacao.ErrSemChave) {
-		t.Fatalf("perdeu a causa: %v", err)
+}
+
+func TestInstalarNoComputadorBarraChegaPertoDoFim(t *testing.T) {
+	a := novoAmbiente(t)
+	trocarInstalar(t, func(_ context.Context, _ instalacao.Opcoes, prog func(int64, int64)) error {
+		// O total da cópia é bem menor que o stage (só esta plataforma).
+		for f := int64(0); f <= 10; f++ {
+			prog(f, 10)
+		}
+		return nil
+	})
+	var ultimo Evento
+	if err := InstalarNoComputador(context.Background(), a.opcoesComputador(), func(e Evento) {
+		if e.Etapa == "instalando" {
+			ultimo = e
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if ultimo.Etapa != "instalando" || ultimo.Fracao < 0.95 {
+		t.Fatalf("último instalando = %+v", ultimo)
+	}
+}
+
+func TestInstalarNoComputadorCancelar(t *testing.T) {
+	a := novoAmbiente(t)
+	ctx, cancelar := context.WithCancel(context.Background())
+	defer cancelar()
+	trocarInstalar(t, func(ctx context.Context, _ instalacao.Opcoes, _ func(int64, int64)) error {
+		cancelar()
+		return ctx.Err()
+	})
+	err := InstalarNoComputador(ctx, a.opcoesComputador(), nil)
+	if got := fraseDe(t, err); got != "Instalação cancelada." {
+		t.Fatalf("frase = %q", got)
 	}
 }
 
@@ -120,8 +192,11 @@ func TestInstalarNoComputadorDownloadFalhaNaoInstala(t *testing.T) {
 		return nil
 	})
 	err := InstalarNoComputador(context.Background(), a.opcoesComputador(), nil)
-	if got := fraseDe(t, err); got != fraseInternet {
+	if got := fraseDe(t, err); got != fraseInternetComputador {
 		t.Fatalf("frase = %q", got)
+	}
+	if strings.Contains(fraseDe(t, err), "Nada foi apagado") {
+		t.Fatalf("frase do pen drive no computador: %q", fraseDe(t, err))
 	}
 	if chamou {
 		t.Fatal("instalou com o download quebrado")
@@ -146,5 +221,28 @@ func TestEspacoParaInstalar(t *testing.T) {
 	}
 	if livre != 42 || pediu == "" {
 		t.Fatalf("livre = %d, pediu %q", livre, pediu)
+	}
+}
+
+func TestFrasesDoComputadorSemNadaApagado(t *testing.T) {
+	for _, err := range []error{
+		baixar.ErrConferencia, manifesto.ErrSemManifesto, preparo.ErrFaltaInternet, errors.New("x"),
+	} {
+		if f := frasePreparoComputador(err); strings.Contains(f, "Nada foi apagado") {
+			t.Errorf("%v: %q", err, f)
+		}
+	}
+	if strings.Contains(fraseAntivirusComputador, "Nada foi apagado") {
+		t.Errorf("antivírus: %q", fraseAntivirusComputador)
+	}
+}
+
+func TestEspacoParaInstalarSemInternet(t *testing.T) {
+	a := novoAmbiente(t)
+	o := a.opcoesComputador()
+	a.srv.Close()
+	_, _, err := EspacoParaInstalar(context.Background(), o)
+	if got := fraseDe(t, err); got != fraseInternetComputador {
+		t.Fatalf("frase = %q", got)
 	}
 }

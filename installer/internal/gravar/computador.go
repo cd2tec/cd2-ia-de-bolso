@@ -13,6 +13,7 @@ import (
 
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/copiar"
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/guarda"
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/sistema"
 	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/manifesto"
 	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/pendrive"
@@ -24,7 +25,24 @@ const (
 	fraseInstalando         = "Instalando no computador"
 	fraseInstalouOk         = "Pronto. A IA de Bolso está instalada neste computador."
 	fraseInstalacaoCancelou = "Instalação cancelada."
+
+	// Variantes das frases do preparo sem o "Nada foi apagado.", que só faz
+	// sentido para o pen drive.
+	fraseInternetComputador  = "Não consegui baixar o que falta. Confira a internet e tente de novo."
+	fraseDefeitoComputador   = "Um arquivo chegou com defeito duas vezes. Tente de novo daqui a pouco."
+	fraseAntivirusComputador = "O antivírus removeu o motor da IA. Libere a pasta da IA de Bolso no antivírus e tente de novo."
 )
+
+// frasePreparoComputador é o frasePreparo do caminho do computador.
+func frasePreparoComputador(err error) string {
+	switch frasePreparo(err) {
+	case fraseDefeito:
+		return fraseDefeitoComputador
+	case fraseInternet:
+		return fraseInternetComputador
+	}
+	return fraseGenerica
+}
 
 // margemInstalacao é o que a instalação ocupa além do download, e
 // folgaInstalacao é a folga sobre o total.
@@ -36,6 +54,7 @@ const (
 // Em variáveis para os testes trocarem a máquina de verdade.
 var (
 	instalarFn     = instalacao.Instalar
+	validaChaveFn  = guarda.Valida
 	espacoLivreFn  = copiar.EspacoLivre
 	pastaDestinoFn = func() string {
 		home, _ := os.UserHomeDir()
@@ -72,7 +91,7 @@ func (o OpcoesComputador) url() string {
 func EspacoParaInstalar(ctx context.Context, o OpcoesComputador) (precisa, livre int64, err error) {
 	m, _, err := manifesto.Obter(ctx, o.HTTP, o.url(), o.Cache)
 	if err != nil {
-		return 0, 0, &Erro{Frase: frasePreparo(err), Causa: err}
+		return 0, 0, &Erro{Frase: frasePreparoComputador(err), Causa: err}
 	}
 	precisa = int64(float64(preparo.BytesParaBaixar(m, o.Cache)+margemInstalacao) * folgaInstalacao)
 	livre, err = espacoLivreFn(pastaQueExiste(filepath.Dir(pastaDestinoFn())))
@@ -114,9 +133,14 @@ func InstalarNoComputador(ctx context.Context, o OpcoesComputador, ev func(Event
 		return &Erro{Frase: frase, Causa: causa}
 	}
 
+	// Sem chave valendo para este computador, não baixa nada.
+	if !validaChaveFn(o.CacheChave) {
+		return &Erro{Frase: instalacao.ErrSemChave.Error(), Causa: instalacao.ErrSemChave}
+	}
+
 	m, daCache, err := manifesto.Obter(ctx, o.HTTP, o.url(), o.Cache)
 	if err != nil {
-		return falha(frasePreparo(err), err)
+		return falha(frasePreparoComputador(err), err)
 	}
 
 	a := &andamento{agora: agora, ev: ev, copiaUmaVez: true}
@@ -152,14 +176,14 @@ func InstalarNoComputador(ctx context.Context, o OpcoesComputador, ev func(Event
 		a.publicar(etapa, frase, baixados, a.baixar, 0, false)
 	})
 	if err != nil {
-		return falha(frasePreparo(err), err)
+		return falha(frasePreparoComputador(err), err)
 	}
 
 	if sistemaOperacional == "windows" {
 		exe := filepath.Join(stage, "bin", "llamafile.exe")
 		if st, err := os.Stat(exe); err != nil || st.Size() == 0 {
 			log.Printf("instalar: %s sumiu ou zerou (antivírus?), pasta para liberar: %s", exe, o.Cache)
-			return falha(fraseAntivirus, fmt.Errorf("llamafile.exe sumiu ou zerou: %v", err))
+			return falha(fraseAntivirusComputador, fmt.Errorf("llamafile.exe sumiu ou zerou: %v", err))
 		}
 	}
 
