@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#ffffff">
-<title>IA de Bolso · IA local em pen drive</title>
-<meta name="description" content="IA da CD2 rodando 100% no seu computador, direto de um pen drive. Windows, Mac e Linux, sem instalar nada e sem enviar dados para a nuvem.">
+<title>IA de Bolso · Pergunte para os números da sua empresa</title>
+<meta name="description" content="IA da CD2 que roda no seu computador, direto de um pen drive. Pergunte sobre as vendas da sua empresa e receba a resposta em gráfico, sem mandar dados para a nuvem. Grátis para Windows e Mac.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%22104%2081%20352%20332%22%3E%3Cpath%20fill%3D%22%230000ff%22%20d%3D%22M%20242.320312%20397.777344%20C%20174.101562%20397.742188%20118.683594%20341.917969%20119.3125%20273.550781%20C%20119.9375%20205.753906%20176.226562%20151.621094%20244.023438%20151.621094%20L%20316.152344%20151.621094%20C%20316.191406%20151.621094%20316.21875%20151.648438%20316.21875%20151.683594%20C%20316.21875%20182.632812%20291.132812%20207.722656%20260.183594%20207.722656%20L%20243.574219%20207.722656%20C%20206.863281%20207.722656%20176.082031%20236.761719%20175.421875%20273.46875%20C%20174.746094%20310.9375%20205.011719%20341.640625%20242.320312%20341.675781%20C%20242.355469%20341.675781%20242.386719%20341.703125%20242.386719%20341.738281%20L%20242.386719%20397.710938%20C%20242.386719%20397.75%20242.355469%20397.777344%20242.320312%20397.777344%20%22/%3E%3Cpath%20fill%3D%22%23210e9e%22%20d%3D%22M%20314.554688%20341.699219%20L%20242.421875%20341.699219%20C%20242.386719%20341.699219%20242.359375%20341.667969%20242.359375%20341.632812%20C%20242.359375%20310.683594%20267.445312%20285.597656%20298.394531%20285.597656%20L%20315.003906%20285.597656%20C%20351.714844%20285.597656%20382.492188%20256.554688%20383.15625%20219.851562%20C%20383.832031%20182.378906%20353.566406%20151.679688%20316.257812%20151.644531%20C%20316.21875%20151.644531%20316.191406%20151.613281%20316.191406%20151.578125%20L%20316.191406%2095.605469%20C%20316.191406%2095.570312%20316.222656%2095.539062%20316.257812%2095.539062%20C%20384.476562%2095.578125%20439.890625%20151.402344%20439.265625%20219.769531%20C%20438.640625%20287.5625%20382.351562%20341.699219%20314.554688%20341.699219%20%22/%3E%3C/svg%3E">
 <style>
 /* Design System CD2 Tech. Hero e rodapé no tema azul (Blue_RETAIL); corpo no tema claro (White_HUMAN). */
@@ -71,6 +71,7 @@ header.top{position:sticky;top:0;z-index:10;background:var(--surface-raised);bor
 .btn svg{width:16px;height:16px;flex:none}
 @media (max-width:1180px){.top nav{gap:var(--space-4)}}
 @media (max-width:1060px){.top nav a.link{display:none}}
+@media (max-width:420px){.top__gratis{display:none}}
 @media (max-width:480px){.brand .sep,.brand .product span{display:none}.brand{gap:var(--space-3)}.brand .logo{height:22px}}
 
 /* hero */
@@ -81,6 +82,12 @@ header.top{position:sticky;top:0;z-index:10;background:var(--surface-raised);bor
 .hero h1 em{font-style:normal;color:var(--ink-brand)}
 .hero p{margin:0 0 var(--space-8);font:400 18px/28px var(--font-sans);color:var(--ink-muted);max-width:56ch}
 .cta{display:flex;flex-wrap:wrap;gap:var(--space-3)}
+.hero p.hero__nota{margin:var(--space-4) 0 0;font:500 14px/20px var(--font-sans)}
+/* cartão da cópia paga: discreto, depois dos passos */
+.compra{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-6);flex-wrap:wrap;margin-top:var(--space-8);padding:var(--space-6);border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--surface-100)}
+.compra>div{flex:1 1 420px}
+.compra h3{margin:0 0 var(--space-2);font:700 22px/28px var(--font-sans)}
+.compra p{margin:0;color:var(--ink-muted);max-width:62ch}
 /* chamada à esquerda, tela real da IA de Bolso à direita */
 .hero__grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.92fr);gap:var(--space-12);align-items:center}
 .hero__grid .hero__body{max-width:none}
@@ -209,15 +216,12 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
       <a class="product" href="#">IA de Bolso <span>em pen drive</span></a>
     </div>
     <nav aria-label="Seções">
+      <a class="link" href="#pra-que-serve">Pra que serve</a>
       <a class="link" href="#pendrive">Criar o pen drive</a>
-      <a class="link" href="#como-funciona">Como funciona</a>
-      <a class="link" href="#usar">Usar</a>
-      <a class="link" href="#archeo">Archeo MCP</a>
-      <a class="link" href="#cuidados">Cuidados</a>
-      <a class="link" href="#dev">Para devs</a>
-      <a class="link" href="https://github.com/cd2tec/cd2-ia-de-bolso">GitHub</a>
+      <a class="link" href="#seus-dados">Seus dados</a>
+      <a class="link" href="#cuidados">Antes de usar</a>
       <a class="btn btn--primary btn--sm" href="#pendrive">
-        Baixar
+        Baixar<span class="top__gratis"> grátis</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
       </a>
     </nav>
@@ -228,14 +232,14 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
   <svg class="arcs" viewBox="129 91 329 312" aria-hidden="true"><path d="M256.2 397.7C188.1 397.6 132.7 341.8 133.3 273.5C133.9 205.8 190.2 151.7 257.9 151.7L330 151.7C330 151.7 330.1 151.7 330.1 151.8C330.1 182.7 305 207.8 274.1 207.8L257.5 207.8C220.8 207.8 190 236.8 189.4 273.4C188.7 310.9 218.9 341.6 256.2 341.6C256.3 341.6 256.3 341.6 256.3 341.7L256.3 397.6C256.3 397.6 256.3 397.7 256.2 397.7"/><path d="M328.4 341.6L256.3 341.6C256.3 341.6 256.3 341.6 256.3 341.6C256.3 310.6 281.3 285.6 312.3 285.6L328.9 285.6C365.5 285.6 396.3 256.5 397 219.9C397.6 182.4 367.4 151.7 330.1 151.7C330.1 151.7 330 151.7 330 151.6L330 95.7C330 95.7 330.1 95.6 330.1 95.6C398.3 95.7 453.7 151.5 453 219.8C452.4 287.5 396.2 341.6 328.4 341.6"/></svg>
   <div class="wrap hero__grid">
     <div class="hero__body">
-      <span class="eyebrow">IA local em pen drive</span>
-      <h1>A IA da CD2 rodando <em>100% no seu computador.</em></h1>
-      <p>Plugou, clicou, conversou. Um modelo de IA roda direto do pen drive, sem instalar nada e sem mandar dados para a nuvem. Conecta a um banco PostgreSQL, Oracle, MariaDB, SQL Server, Firebird ou a uma pasta de arquivos DBF com ferramentas somente leitura, ou ao Archeo via MCP.</p>
+      <span class="eyebrow">IA no pen drive, de graça</span>
+      <h1>Pergunte para os números da sua empresa. <em>Sem mandar nada para a nuvem.</em></h1>
+      <p>A IA de Bolso roda inteirinha no seu computador, direto de um pen drive. Você pergunta "quanto vendi por mês?" e ela responde com gráfico, tirado do banco do seu sistema. Os dados não saem da sua máquina.</p>
       <div class="cta">
         <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Windows.exe">Baixar para Windows <span class="btn__arrow" aria-hidden="true">↓</span></a>
         <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Mac.dmg">Baixar para Mac <span class="btn__arrow" aria-hidden="true">↓</span></a>
-        <a class="btn btn--secondary" href="#pendrive">Como criar o pen drive</a>
       </div>
+      <p class="hero__nota">Grátis. Você só precisa de um pen drive de 16 GB.</p>
     </div>
     <figure class="hero__shot">
       <img src="assets/tela-vendas-por-mes.webp" width="1722" height="1536" alt="Tela da IA de Bolso: a pergunta &quot;vendas por mes&quot; vira um gráfico de linha com as vendas de cada mês, tirado de um banco SQL Server, com a consulta usada e os botões CSV e Imprimir/PDF.">
@@ -244,11 +248,36 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
 </div>
 
 <main>
+  <section class="s" id="pra-que-serve">
+    <div class="wrap">
+      <span class="eyebrow">Pra que serve</span>
+      <h2>Da pergunta ao relatório, <em>sem abrir planilha.</em></h2>
+      <p class="lead">Conecte no banco do seu sistema e pergunte como perguntaria para alguém do time. Os números vêm do banco; a IA só ajuda a achar e a explicar.</p>
+      <div class="blocks">
+        <div class="block block--brand block--notch-tr">
+          <span class="block__numeral">01</span>
+          <h3>Pergunte do seu jeito</h3>
+          <p>"Faturamento por mês", "top 10 produtos". Ela também sugere perguntas tiradas do próprio banco.</p>
+        </div>
+        <div class="block block--raised block--notch-bl">
+          <span class="block__numeral">02</span>
+          <h3>Veja o gráfico</h3>
+          <p>Número, barra, linha, pizza ou tabela, com uma frase de resumo.</p>
+        </div>
+        <div class="block block--accent block--notch-tr">
+          <span class="block__numeral">03</span>
+          <h3>Leve o relatório</h3>
+          <p>Excel ou PDF, pronto para mandar.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="s" id="pendrive" style="background:var(--surface-raised)">
     <div class="wrap">
       <span class="eyebrow">Comece por aqui</span>
       <h2>Seu pen drive com IA <em>em 4 passos.</em></h2>
-      <p class="lead">Feito para Windows e Mac, sem precisar entender de tecnologia. Você só precisa de um pen drive de 16 GB ou mais (tudo nele será apagado) e de internet na primeira vez. Baixe o instalador, dê dois cliques no arquivo baixado (no Mac, arraste o app para a pasta Aplicativos se o sistema pedir) e escolha <strong>Criar o pen drive da IA de Bolso</strong>, que é grátis. Depois são quatro telas:</p>
+      <p class="lead">Feito para Windows e Mac, sem precisar entender de tecnologia. Você só precisa de um pen drive de 16 GB ou mais (tudo nele será apagado) e de internet na primeira vez. Baixe o instalador, dê dois cliques no arquivo baixado (no Mac, arraste o app para a pasta Aplicativos se o sistema pedir) e siga estes passos:</p>
       <div class="cta">
         <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Windows.exe">Baixar para Windows <span class="btn__arrow" aria-hidden="true">↓</span></a>
         <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Mac.dmg">Baixar para Mac <span class="btn__arrow" aria-hidden="true">↓</span></a>
@@ -258,152 +287,59 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
         <input type="radio" name="so" id="so-mac"><label for="so-mac">Mac</label>
       </div>
       <ol class="passos passos--prints">
-        <li><figure><img class="so-win" src="assets/instalador/1-plugue-windows.webp" width="864" height="720" loading="lazy" alt="Primeira tela do instalador: &quot;Plugue o pen drive&quot;, com o pen drive SanDisk 32 GB já escolhido e o botão Continuar. No Windows."><img class="so-mac" src="assets/instalador/1-plugue-mac.webp" width="864" height="716" loading="lazy" alt="Primeira tela do instalador: &quot;Plugue o pen drive&quot;, com o pen drive SanDisk 32 GB já escolhido e o botão Continuar. No Mac."></figure><b>Plugue o pen drive</b><span>Espete em qualquer porta USB. O instalador acha o pen drive sozinho; confira o nome e clique em <strong>Continuar</strong>.</span></li>
-        <li><figure><img class="so-win" src="assets/instalador/2-confirmar-windows.webp" width="864" height="720" loading="lazy" alt="Segunda tela: &quot;Confirme antes de apagar&quot;, com o aviso de que os 3 arquivos do pen drive vão sumir, a caixa &quot;Pode apagar&quot; marcada e o botão Gravar pen drive. No Windows."><img class="so-mac" src="assets/instalador/2-confirmar-mac.webp" width="864" height="716" loading="lazy" alt="Segunda tela: &quot;Confirme antes de apagar&quot;, com o aviso de que os 3 arquivos do pen drive vão sumir, a caixa &quot;Pode apagar&quot; marcada e o botão Gravar pen drive. No Mac."></figure><b>Confirme</b><span>Ele avisa quantos arquivos vão sumir. Marque <strong>Pode apagar</strong> e clique em <strong>Gravar pen drive</strong>.</span></li>
-        <li><figure><img class="so-win" src="assets/instalador/3-gravando-windows.webp" width="864" height="720" loading="lazy" alt="Terceira tela: &quot;Gravando... 42%&quot;, com a barra de progresso, o texto &quot;Baixando o modelo (3,3 de 3,9 GB)&quot; e &quot;Faltam uns 6 minutos&quot;. No Windows."><img class="so-mac" src="assets/instalador/3-gravando-mac.webp" width="864" height="716" loading="lazy" alt="Terceira tela: &quot;Gravando... 42%&quot;, com a barra de progresso, o texto &quot;Baixando o modelo (3,3 de 3,9 GB)&quot; e &quot;Faltam uns 6 minutos&quot;. No Mac."></figure><b>Espere gravar</b><span>A barra mostra o andamento e quanto falta. Na primeira vez ele baixa uns 3,9 GB. Pode deixar rodando.</span></li>
-        <li><figure><img class="so-win" src="assets/instalador/4-pronto-windows.webp" width="864" height="720" loading="lazy" alt="Quarta tela: selo de concluído e a frase &quot;Pronto, pode tirar o pen drive&quot;, com o botão Gravar outro. No Windows."><img class="so-mac" src="assets/instalador/4-pronto-mac.webp" width="864" height="716" loading="lazy" alt="Quarta tela: selo de concluído e a frase &quot;Pronto, pode tirar o pen drive&quot;, com o botão Gravar outro. No Mac."></figure><b>Tire o pen drive</b><span>Quando aparecer <strong>Pronto, pode tirar o pen drive</strong>, é só tirar. A IA já está dentro dele.</span></li>
+        <li><figure><img class="so-win" src="assets/instalador/1-escolha-windows.webp" width="864" height="720" loading="lazy" alt="Primeira tela do instalador: &quot;Como você quer usar a IA de Bolso?&quot;, com os cartões Criar o pen drive da IA de Bolso (grátis) e Instalar neste computador (compre a cópia, R$ 25). No Windows."><img class="so-mac" src="assets/instalador/1-escolha-mac.webp" width="864" height="716" loading="lazy" alt="Primeira tela do instalador: &quot;Como você quer usar a IA de Bolso?&quot;, com os cartões Criar o pen drive da IA de Bolso (grátis) e Instalar neste computador (compre a cópia, R$ 25). No Mac."></figure><b>Escolha o pen drive</b><span>Abra o instalador e clique em <strong>Criar o pen drive da IA de Bolso</strong>. Essa parte é grátis.</span></li>
+        <li><figure><img class="so-win" src="assets/instalador/2-plugue-windows.webp" width="864" height="720" loading="lazy" alt="Tela &quot;Plugue o pen drive&quot;, com o pen drive SanDisk 32 GB já escolhido e o botão Continuar. No Windows."><img class="so-mac" src="assets/instalador/2-plugue-mac.webp" width="864" height="716" loading="lazy" alt="Tela &quot;Plugue o pen drive&quot;, com o pen drive SanDisk 32 GB já escolhido e o botão Continuar. No Mac."></figure><b>Plugue o pen drive</b><span>Espete em qualquer porta USB. O instalador acha o pen drive sozinho; confira o nome e clique em <strong>Continuar</strong>.</span></li>
+        <li><figure><img class="so-win" src="assets/instalador/3-confirmar-windows.webp" width="864" height="720" loading="lazy" alt="Tela &quot;Confirme antes de apagar&quot;, com o aviso de que os 3 arquivos do pen drive vão sumir, a caixa &quot;Pode apagar&quot; marcada e o botão Gravar pen drive. No Windows."><img class="so-mac" src="assets/instalador/3-confirmar-mac.webp" width="864" height="716" loading="lazy" alt="Tela &quot;Confirme antes de apagar&quot;, com o aviso de que os 3 arquivos do pen drive vão sumir, a caixa &quot;Pode apagar&quot; marcada e o botão Gravar pen drive. No Mac."></figure><b>Confirme e grave</b><span>Ele avisa quantos arquivos vão sumir. Marque <strong>Pode apagar</strong> e clique em <strong>Gravar pen drive</strong>. Na primeira vez ele baixa uns 3,9 GB; pode deixar rodando.</span></li>
+        <li><figure><img class="so-win" src="assets/instalador/4-pronto-windows.webp" width="864" height="720" loading="lazy" alt="Tela final: selo de concluído e a frase &quot;Pronto, pode tirar o pen drive&quot;, com o botão Gravar outro. No Windows."><img class="so-mac" src="assets/instalador/4-pronto-mac.webp" width="864" height="716" loading="lazy" alt="Tela final: selo de concluído e a frase &quot;Pronto, pode tirar o pen drive&quot;, com o botão Gravar outro. No Mac."></figure><b>Tire o pen drive</b><span>Quando aparecer <strong>Pronto, pode tirar o pen drive</strong>, é só tirar. A IA já está dentro dele.</span></li>
       </ol>
       <p class="note"><strong>Windows:</strong> se aparecer "O Windows protegeu o computador", clique em <strong>Mais informações</strong> e depois em <strong>Executar assim mesmo</strong>.<br><strong>Mac:</strong> se o Mac não deixar abrir, vá em Ajustes do Sistema, Privacidade e Segurança, e clique em <strong>Abrir mesmo assim</strong>.</p>
-      <p class="note">Quer a IA direto no computador, sem pen drive? No mesmo instalador, escolha <strong>Instalar neste computador</strong> e compre a cópia por R$ 25. Ele abre o pagamento no navegador, recebe a chave de volta e baixa e instala a IA sozinho. Quem já tem a chave neste computador reinstala sem pagar de novo. <a href="condicoes-instalacao.html">Condições da cópia</a>.</p>
-      <p class="note">Na primeira vez ele baixa uns 3,9 GB, então leva alguns minutos. O instalador esconde discos acima de 256 GB, de boot e do Time Machine; para esses casos, use o jeito técnico. Para usar o pen drive pronto, espete em qualquer computador e dê dois cliques em <code>IA de Bolso</code> (<code>.exe</code> no Windows, <code>.app</code> no Mac).</p>
-      <p class="note">Prefere o jeito técnico? <a href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/cd2tech-iadebolso.zip">Baixe o ZIP com os scripts.</a> Dentro dele, no Windows use <code>GRAVAR-PENDRIVE-Windows.bat</code>, no Mac <code>GRAVAR-PENDRIVE-Mac.command</code> e no Linux <code>sh gravar-pendrive-linux.sh</code>. <a href="https://github.com/cd2tec/cd2-ia-de-bolso/blob/main/docs/criar-pendrive.md">Passo a passo completo</a>.</p>
-    </div>
-  </section>
-
-  <section class="s" id="como-funciona">
-    <div class="wrap">
-      <span class="eyebrow">Como funciona</span>
-      <h2>Três passos, do pen drive à <em>conversa.</em></h2>
-      <p class="lead">O gravador prepara o pen drive uma vez, com internet. Depois disso, qualquer notebook abre a IA da CD2 com um duplo clique, mesmo offline.</p>
-      <div class="blocks">
-        <div class="block block--brand block--notch-tr">
-          <span class="block__numeral">01</span>
-          <span class="block__kicker">Uma vez, com internet</span>
-          <h3>Gravar o pen drive</h3>
-          <p>O gravador formata em exFAT, baixa o llamafile e o modelo, copia tudo e confere os checksums.</p>
+      <p class="note">Para usar o pen drive pronto, espete em qualquer computador e dê dois cliques em <strong>IA de Bolso</strong>. O instalador só mostra pen drives: discos acima de 256 GB e o disco do próprio computador não aparecem.</p>
+      <div class="compra">
+        <div>
+          <span class="tag tag--melhoria"><i></i>Gostou?</span>
+          <h3>Leve para o computador.</h3>
+          <p>O pen drive é seu e continua grátis. Se a IA de Bolso entrar na rotina e você cansar de espetar o pen drive... dá para instalar uma cópia neste computador. É no mesmo instalador: escolha <strong>Instalar neste computador</strong>, pague e ele instala sozinho. <strong>R$ 25, pagamento único.</strong> Sem assinatura, sem mensalidade. Quem já tem a chave neste computador reinstala sem pagar de novo.</p>
         </div>
-        <div class="block block--raised block--notch-bl">
-          <span class="block__numeral">02</span>
-          <span class="block__kicker">Depois, sem internet</span>
-          <h3>Plugar e clicar</h3>
-          <p>Duplo clique em <code>IA de Bolso</code>. Fechou a janelinha? A IA fica no ícone perto do relógio ou na barra de menus, até você colocá-la para dormir. O servidor sobe só em <code>127.0.0.1</code>.</p>
-        </div>
-        <div class="block block--accent block--notch-tr">
-          <span class="block__numeral">03</span>
-          <span class="block__kicker">Na janela da CD2</span>
-          <h3>Conversar</h3>
-          <p>A interface abre como aplicativo. Banco de dados configurado na própria tela, Demonstração offline ou Archeo MCP.</p>
-        </div>
-      </div>
-      <div class="kpis">
-        <div class="kpi"><b>16<small> GB</small></b><span>pen drive USB 3 recomendado</span></div>
-        <div class="kpi"><b>3</b><span>sistemas: Windows, Mac e Linux</span></div>
-        <div class="kpi"><b>0</b><span>instalações no computador</span></div>
-        <div class="kpi"><b>100<small>%</small></b><span>do modelo de IA rodando no computador</span></div>
+        <a class="btn btn--secondary" href="condicoes-instalacao.html">Ver as condições <span class="btn__arrow" aria-hidden="true">→</span></a>
       </div>
     </div>
   </section>
 
-  <section class="s" id="usar" style="background:var(--surface-raised)">
+  <section class="s" id="seus-dados">
     <div class="wrap">
-      <span class="eyebrow">Usar</span>
-      <h2>Um arquivo para gravar, <em>um para abrir.</em></h2>
-      <p class="lead">Os nomes grandes ficam na raiz do pen drive; o resto vive nas subpastas.</p>
-      <div class="table-wrap">
-        <table class="table">
-          <thead><tr><th>Sistema</th><th>Gravar o pen drive</th><th>Abrir a IA de Bolso</th></tr></thead>
-          <tbody>
-            <tr><td>Windows</td><td>Duplo clique em <code>GRAVAR-PENDRIVE-Windows.bat</code> (pede administrador)</td><td>Duplo clique em <code>IA de Bolso.exe</code> (ou, como alternativa, em <code>core\INICIAR-CD2-Windows.bat</code>)</td></tr>
-            <tr><td>Mac</td><td>Duplo clique em <code>GRAVAR-PENDRIVE-Mac.command</code></td><td>Duplo clique em <code>IA de Bolso.app</code></td></tr>
-            <tr><td>Linux</td><td><code>sh gravar-pendrive-linux.sh</code></td><td><code>sh ia-de-bolso.sh</code></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="note">O gravador lista os pen drives, pede que você digite APAGAR para confirmar e nunca mostra discos internos. O segundo pen drive não baixa nada de novo: o motor, o modelo e o toolbox ficam em cache no seu computador.</p>
-    </div>
-  </section>
-
-  <section class="s" id="archeo">
-    <div class="wrap">
-      <span class="eyebrow">Archeo MCP</span>
-      <h2>Dados reais, com o <em>mínimo de acesso.</em></h2>
-      <p class="lead">A conexão com o banco (PostgreSQL, Oracle, MariaDB, SQL Server, Firebird ou uma pasta de arquivos DBF) é feita pela tela Configurações e fica guardada só no computador. Se a conexão nova falhar, a anterior continua valendo.</p>
-      <p class="lead">Funciona como configurar qualquer servidor MCP: em Configurações, escolha Archeo MCP, informe o link do servidor e autentique com a sua conta do Archeo ou com uma chave de acesso. É preciso ter conta no <a href="https://archeo.cd2.com.br">Archeo</a>. Sem rede, o modo Demonstração responde com dados fictícios, sempre rotulados.</p>
+      <span class="eyebrow">Seus dados</span>
+      <h2>Conecta no sistema <em>que você já usa.</em></h2>
+      <p class="lead">A conexão fica guardada só no computador. Nada vai para a nuvem.</p>
       <div class="grid2">
-        <div class="card">
-          <span class="tag tag--concluido"><i></i>Segurança</span>
-          <h3>O token não sai da aba.</h3>
-          <ul>
-            <li>Fica só na memória da aba e some ao fechar.</li>
-            <li>Nunca grave token no <code>config.json</code>: o pen drive circula.</li>
-            <li>Use um MCP somente leitura, com token de escopo mínimo e expiração.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <span class="tag tag--concluido"><i></i>Login</span>
-          <h3>Entre com a conta do Archeo.</h3>
-          <ul>
-            <li>A pessoa autoriza o workspace no próprio Archeo e volta conectada.</li>
-            <li>O acesso é renovado sozinho enquanto a janela estiver aberta.</li>
-            <li>Só quem é membro do workspace vê os dados.</li>
-          </ul>
-        </div>
+        <div class="card"><span class="tag tag--concluido"><i></i>Segurança</span><h3>Só leitura.</h3><p>A IA consulta e não altera nada. Cada consulta tem limite de tempo, para não pesar no sistema.</p></div>
+        <div class="card"><span class="tag tag--concluido"><i></i>Compatível</span><h3>Os bancos mais comuns.</h3><p>Funciona com os bancos de sistemas de gestão e PDV: SQL Server, Oracle, PostgreSQL, MariaDB, Firebird e arquivos DBF. A conexão é configurada uma vez, na própria tela, normalmente por quem cuida do seu sistema.</p></div>
+        <div class="card"><span class="tag tag--concluido"><i></i>Archeo</span><h3>Usa o Archeo?</h3><p>Entre com a sua conta do <a href="https://archeo.cd2.com.br">Archeo</a> e pergunte direto. Só quem é do seu workspace vê os dados.</p></div>
+        <div class="card"><span class="tag tag--melhoria"><i></i>Sem internet</span><h3>Só quer conhecer?</h3><p>O modo Demonstração funciona sem internet, com dados de exemplo, sempre identificados como exemplo.</p></div>
       </div>
     </div>
   </section>
 
-  <section class="s" id="relatorios">
-    <div class="wrap">
-      <span class="eyebrow">Relatórios</span>
-      <h2>Da pergunta ao <em>relatório impresso.</em></h2>
-      <p class="lead">Conecte o banco e pergunte. Os números vêm do banco, nunca do modelo.</p>
-      <div class="grid2">
-        <div class="card"><h3>Pergunte</h3><p>"Faturamento por mês", "top 10 produtos". O harness sugere perguntas tiradas do próprio banco.</p></div>
-        <div class="card"><h3>Veja o gráfico</h3><p>Número, barra, linha, pizza ou tabela, com uma frase de resumo montada a partir do dado.</p></div>
-        <div class="card"><h3>Leve o relatório</h3><p>CSV para o Excel ou PDF com a marca e o contato da CD2.</p></div>
-        <div class="card"><h3>Sem travar o banco</h3><p>Só leitura, no máximo 200 linhas e 15 segundos por consulta. No SQL Server, no Oracle e no Firebird, o harness para de esperar, mas a consulta pode seguir no servidor.</p></div>
-      </div>
-    </div>
-  </section>
   <section class="s" id="cuidados" style="background:var(--surface-raised)">
     <div class="wrap">
-      <span class="eyebrow">Cuidados</span>
+      <span class="eyebrow">Antes de usar</span>
       <h2>Antes de usar, <em>vale saber.</em></h2>
-      <p class="lead">Modelo pequeno, executável incomum e máquinas diferentes. Vale um teste em cada sistema antes de confiar.</p>
+      <p class="lead">É uma IA pequena rodando no seu computador. Combinado honesto: ela ajuda bastante, mas tem limites.</p>
       <div class="grid2">
-        <div class="card card--wide"><span class="tag tag--melhoria"><i></i>Experimental</span><h3>Feito para experimentar, não para vender</h3><p>É um modelo pequeno rodando no seu computador, e ele erra. Não é indicado para uso comercial nem para decisão importante sem alguém conferir. O conjunto existe para mostrar, na prática, como uma IA específica e perto do seu dado já consegue ser útil. A interface lembra disso toda vez que abre.</p></div>
-        <div class="card"><span class="tag tag--atencao"><i></i>Atenção</span><h3>Velocidade</h3><p>O modelo padrão responde sem fase de raciocínio. Em notebook só com CPU, espere cerca de 9 segundos por pergunta.</p></div>
-        <div class="card"><span class="tag tag--atencao"><i></i>Atenção</span><h3>Antivírus e SmartScreen</h3><p>O llamafile é um executável poliglota e alguns antivírus corporativos o bloqueiam. Se for apresentar, leve um notebook seu como reserva.</p></div>
-        <div class="card"><span class="tag tag--atencao"><i></i>Atenção</span><h3>Procedência do modelo</h3><p>O modelo de IA vem de fonte conhecida, com licença aberta, e é conferido por SHA-256 no preparo do pen drive.</p></div>
-        <div class="card"><span class="tag tag--atencao"><i></i>Atenção</span><h3>Modelo pequeno erra</h3><p>Em números do Archeo, o dado vem da ferramenta; o texto em volta é do modelo. O aviso na tela é proposital.</p></div>
+        <div class="card card--wide"><span class="tag tag--melhoria"><i></i>Experimental</span><h3>Ela é pequena e erra.</h3><p>Os números vêm do banco, mas o texto em volta é da IA. Confira antes de usar numa decisão importante. A tela lembra disso toda vez que abre.</p></div>
+        <div class="card"><span class="tag tag--atencao"><i></i>Atenção</span><h3>Um pouco de paciência.</h3><p>Em notebook comum, cada resposta leva uns 9 segundos. Com placa de vídeo ou Mac M1 em diante, fica bem mais rápido.</p></div>
+        <div class="card"><span class="tag tag--atencao"><i></i>Atenção</span><h3>Antivírus de empresa.</h3><p>Às vezes o antivírus da empresa bloqueia a IA. Se for apresentar para alguém, leve um notebook seu de reserva.</p></div>
       </div>
-      <h3 class="req__title" id="requisitos">Configuração recomendada</h3>
+      <h3 class="req__title" id="requisitos">O que você precisa</h3>
       <div class="table-wrap">
         <table class="table">
           <thead><tr><th></th><th>Mínimo</th><th>Recomendado</th></tr></thead>
           <tbody>
-            <tr><td><b>Memória RAM</b></td><td>8 GB</td><td>16 GB</td></tr>
-            <tr><td><b>Processador</b></td><td>64 bits: Intel/AMD de 2015 para cá (com AVX2) ou Mac M1 em diante</td><td>8 núcleos ou mais, ou Apple Silicon</td></tr>
-            <tr><td><b>Placa de vídeo</b></td><td>Não precisa</td><td>Com GPU ou Apple Silicon fica bem mais rápido</td></tr>
-            <tr><td><b>Sistema</b></td><td>Windows 10/11, macOS ou Linux, 64 bits</td><td>Igual</td></tr>
-            <tr><td><b>Porta USB</b></td><td>USB 3</td><td>USB 3</td></tr>
-            <tr><td><b>Espaço no computador</b></td><td>Uns 600 MB no Mac e no Linux</td><td>Igual</td></tr>
+            <tr><td><b>Memória</b></td><td>8 GB</td><td>16 GB</td></tr>
+            <tr><td><b>Computador</b></td><td>Windows 10/11 em computador de 2015 para cá, ou Mac M1 em diante</td><td>Com placa de vídeo, ou Mac M1 em diante</td></tr>
+            <tr><td><b>Pen drive</b></td><td>16 GB, USB 3</td><td>Igual</td></tr>
             <tr><td><b>Navegador</b></td><td>Edge ou Chrome</td><td>Igual</td></tr>
           </tbody>
         </table>
-      </div>
-      <p class="note">O modelo ocupa uns 2,4 GB de memória e o contexto mais uns 1,2 GB; com motor e navegador, o harness usa de 4 a 5 GB. Em 8 GB funciona, mas apertado. Só com CPU, espere uns 9 segundos por pergunta. É estimativa, ainda não medida numa máquina de 8 GB.</p>
-    </div>
-  </section>
-  <section class="s" id="dev">
-    <div class="wrap">
-      <span class="eyebrow">Para você que é dev</span>
-      <h2>O código é aberto. <em>Fuça à vontade.</em></h2>
-      <p class="lead">Launchers, interface, o <code>cd2-ctl</code> com a guarda de leitura do banco e os scripts do pen drive estão todos no GitHub, sob Apache 2.0. Pode baixar, gravar, testar e passar adiante. Se achar útil, deixe uma estrela... é o jeito mais simples de dizer que vale continuar.</p>
-      <div class="cta">
-        <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.52l-5.88 3.09 1.12-6.55L2.48 9.42l6.58-.96z"/></svg> Dar estrela no GitHub</a>
-        <a class="btn btn--secondary" href="https://github.com/cd2tec"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.68 0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg> Seguir a CD2 no GitHub</a>
-        <a class="btn btn--secondary" href="https://github.com/cd2tec/cd2-ia-de-bolso/issues">Abrir uma issue</a>
       </div>
     </div>
   </section>
@@ -415,10 +351,10 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
       <div>
         <span class="eyebrow">IA de Bolso</span>
         <h2 style="margin-top:var(--space-8)">Para operações que não podem parar.</h2>
-        <p class="foot__lead">Este é um experimento. Se ele acendeu uma ideia aí, a CD2 pode ajudar no seu projeto de IA.</p>
+        <p class="foot__lead">Se isso acendeu uma ideia aí, a CD2 pode ajudar no seu projeto de IA.</p>
         <div class="cta">
-          <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso">Ver no GitHub <span class="btn__arrow" aria-hidden="true">→</span></a>
-          <a class="btn btn--secondary" href="https://github.com/cd2tec/cd2-ia-de-bolso#readme">Ler o README</a>
+          <a class="btn btn--primary" href="https://wa.me/19982355172" target="_blank" rel="noopener">Falar com a CD2 <span class="btn__arrow" aria-hidden="true">→</span></a>
+          <a class="btn btn--secondary" href="https://www.cd2.com.br" target="_blank" rel="noopener">Conhecer a CD2</a>
         </div>
       </div>
       <div class="social">
@@ -426,13 +362,11 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
         <ul>
           <li><a href="https://br.linkedin.com/company/cd2tech" target="_blank" rel="noopener">LinkedIn</a></li>
           <li><a href="https://www.instagram.com/cd2tech/" target="_blank" rel="noopener">Instagram</a></li>
-          <li><a href="https://github.com/cd2tec" target="_blank" rel="noopener">GitHub</a></li>
-          <li><a href="https://wa.me/19982355172" target="_blank" rel="noopener">Falar com a CD2</a></li>
         </ul>
       </div>
     </div>
     <div class="foot__bar">
-      <span>CD2 Tech · Código Apache 2.0 · <a href="https://cd2.com.br">cd2.com.br</a></span>
+      <span>CD2 Tech · <a href="https://cd2.com.br">cd2.com.br</a></span>
       <svg class="logo" viewBox="129 91 329 312" aria-hidden="true"><path class="li" d="M256.2 397.7C188.1 397.6 132.7 341.8 133.3 273.5C133.9 205.8 190.2 151.7 257.9 151.7L330 151.7C330 151.7 330.1 151.7 330.1 151.8C330.1 182.7 305 207.8 274.1 207.8L257.5 207.8C220.8 207.8 190 236.8 189.4 273.4C188.7 310.9 218.9 341.6 256.2 341.6C256.3 341.6 256.3 341.6 256.3 341.7L256.3 397.6C256.3 397.6 256.3 397.7 256.2 397.7"/><path class="lt" d="M328.4 341.6L256.3 341.6C256.3 341.6 256.3 341.6 256.3 341.6C256.3 310.6 281.3 285.6 312.3 285.6L328.9 285.6C365.5 285.6 396.3 256.5 397 219.9C397.6 182.4 367.4 151.7 330.1 151.7C330.1 151.7 330 151.7 330 151.6L330 95.7C330 95.7 330.1 95.6 330.1 95.6C398.3 95.7 453.7 151.5 453 219.8C452.4 287.5 396.2 341.6 328.4 341.6"/></svg>
     </div>
   </div>

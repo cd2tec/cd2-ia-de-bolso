@@ -13,7 +13,7 @@ Plugou, clicou, conversou. A IA de Bolso abre uma janela com a identidade da CD2
 
 [Site do projeto](https://cd2tec.github.io/cd2-ia-de-bolso/) · [Passo a passo do pen drive](docs/criar-pendrive.md) · [Baixar cd2tech-iadebolso.zip](https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/cd2tech-iadebolso.zip) · [Dar uma estrela](https://github.com/cd2tec/cd2-ia-de-bolso)
 
-> **Experimental.** É um modelo pequeno, roda no seu computador e erra. Não é indicado para uso comercial. Montamos este conjunto para mostrar na prática como uma IA específica, pequena e perto do seu dado, já consegue ser útil. Pode baixar, gravar, testar e passar adiante. Se acender uma ideia aí, a [CD2](https://cd2.com.br) pode ajudar no seu projeto de IA.
+> **Experimental.** É um modelo pequeno, roda no seu computador e erra, então confira antes de usar numa decisão importante. Montamos este conjunto para mostrar na prática como uma IA específica, pequena e perto do seu dado, já consegue ser útil. Pode baixar, gravar, testar e passar adiante, de graça pelo pen drive. Se gostar e quiser usar sem o pen drive, dá para [pagar por uma cópia no computador](#instalar-no-computador). Se acender uma ideia aí, a [CD2](https://cd2.com.br) pode ajudar no seu projeto de IA.
 >
 > Siga a CD2: [LinkedIn](https://br.linkedin.com/company/cd2tech) · [Instagram](https://www.instagram.com/cd2tech/) · [GitHub](https://github.com/cd2tec) · [Falar com a CD2](https://wa.me/19982355172)
 
@@ -206,7 +206,7 @@ Regras de texto que valem para qualquer mudança: português do Brasil, frases c
 
 ## 6. Limitações e cuidados
 
-- **Experimental, não comercial.** É um conjunto para experimentar e mostrar o que uma IA local e específica consegue fazer. Não é indicado para uso comercial nem para decisões importantes sem conferência humana. A interface mostra esse aviso toda vez que abre.
+- **Experimental.** É um conjunto para mostrar o que uma IA local e específica consegue fazer, não um software à venda. Grátis pelo pen drive; quem gostar pode pagar por uma cópia no computador (veja [Instalar no computador](#instalar-no-computador)). O modelo é pequeno e erra, então não use em decisões importantes sem conferência humana. A interface mostra esse aviso toda vez que abre.
 - **Velocidade.** O modelo de IA padrão responde sem fase de raciocínio. No modo Banco de dados cada pergunta custa uma chamada ao modelo (duas no pior caso). Em notebook só com CPU, espere cerca de 9 segundos por pergunta, medido na avaliação em `tests/eval/`.
 - **Procedência do modelo.** O arquivo do modelo de IA vem de fonte conhecida, com licença aberta, e é conferido por SHA-256 no preparo. Origem e licença estão na seção 7.
 - **Nome do modelo.** Para quem usa, é só "o modelo de IA": a tela e o terminal não mostram qual é.
