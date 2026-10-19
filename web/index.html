@@ -207,8 +207,10 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
 /* boas-vindas: abre toda vez que o harness inicia */
 .welcome p{margin:0 0 var(--space-4);font:400 15px/24px var(--font-sans);color:var(--ink)}
 .welcome__warn{margin:var(--space-6) 0;padding:var(--space-4);border-radius:var(--radius-md);background:var(--surface-100);border:1px solid var(--border)}
-.welcome__logo{display:inline-block}
-.welcome__logo .logo{height:24px;margin-bottom:var(--space-6)}
+/* topo: logo à esquerda e os links da CD2 ao lado */
+.welcome__top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3);margin-bottom:var(--space-6)}
+.welcome__logo{display:inline-flex}
+.welcome__logo .logo{height:24px}
 /* O aviso chega como fala do robô: o texto é digitado; o fantasma reserva a altura final para nada pular. */
 .welcome__head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-3)}
 .welcome__warn .tag{margin:0}
@@ -221,9 +223,8 @@ input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-mut
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .welcome p.welcome__req{font-size:14px;line-height:22px;color:var(--ink-muted)}
 .welcome__req b{color:var(--ink)}
-.welcome__sub{margin-top:var(--space-6)}
-.welcome__social{list-style:none;margin:var(--space-3) 0 0;padding:0;display:flex;flex-wrap:wrap;gap:var(--space-2)}
-.welcome__social a{display:inline-flex;align-items:center;height:32px;padding:0 var(--space-4);border-radius:var(--radius-pill);border:1px solid var(--border);color:var(--ink);text-decoration:none;font:600 13px/16px var(--font-sans);transition:border-color .15s,color .15s}
+.welcome__social{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.welcome__social a{display:inline-flex;align-items:center;height:28px;padding:0 var(--space-3);border-radius:var(--radius-pill);border:1px solid var(--border);color:var(--ink);text-decoration:none;font:600 12px/16px var(--font-sans);transition:border-color .15s,color .15s}
 .welcome__social a:hover{border-color:var(--brand);color:var(--ink-brand)}
 .welcome .row{margin-top:var(--space-6)}
 .lnk-btn{all:unset;cursor:pointer;color:var(--ink-brand);font-weight:600;text-decoration:underline;text-underline-offset:2px}
@@ -411,24 +412,23 @@ button.contorno:hover{background:var(--surface-100)}
 </dialog>
 
 <dialog id="welcome" class="welcome" aria-labelledby="wTitle">
-  <a class="welcome__logo" id="wLogo" href="https://www.cd2.com.br" target="_blank" rel="noopener" aria-label="Site da CD2" tabindex="-1"></a>
+  <div class="welcome__top">
+    <a class="welcome__logo" id="wLogo" href="https://www.cd2.com.br" target="_blank" rel="noopener" aria-label="Site da CD2" tabindex="-1"></a>
+    <ul class="welcome__social" aria-label="Siga a CD2">
+      <li><a href="https://www.cd2.com.br" target="_blank" rel="noopener">Site</a></li>
+      <li><a href="https://br.linkedin.com/company/cd2tech" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://www.instagram.com/cd2tech/" target="_blank" rel="noopener">Instagram</a></li>
+    </ul>
+  </div>
   <span class="eyebrow">Boas-vindas</span>
   <h2 id="wTitle">Que bom ter você por aqui.</h2>
-  <p>Esta é a IA da CD2 rodando inteirinha no seu computador. Sem nuvem, sem instalar nada, direto do pen drive.</p>
+  <p>Esta é a IA da CD2 rodando inteirinha no seu computador. Sem nuvem, direto do pen drive ou do seu computador.</p>
   <div class="welcome__warn" id="wWarn">
     <div class="welcome__head"><div class="who" id="wWho">CD2</div><span class="tag tag--melhoria">Experimental</span></div>
     <p class="welcome__fala"><span class="sr" id="wFalaTxt">Um combinado honesto antes de começar: sou um modelo pequeno rodando na sua máquina. Atenção aos números e um pouco de paciência são duas virtudes importantes para me usar com responsabilidade.</span><span class="fantasma" aria-hidden="true"></span><span class="digitado" aria-hidden="true"></span></p>
   </div>
   <p class="welcome__req"><b>Para rodar bem:</b> 16 GB de memória (8 GB no mínimo), processador de 64 bits de 2015 para cá ou Mac M1 em diante, e porta USB 3. Com placa de vídeo fica bem mais rápido; só no processador, cada resposta leva uns 9 segundos.</p>
   <p>Montamos este conjunto para mostrar, na prática, como uma IA específica, pequena e perto do seu dado já consegue ser útil. Se isso acender uma ideia aí, a CD2 pode ajudar no seu projeto de IA.</p>
-  <span class="eyebrow welcome__sub">Siga a CD2</span>
-  <ul class="welcome__social">
-    <li><a href="https://www.cd2.com.br" target="_blank" rel="noopener">cd2.com.br</a></li>
-    <li><a href="https://br.linkedin.com/company/cd2tech" target="_blank" rel="noopener">LinkedIn</a></li>
-    <li><a href="https://www.instagram.com/cd2tech/" target="_blank" rel="noopener">Instagram</a></li>
-    <li><a href="https://github.com/cd2tec" target="_blank" rel="noopener">GitHub</a></li>
-    <li><a href="https://wa.me/19982355172" target="_blank" rel="noopener">Falar com a CD2</a></li>
-  </ul>
   <div class="row">
     <button class="primary" id="wOk" autofocus>Entendi, vamos lá</button>
   </div>
