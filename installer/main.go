@@ -5,7 +5,9 @@ package main
 import (
 	"embed"
 	"log"
+	"os"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/elevacao"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -19,6 +21,7 @@ var versao = "dev"
 
 func main() {
 	app := NovaApp()
+	app.comInstalar = elevacao.LerArgs(os.Args[1:])
 	err := wails.Run(&options.App{
 		Title:            "CD2 IA de Bolso",
 		Width:            560,
@@ -28,6 +31,7 @@ func main() {
 		AssetServer:      &assetserver.Options{Assets: telas},
 		OnStartup:        app.iniciar,
 		OnBeforeClose:    app.antesDeFechar,
+		OnShutdown:       app.encerrar,
 		Bind:             []interface{}{app},
 	})
 	if err != nil {

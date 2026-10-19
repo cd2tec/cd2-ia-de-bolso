@@ -8,7 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/chave"
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/codigo"
 	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/discos"
+	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/elevacao"
 	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/gravar"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -36,8 +39,25 @@ type App struct {
 	gravar     func(ctx context.Context, o gravar.Opcoes, ev func(gravar.Evento)) error
 	pastaCache func() (string, error)
 
-	mu       sync.Mutex
-	cancelar context.CancelFunc // não nil enquanto uma gravação roda
+	// Trocáveis no teste, do caminho de instalar no computador.
+	instalar      func(ctx context.Context, o gravar.OpcoesComputador, ev func(gravar.Evento)) error
+	espaco        func(ctx context.Context, o gravar.OpcoesComputador) (precisa, livre int64, err error)
+	pastaChave    func() (string, error)
+	lerCodigo     func() (string, error)
+	conferir      func(chave, codigo string) bool
+	abrirURL      func(ctx context.Context, url string)
+	sair          func(ctx context.Context)
+	elevado       func() bool
+	reabrir       func(exe string, args []string) error
+	abrirLancador func(caminho string) error
+
+	comInstalar bool // abriu com --instalar
+
+	mu         sync.Mutex
+	cancelar   context.CancelFunc // não nil enquanto uma gravação ou instalação roda
+	instalando bool               // o que roda é a instalação no computador
+	bloqueio   string             // não deu para reabrir sem administrador
+	pararVolta func()             // desliga o servidor da volta do pagamento
 }
 
 // NovaApp monta a App com o sistema e as funções de verdade.
@@ -48,6 +68,17 @@ func NovaApp() *App {
 		emitir:     runtime.EventsEmit,
 		gravar:     gravar.Gravar,
 		pastaCache: gravar.PastaCache,
+
+		instalar:      gravar.InstalarNoComputador,
+		espaco:        gravar.EspacoParaInstalar,
+		pastaChave:    pastaChavePadrao,
+		lerCodigo:     codigo.Ler,
+		conferir:      chave.Conferir,
+		abrirURL:      runtime.BrowserOpenURL,
+		sair:          runtime.Quit,
+		elevado:       elevacao.Elevado,
+		reabrir:       elevacao.ReabrirSemAdmin,
+		abrirLancador: abrirSolto,
 	}
 }
 
@@ -75,6 +106,7 @@ func (a *App) Gravar(d discos.Disco) error {
 	}
 	ctx, cancel := context.WithCancel(a.ctx)
 	a.cancelar = cancel
+	a.instalando = false
 	o := gravar.Opcoes{
 		Disco:        d,
 		Cache:        cache,
@@ -83,13 +115,17 @@ func (a *App) Gravar(d discos.Disco) error {
 		HTTP:    &http.Client{},
 		Sistema: a.sistema,
 	}
-	go a.rodar(ctx, cancel, o)
+	go a.rodar(ctx, cancel, func(ctx context.Context, ev func(gravar.Evento)) error {
+		return a.gravar(ctx, o, ev)
+	})
 	return nil
 }
 
-func (a *App) rodar(ctx context.Context, cancel context.CancelFunc, o gravar.Opcoes) {
+// rodar roda uma gravação ou instalação, emite "progresso" a cada evento e
+// "fim" no final.
+func (a *App) rodar(ctx context.Context, cancel context.CancelFunc, trabalho func(context.Context, func(gravar.Evento)) error) {
 	var ultimo gravar.Evento
-	err := a.gravar(ctx, o, func(e gravar.Evento) {
+	err := trabalho(ctx, func(e gravar.Evento) {
 		ultimo = e
 		a.emitir(a.ctx, "progresso", e)
 	})
@@ -123,20 +159,29 @@ func (a *App) Gravando() bool {
 // impedir o fechamento. Com gravação em andamento, pergunta antes; se a pessoa
 // insistir, cancela a gravação e deixa fechar.
 func (a *App) antesDeFechar(ctx context.Context) bool {
-	if !a.Gravando() {
+	a.mu.Lock()
+	rodando, instalando := a.cancelar != nil, a.instalando
+	a.mu.Unlock()
+	if !rodando {
 		return false
+	}
+	continuar := "Continuar gravando"
+	mensagem := "A gravação ainda não terminou. Se fechar agora, o pen drive pode ficar incompleto. Fechar mesmo assim?"
+	if instalando {
+		continuar = "Continuar instalando"
+		mensagem = "A instalação ainda não terminou. Fechar mesmo assim?"
 	}
 	// No Windows o Wails ignora os rótulos e mostra Sim/Não (devolve "Yes"/"No"),
 	// com "No" como padrão. No Mac valem os rótulos.
-	padrao := "Continuar gravando"
+	padrao := continuar
 	if goruntime.GOOS == "windows" {
 		padrao = "No"
 	}
 	r, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
 		Type:          runtime.QuestionDialog,
 		Title:         "CD2 IA de Bolso",
-		Message:       "A gravação ainda não terminou. Se fechar agora, o pen drive pode ficar incompleto. Fechar mesmo assim?",
-		Buttons:       []string{"Continuar gravando", "Fechar"},
+		Message:       mensagem,
+		Buttons:       []string{continuar, "Fechar"},
 		DefaultButton: padrao,
 		CancelButton:  padrao,
 	})
