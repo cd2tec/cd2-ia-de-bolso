@@ -141,3 +141,35 @@ test('cancelou e rota desconhecida', async () => {
   assert.equal(r.headers.get('cache-control'), 'no-store');
   assert.equal((await app.fetch(new Request(BASE + '/outra'), env)).status, 404);
 });
+
+test('comprarDeInstaladorGravaMetadata', async () => {
+  const { app, pedidos, env } = montar();
+  const r = await app.fetch(new Request(BASE + '/comprar?codigo=' + v.codigo + '&porta=8080&de=instalador'), env);
+  assert.equal(r.status, 302);
+  const corpo = new URLSearchParams(pedidos[0].body);
+  assert.equal(corpo.get('metadata[de]'), 'instalador');
+  assert.ok(corpo.get('cancel_url').endsWith('/cancelou?de=instalador'));
+});
+
+test('comprarIgnoraDeDesconhecido', async () => {
+  const { app, pedidos, env } = montar();
+  await app.fetch(new Request(BASE + '/comprar?codigo=' + v.codigo + '&porta=8080&de=x'), env);
+  const corpo = new URLSearchParams(pedidos[0].body);
+  assert.equal(corpo.get('metadata[de]'), null);
+  assert.ok(corpo.get('cancel_url').endsWith('/cancelou'));
+});
+
+test('voltouDeInstaladorMudaBotao', async () => {
+  const { app, env } = montar({ ...paga(8080), metadata: { porta: '8080', de: 'instalador' } });
+  const t = await (await app.fetch(new Request(BASE + '/voltou?session_id=' + SESSAO), env)).text();
+  assert.ok(t.includes('Voltar para o instalador'));
+  assert.ok(!t.includes('Voltar para a IA'));
+});
+
+test('cancelouDeInstalador', async () => {
+  const { app, env } = montar();
+  const t = await (await app.fetch(new Request(BASE + '/cancelou?de=instalador'), env)).text();
+  assert.ok(t.includes('Tudo bem, nada foi cobrado. Pode fechar esta página e voltar para o instalador.'));
+  const t2 = await (await app.fetch(new Request(BASE + '/cancelou?de=x'), env)).text();
+  assert.ok(t2.includes('a IA continua no pen drive'));
+});

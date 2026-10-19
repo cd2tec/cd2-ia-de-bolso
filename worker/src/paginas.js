@@ -48,17 +48,21 @@ export function paginaErro(titulo, mensagem) {
   return pagina(titulo, `<h1>${esc(titulo)}</h1>\n<p>${esc(mensagem)}</p>`);
 }
 
-export function paginaCancelou() {
+export function paginaCancelou(doInstalador = false) {
+  if (doInstalador) {
+    return pagina('Pagamento cancelado',
+      '<h1>Pagamento cancelado</h1>\n<p>Tudo bem, nada foi cobrado. Pode fechar esta página e voltar para o instalador.</p>');
+  }
   return pagina('Pagamento cancelado',
     '<h1>Tudo bem, a IA continua no pen drive.</h1>\n<p>Nada foi cobrado. Você já pode fechar esta aba e voltar para a IA de Bolso.</p>');
 }
 
-export function paginaChave(chave, porta) {
+export function paginaChave(chave, porta, doInstalador = false) {
   const voltar = porta ? `http://127.0.0.1:${porta}/?chave=${encodeURIComponent(chave)}` : null;
   const aviso = voltar
-    ? '<p>Guarde a chave e depois use o botão para voltar para a IA.</p>'
+    ? '<p>Guarde a chave e depois use o botão para voltar para ' + (doInstalador ? 'o instalador' : 'a IA') + '.</p>'
     : '<p>Copie a chave e cole na tela de instalação da IA de Bolso.</p>';
-  const botaoVoltar = voltar ? `<a class="botao vazado" id="voltar" href="${esc(voltar)}">Voltar para a IA</a>` : '';
+  const botaoVoltar = voltar ? `<a class="botao vazado" id="voltar" href="${esc(voltar)}">${doInstalador ? 'Voltar para o instalador' : 'Voltar para a IA'}</a>` : '';
   const script = `<script>
 (function(){
   var chave=${JSON.stringify(chave).replace(/</g, '\\u003c')};

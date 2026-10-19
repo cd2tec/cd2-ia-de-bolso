@@ -25,6 +25,7 @@ export function criar({ fetch: buscar }) {
       return html(paginaErro('Link inválido', 'Este link de compra não está completo. Volte para a IA de Bolso e tente de novo.'), 400);
     }
     const chave = await assinar(codigo, env.CHAVE_PRIVADA);
+    const doInstalador = url.searchParams.get('de') === 'instalador';
     const corpo = new URLSearchParams({
       mode: 'payment',
       'line_items[0][price]': env.STRIPE_PRICE_ID,
@@ -32,20 +33,22 @@ export function criar({ fetch: buscar }) {
       client_reference_id: codigo,
       'metadata[porta]': porta,
       success_url: env.BASE_URL + '/voltou?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: env.BASE_URL + '/cancelou',
+      cancel_url: env.BASE_URL + (doInstalador ? '/cancelou?de=instalador' : '/cancelou'),
       locale: 'pt-BR',
       'invoice_creation[enabled]': 'true',
       'invoice_creation[invoice_data][custom_fields][0][name]': 'Chave de instalação',
       'invoice_creation[invoice_data][custom_fields][0][value]': chave,
       'consent_collection[terms_of_service]': 'required',
-    }).toString();
+    });
+    if (doInstalador) corpo.set('metadata[de]', 'instalador');
+    const corpoTexto = corpo.toString();
     const falha = () => html(paginaErro('Pagamento indisponível', 'Não consegui abrir o pagamento agora. Tente de novo em alguns minutos.'), 502);
     let resp;
     try {
       resp = await buscar(STRIPE, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY, 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: corpo,
+        body: corpoTexto,
       });
     } catch {
       return falha();
@@ -82,7 +85,7 @@ export function criar({ fetch: buscar }) {
     if (!sessao || sessao.payment_status !== 'paid' || !codigoValido(codigo)) return naoConfirmado();
     const porta = sessao.metadata && sessao.metadata.porta;
     const chave = await assinar(codigo, env.CHAVE_PRIVADA);
-    return html(paginaChave(chave, portaValida(porta) ? porta : null));
+    return html(paginaChave(chave, portaValida(porta) ? porta : null, sessao.metadata && sessao.metadata.de === 'instalador'));
   }
 
   return {
@@ -92,7 +95,7 @@ export function criar({ fetch: buscar }) {
       switch (url.pathname) {
         case '/comprar': return comprar(url, env);
         case '/voltou': return voltou(url, env);
-        case '/cancelou': return html(paginaCancelou());
+        case '/cancelou': return html(paginaCancelou(url.searchParams.get('de') === 'instalador'));
         default: return html(paginaErro('Não encontrado', 'Esta página não existe.'), 404);
       }
     },
