@@ -336,10 +336,10 @@ test('chave ok vai para perguntas', () => {
   assert.equal(e.tela, 'perguntas');
   assert.equal(e.area, true);
   assert.equal(e.inicio, true);
-  // colada à mão, a chave fica guardada para a tela final
-  const c = F.passo(F.passo(nasCondicoes(), { tipo: 'jaTenho' }), { tipo: 'chave', ok: true, chave: 'CD2-XYZ' });
+  // a chave colada crua não entra no estado: a tela final mostra a de MinhaChave()
+  const c = F.passo(F.passo(nasCondicoes(), { tipo: 'jaTenho' }), { tipo: 'chave', ok: true, chave: ' cd2-xyz ' });
   assert.equal(c.tela, 'perguntas');
-  assert.equal(c.chave, 'CD2-XYZ');
+  assert.equal(c.chave, '');
   // a chave que volta enquanto a pessoa ainda está nas condições também segue
   assert.equal(F.passo(nasCondicoes(), { tipo: 'chave', ok: true }).tela, 'perguntas');
 });
@@ -439,6 +439,61 @@ test('Agora não volta para a escolha', () => {
   assert.deepEqual(F.passo(i, { tipo: 'inicio' }), i);
 });
 
+test('cancelar a instalação volta para as perguntas, sem passar pelo erro', () => {
+  const i = ateInstalando();
+  const c = F.passo(i, { tipo: 'cancelar' });
+  assert.equal(c.tela, 'instalando');
+  assert.equal(c.cancelando, true);
+  const e = F.passo(c, { tipo: 'fim', ok: false, frase: 'Instalação cancelada.' });
+  assert.equal(e.tela, 'perguntas');
+  assert.equal(e.cancelando, false);
+  assert.equal(e.frase, '');
+  // terminou antes do cancelamento pegar: fica instalado
+  assert.equal(F.passo(c, { tipo: 'fim', ok: true }).tela, 'instalado');
+  // sem cancelar, o erro continua indo para naoInstalou
+  assert.equal(F.passo(i, { tipo: 'fim', ok: false, frase: 'x' }).tela, 'naoInstalou');
+  // cancelar a gravação do pen drive continua como antes
+  const g = ateGravando();
+  assert.equal(F.passo(F.passo(g, { tipo: 'cancelar' }), { tipo: 'fim', ok: false, frase: 'Gravação cancelada. Nada foi apagado.' }).tela, 'erro');
+});
+
+test('minhaChave guarda a chave normalizada para a tela final e o reinstalar', () => {
+  const r = F.passo(nasCondicoes({ temChave: true }), { tipo: 'minhaChave', chave: 'CD2-ABC' });
+  assert.equal(r.chave, 'CD2-ABC');
+  const fim = F.passo(F.passo(ateInstalando(), { tipo: 'fim', ok: true }), { tipo: 'minhaChave', chave: 'CD2-DEF' });
+  assert.equal(fim.chave, 'CD2-DEF');
+  assert.equal(F.passo(fim, { tipo: 'minhaChave', chave: '' }).chave, '');
+  // no pen drive não muda nada
+  const p = noPlugue();
+  assert.deepEqual(F.passo(p, { tipo: 'minhaChave', chave: 'x' }), p);
+});
+
+test('Agora não nas perguntas volta para a escolha', () => {
+  const e = F.passo(F.passo(nasCondicoes({ temChave: true }), { tipo: 'reinstalar' }), { tipo: 'inicio' });
+  assert.equal(e.tela, 'escolha');
+});
+
+test('Voltar no plugue volta para a escolha', () => {
+  const e = F.passo(rodar({ tipo: 'discos', lista: [ok] }), { tipo: 'inicio' });
+  assert.equal(e.tela, 'escolha');
+  // e o pen drive recomeça do zero
+  assert.deepEqual(F.passo(e, { tipo: 'escolherPendrive' }).discos, []);
+  // no meio da gravação, não
+  const g = ateGravando();
+  assert.deepEqual(F.passo(g, { tipo: 'inicio' }), g);
+});
+
+test('Pagamento confirmado só depois de pagar ou colar a chave', () => {
+  const pagou = F.passo([{ tipo: 'entender', valor: true }, { tipo: 'pagar' }].reduce(F.passo, nasCondicoes()), { tipo: 'chave', ok: true });
+  assert.equal(pagou.pago, true);
+  const colou = F.passo(F.passo(nasCondicoes(), { tipo: 'jaTenho' }), { tipo: 'chave', ok: true });
+  assert.equal(colou.pago, true);
+  const reinst = F.passo(nasCondicoes({ temChave: true }), { tipo: 'reinstalar' });
+  assert.equal(reinst.pago, false);
+  // voltar para a escolha esquece
+  assert.equal(F.passo(pagou, { tipo: 'inicio' }).pago, false);
+});
+
 test('gb legível', () => {
   assert.equal(F.gb(7.6e9), '7,6');
   assert.equal(F.gb(0), '0,0');
@@ -459,7 +514,8 @@ test('o HTML tem os textos exatos e nenhum emoji ou travessão', () => {
     'Cópia para este computador', 'Instale a IA de Bolso neste computador', 'pagamento único, por instalação',
     'O que está incluído', 'Como funciona', 'Código deste computador', 'Entendi que a instalação vale só para este computador.',
     'Agora não', 'Ir para o pagamento', 'Já tenho a chave', 'Aguardando o pagamento...', 'Reinstalar com a minha chave',
-    'Tudo certo! Só duas perguntinhas', 'Copiar a chave', 'Abrir a IA de Bolso', 'modo de teste']){
+    'Tudo certo! Só duas perguntinhas', 'Copiar a chave', 'Abrir a IA de Bolso', 'modo de teste',
+    'Pagamento confirmado', 'Guarde. Ela reinstala neste computador quando precisar.']){
     assert.ok(tudo.includes(t), 'falta o texto: ' + t);
   }
   assert.doesNotMatch(tudo, /[—–]/, 'sem travessão');

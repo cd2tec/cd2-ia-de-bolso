@@ -24,6 +24,7 @@ function backendWails(){
     colar: k => A.ColarChave(k),
     instalar: (area, inicio) => A.InstalarComputador(area, inicio),
     abrirIA: () => A.AbrirIA(),
+    minhaChave: () => A.MinhaChave(),
     copiar: t => window.runtime.ClipboardSetText(t),
   };
 }
@@ -45,6 +46,8 @@ function backendDemo(){
   const emitir = (nome, dado) => (ouvintes[nome] || []).forEach(fn => fn(dado));
   const esperar = (ms, valor) => new Promise(r => setTimeout(() => r(valor), ms));
   let relogio = null, fracao = 0, cancelado = null;
+  const CHAVE_DEMO = 'CD2-K7QF2M9X4TPA-8H3J-QW2E-RT5Y-ZX7C-VB9N-ML4K-P2D6-S8F1';
+  let guardada = modo === 'chave' ? CHAVE_DEMO : '';
   const gb = x => x.toFixed(1).replace('.', ',');
   function fim(ok, frase){ clearInterval(relogio); relogio = null; emitir('fim', { ok, frase }); }
   // Uns 10 segundos de baixar, depois a etapa do meio (copiar ou instalar) e a de conferir.
@@ -83,9 +86,14 @@ function backendDemo(){
       precisa: 7.6e9, livre: modo === 'cheio' ? 3.24e9 : 120e9, cabe: modo !== 'cheio', bloqueio: '',
     }),
     // O "pagamento" volta sozinho depois de uns segundos.
-    pagar: () => { setTimeout(() => emitir('chave', { ok: true, erro: '' }), 4000); return Promise.resolve(null); },
-    colar: k => esperar(300, String(k).trim().length < 8 ? 'Esta chave não está completa. Confira se copiou ela inteira.'
-      : /outro/i.test(k) ? 'Esta chave não é deste computador.' : ''),
+    pagar: () => { setTimeout(() => { guardada = CHAVE_DEMO; emitir('chave', { ok: true, erro: '' }); }, 4000); return Promise.resolve(null); },
+    colar: k => {
+      const erro = String(k).trim().length < 8 ? 'Esta chave não está completa. Confira se copiou ela inteira.'
+        : /outro/i.test(k) ? 'Esta chave não é deste computador.' : '';
+      if(!erro) guardada = String(k).trim().toUpperCase();
+      return esperar(300, erro);
+    },
+    minhaChave: () => esperar(100, guardada),
     instalar: () => { cancelado = 'instalar'; return simular('Instalando neste computador', modo === 'erroInstalar'); },
     abrirIA: () => Promise.reject('Na demonstração não tem IA instalada para abrir.'),
     copiar: t => navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject('sem área de transferência'),
@@ -193,6 +201,7 @@ const telas = {
   reinstalar: {
     montar: () => '<h1 tabindex="-1">Este computador já tem a chave</h1>'
       + '<p class="texto">A chave deste computador já está guardada aqui. Reinstalar é livre, sem novo pagamento.</p>'
+      + '<div id="blocoChave"></div>'
       + '<p class="aviso-erro" id="espaco" role="status" hidden></p>'
       + '<div class="acoes"><button type="button" class="btn secundario" data-acao="inicio">Agora não</button>'
       + '<button type="button" class="btn primario" data-acao="reinstalar">Reinstalar com a minha chave</button></div>',
@@ -201,13 +210,16 @@ const telas = {
       $('espaco').textContent = espaco;
       $('espaco').hidden = !espaco;
       document.querySelector('[data-acao="reinstalar"]').disabled = !(e.info && e.info.cabe);
+      trocar($('blocoChave'), blocoChave(e.chave, true));
     },
   },
   perguntas: {
-    montar: () => '<h1 tabindex="-1">Tudo certo! Só duas perguntinhas</h1>'
+    montar: e => (e.pago ? '<span class="selo-pago"><i></i>Pagamento confirmado</span>' : '')
+      + '<h1 tabindex="-1">Tudo certo! Só duas perguntinhas</h1>'
       + '<label class="caixa borda"><input type="checkbox" id="area"> <span>Criar um atalho na área de trabalho<small>O ícone nos programas é criado sempre.</small></span></label>'
       + '<label class="caixa borda"><input type="checkbox" id="inicio"> <span>Acordar quando o computador ligar<small>A IA fica pronta mais rápido, mas ocupa de 4 a 5 GB de memória desde que o computador liga. Dá para desligar depois, no ícone perto do relógio.</small></span></label>'
-      + '<div class="acoes"><button type="button" class="btn primario" data-acao="instalar">Instalar</button></div>',
+      + '<div class="acoes"><button type="button" class="btn secundario" data-acao="inicio">Agora não</button>'
+      + '<button type="button" class="btn primario" data-acao="instalar">Instalar</button></div>',
     atualizar: e => { $('area').checked = e.area; $('inicio').checked = e.inicio; },
   },
   instalando: {
@@ -224,14 +236,16 @@ const telas = {
     montar: e => '<div class="final"><div class="cabeca-final"><div class="selo ok">' + ICONE_OK + '</div>'
       + '<h1 tabindex="-1">Pronto! Agora eu moro aqui</h1></div>'
       + '<p class="texto">' + esc(F.textoInstalado(e.area)) + '</p>'
-      + (e.chave
-        ? '<p class="rotulo-chave"><b>A sua chave</b> (também foi para o seu e-mail):</p>'
-          + '<textarea class="chave-mostra" rows="2" readonly aria-label="A sua chave">' + esc(e.chave) + '</textarea>'
-        : '<p class="texto">A sua chave está guardada neste computador e no seu e-mail.</p>')
+      + '<div id="blocoChave" class="bloco-final"></div>'
       + '<p class="aviso-erro" id="erroAbrir" role="status" hidden></p></div>'
-      + '<div class="acoes">' + (e.chave ? '<button type="button" class="btn secundario" data-acao="copiar">Copiar a chave</button>' : '')
+      + '<div class="acoes"><button type="button" class="btn secundario" data-acao="copiar" hidden>Copiar a chave</button>'
       + '<button type="button" class="btn primario" data-acao="abrirIA">Abrir a IA de Bolso</button></div>',
-    atualizar: e => { $('erroAbrir').textContent = e.erro; $('erroAbrir').hidden = !e.erro; },
+    atualizar: e => {
+      $('erroAbrir').textContent = e.erro;
+      $('erroAbrir').hidden = !e.erro;
+      trocar($('blocoChave'), blocoChave(e.chave, false));
+      document.querySelector('.acoes [data-acao="copiar"]').hidden = !e.chave;
+    },
   },
   naoInstalou: {
     montar: e => '<div class="final"><div class="selo erro">' + ICONE_ERRO + '</div>'
@@ -244,7 +258,8 @@ const telas = {
     montar: () => '<h1 tabindex="-1">Plugue o pen drive</h1>'
       + '<p class="texto">Use um de 16 GB ou mais. Tudo que estiver nele será apagado.</p>'
       + '<div id="discos" class="lista-area"></div>'
-      + '<div class="acoes"><button type="button" class="btn primario" data-acao="continuar" data-foco="continuar">Continuar</button></div>',
+      + '<div class="acoes"><button type="button" class="link" data-acao="inicio">Voltar</button>'
+      + '<button type="button" class="btn primario" data-acao="continuar" data-foco="continuar">Continuar</button></div>',
     atualizar: e => {
       trocar($('discos'), listaDeDiscos(e));
       document.querySelector('[data-acao="continuar"]').disabled = !F.podeContinuar(e);
@@ -305,6 +320,16 @@ function campoChave(){
   return '<label class="rotulo-campo" for="chaveCampo">A sua chave</label>'
     + '<input type="text" class="campo" id="chaveCampo" data-foco="chaveCampo" spellcheck="false" autocomplete="off" placeholder="CD2-...">'
     + '<p class="aviso-erro" id="erroChave" role="alert" hidden></p>';
+}
+
+// A chave guardada (MinhaChave), com a linha de guardar. Sem ela, a frase de que está guardada.
+// No reinstalar, o "Copiar a chave" vai embaixo da chave, porque a linha de botões já está cheia.
+function blocoChave(chave, comCopiar){
+  if(!chave) return '<p class="texto">A sua chave está guardada neste computador e no seu e-mail.</p>';
+  return '<p class="rotulo-chave"><b>A sua chave</b> (também foi para o seu e-mail):</p>'
+    + '<textarea class="chave-mostra" rows="2" readonly aria-label="A sua chave">' + esc(chave) + '</textarea>'
+    + '<p class="guarde">Guarde. Ela reinstala neste computador quando precisar.'
+    + (comCopiar ? ' <button type="button" class="link" data-acao="copiar">Copiar a chave</button>' : '') + '</p>';
 }
 
 function mostrarErroChave(e){
@@ -383,7 +408,13 @@ function despachar(acao){
   if(antes.tela === 'confirmar' && estado.tela === 'gravando') comecarGravacao();
   if(antes.tela === 'perguntas' && estado.tela === 'instalando') comecarInstalacao();
   if(antes.tela === 'condicoes' && estado.tela === 'aguardando') abrirPagamento();
+  if(antes.tela !== estado.tela && (estado.tela === 'reinstalar' || estado.tela === 'instalado')) buscarMinhaChave();
   desenhar();
+}
+
+// A chave mostrada vem sempre do Go, já normalizada e conferida para este computador.
+function buscarMinhaChave(){
+  Promise.resolve(backend.minhaChave()).then(k => despachar({ tipo: 'minhaChave', chave: k || '' })).catch(() => {});
 }
 
 const fraseDoErro = err => String((err && err.message) || err || 'Não deu certo. Tente de novo.');
@@ -412,7 +443,7 @@ async function colarChave(botao){
   botao.disabled = true;
   try {
     const erro = await backend.colar(k);
-    despachar({ tipo: 'chave', ok: !erro, erro: erro || '', chave: k });
+    despachar({ tipo: 'chave', ok: !erro, erro: erro || '' });
   } catch(err){
     despachar({ tipo: 'chave', ok: false, erro: fraseDoErro(err) });
   } finally {
@@ -490,7 +521,7 @@ document.addEventListener('click', ev => {
   if(!b || b.disabled) return;
   const acao = b.dataset.acao;
   if(acao === 'escolher') despachar({ tipo: 'escolher', id: b.dataset.id });
-  else if(acao === 'cancelar'){ b.disabled = true; backend.cancelar(); }
+  else if(acao === 'cancelar'){ b.disabled = true; despachar({ tipo: 'cancelar' }); backend.cancelar(); }
   else if(acao === 'escolherInstalar') escolherInstalar();
   else if(acao === 'abrirPagamento') abrirPagamento();
   else if(acao === 'colarOk') colarChave(b);

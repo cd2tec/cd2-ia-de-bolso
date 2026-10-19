@@ -499,3 +499,28 @@ func TestIniciouComInstalar(t *testing.T) {
 		t.Fatal("com --instalar")
 	}
 }
+
+func TestMinhaChave(t *testing.T) {
+	_, _, chv := vetor(t)
+	quer, _ := chave.Normalizar(chv)
+
+	// Sem chave guardada.
+	m := novaMaquina(t)
+	if got := m.app().MinhaChave(); got != "" {
+		t.Fatalf("sem chave: MinhaChave = %q", got)
+	}
+
+	// Chave válida deste computador: volta normalizada.
+	if err := guarda.Gravar(m.pastaChave, quer); err != nil {
+		t.Fatal(err)
+	}
+	if got := m.app().MinhaChave(); got != quer {
+		t.Fatalf("chave válida: MinhaChave = %q, quer %q", got, quer)
+	}
+
+	// A mesma chave guardada, mas este é outro computador.
+	m.codigo = "ZZZZ-0X06-DV8S"
+	if got := m.app().MinhaChave(); got != "" {
+		t.Fatalf("chave de outro computador: MinhaChave = %q", got)
+	}
+}

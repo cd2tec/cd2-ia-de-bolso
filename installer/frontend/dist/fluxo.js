@@ -22,7 +22,9 @@ const TELAS_PENDRIVE = ['plugue', 'confirmar', 'gravando', 'pronto', 'erro'];
 // Telas em que a chave que volta do pagamento (ou a colada) é aceita.
 const TELAS_CHAVE = ['condicoes', 'aguardando', 'colar'];
 // Telas de onde "Agora não" ou "Voltar" levam de volta à escolha.
-const TELAS_INICIO = ['condicoes', 'reinstalar', 'bloqueado'];
+const TELAS_INICIO = ['condicoes', 'reinstalar', 'bloqueado', 'perguntas', 'plugue'];
+// Telas que mostram a chave guardada (MinhaChave).
+const TELAS_MINHA_CHAVE = ['reinstalar', 'instalado'];
 
 // Depois de tantas falhas seguidas de ListarDiscos, a tela avisa (e continua tentando).
 const FALHAS_PARA_AVISAR = 5;
@@ -34,7 +36,9 @@ function inicial(opcoes){
     // pen drive
     discos: [], escolhido: null, podeApagar: false, progresso: null, frase: '', falhas: 0,
     // instalar neste computador
-    info: null, entendi: false, erro: '', chave: '', area: true, inicio: true,
+    // chave: a guardada e conferida (MinhaChave), nunca a colada crua; pago: chegou às perguntas
+    // depois de pagar ou colar a chave; cancelando: a pessoa pediu para parar a instalação
+    info: null, entendi: false, erro: '', chave: '', area: true, inicio: true, pago: false, cancelando: false,
   };
 }
 
@@ -85,7 +89,7 @@ function passo(estado, acao){
       return { ...estado, tela: 'bloqueado', frase: acao.frase || '' };
     case 'inicio':
       if(!TELAS_INICIO.includes(t)) return estado;
-      return { ...estado, tela: 'escolha', entendi: false, erro: '', frase: '' };
+      return { ...estado, tela: 'escolha', entendi: false, erro: '', frase: '', pago: false };
 
     // ---------- instalar neste computador ----------
     case 'entender':
@@ -103,16 +107,23 @@ function passo(estado, acao){
     case 'chave':
       if(!TELAS_CHAVE.includes(t)) return estado;
       if(!acao.ok) return { ...estado, erro: acao.erro || '' };
-      return { ...estado, tela: 'perguntas', erro: '', chave: acao.chave || estado.chave, area: true, inicio: true };
+      return { ...estado, tela: 'perguntas', erro: '', area: true, inicio: true, pago: true };
     case 'reinstalar':
       if(t !== 'reinstalar' || !cabe(estado)) return estado;
-      return { ...estado, tela: 'perguntas', erro: '', area: true, inicio: true };
+      return { ...estado, tela: 'perguntas', erro: '', area: true, inicio: true, pago: false };
+    case 'minhaChave':
+      if(!TELAS_MINHA_CHAVE.includes(t)) return estado;
+      return { ...estado, chave: typeof acao.chave === 'string' ? acao.chave : '' };
     case 'opcao':
       if(t !== 'perguntas' || (acao.nome !== 'area' && acao.nome !== 'inicio')) return estado;
       return { ...estado, [acao.nome]: !!acao.valor };
     case 'instalar':
       if(t !== 'perguntas') return estado;
-      return { ...estado, tela: 'instalando', progresso: null, frase: '', erro: '' };
+      return { ...estado, tela: 'instalando', progresso: null, frase: '', erro: '', cancelando: false };
+    case 'cancelar':
+      // Só marca: quem para é o Go, e o "fim" que vem depois decide a tela.
+      if(t !== 'instalando') return estado;
+      return { ...estado, cancelando: true };
     case 'falhaAbrir':
       if(t !== 'instalado') return estado;
       return { ...estado, erro: acao.frase || '' };
@@ -158,7 +169,11 @@ function passo(estado, acao){
       if((t !== 'gravando' && t !== 'instalando') || !acao.evento) return estado;
       return { ...estado, progresso: { ...acao.evento }, frase: acao.evento.frase || '' };
     case 'fim':
-      if(t === 'instalando') return { ...estado, tela: acao.ok ? 'instalado' : 'naoInstalou', frase: acao.frase || '', erro: '' };
+      if(t === 'instalando'){
+        // Cancelada pela pessoa: volta para as perguntas, com a chave já guardada.
+        if(!acao.ok && estado.cancelando) return { ...estado, tela: 'perguntas', progresso: null, frase: '', erro: '', cancelando: false };
+        return { ...estado, tela: acao.ok ? 'instalado' : 'naoInstalou', frase: acao.frase || '', erro: '', cancelando: false };
+      }
       if(t !== 'gravando') return estado;
       return { ...estado, tela: acao.ok ? 'pronto' : 'erro', frase: acao.frase || '' };
     case 'outro':

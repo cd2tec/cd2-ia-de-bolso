@@ -177,20 +177,25 @@ func (a *App) InfoInstalar() InfoInstalar {
 }
 
 // temChave diz se a chave guardada vale para este computador.
-func (a *App) temChave() bool {
+func (a *App) temChave() bool { return a.MinhaChave() != "" }
+
+// MinhaChave devolve a chave guardada, normalizada, se ela vale para este
+// computador. Sem chave, ou com a chave de outro computador, devolve "".
+// A tela final e a de reinstalar a mostram com "Copiar a chave".
+func (a *App) MinhaChave() string {
 	dir, err := a.pastaChave()
 	if err != nil {
-		return false
+		return ""
 	}
-	k := guarda.Ler(dir)
-	if k == "" {
-		return false
+	k, ok := chave.Normalizar(guarda.Ler(dir))
+	if !ok {
+		return ""
 	}
 	cod, err := a.lerCodigo()
-	if err != nil {
-		return false
+	if err != nil || !a.conferir(k, cod) {
+		return ""
 	}
-	return a.conferir(k, cod)
+	return k
 }
 
 // ColarChave confere a chave com o código deste computador e, se valer, a
