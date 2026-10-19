@@ -120,7 +120,7 @@ Quer usar a IA sem o pen drive? Há dois caminhos, e os dois levam à mesma cóp
 As condições são as mesmas nos dois:
 
 - **Quanto custa:** R$ 25 por computador, em pagamento único, pelo Stripe. É uma cópia avulsa para este computador, não é assinatura nem licença.
-- **O que você leva:** a IA copiada do pen drive para o computador, que abre sem o pen drive, com ícone nos programas e atalho na área de trabalho se você quiser. Se quiser, ela acorda junto com o computador (ocupa de 4 a 5 GB de memória desde que ele liga, e dá para desligar). E dá para desinstalar quando quiser.
+- **O que você leva:** a IA instalada no computador (copiada do pen drive ou baixada pelo instalador), que abre sem o pen drive, com ícone nos programas e atalho na área de trabalho se você quiser. Se quiser, ela acorda junto com o computador (ocupa de 4 a 5 GB de memória desde que ele liga, e dá para desligar). E dá para desinstalar quando quiser.
 - **A chave:** chega por e-mail e na tela, depois do pagamento. Guarde. Ela reinstala no mesmo computador, sem pagar de novo. Se a chave já está guardada neste computador, o instalador e a conversa oferecem **Reinstalar com a minha chave**, sem passar pelo pagamento.
 - **As regras:** vale para um computador (todas as contas de usuário dele). Trocou de computador ou perdeu a chave, é uma nova instalação, com novo pagamento.
 
