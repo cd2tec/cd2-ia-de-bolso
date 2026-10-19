@@ -106,6 +106,16 @@ section.s{padding:96px 0}
 .passos li::before{content:counter(passo);font:800 44px/1 var(--font-sans);letter-spacing:-1px;color:var(--ink-brand)}
 .passos b{font:700 20px/26px var(--font-sans)}
 .passos span{color:var(--ink-muted)}
+/* prints do instalador em cada passo; o seletor Windows/Mac troca a moldura da janela, sem JavaScript */
+.passos--prints{grid-template-columns:repeat(2,1fr)}
+.passos li figure{order:-1;margin:calc(var(--space-4) * -1) calc(var(--space-6) * -1) 0}
+.passos li figure img{display:block;width:100%;height:auto}
+.so{display:inline-flex;gap:var(--space-1);margin:var(--space-8) 0 var(--space-6);padding:var(--space-1);border-radius:var(--radius-pill);background:var(--surface-100);border:1px solid var(--border)}
+.so input{position:absolute;opacity:0;pointer-events:none}
+.so label{padding:6px 18px;border-radius:var(--radius-pill);font:700 14px/20px var(--font-sans);color:var(--ink-muted);cursor:pointer}
+.so input:checked+label{background:var(--brand);color:var(--on-primary)}
+.so input:focus-visible+label{outline:2px solid var(--focus);outline-offset:2px}
+#pendrive:has(#so-mac:checked) .so-win,#pendrive:has(#so-win:checked) .so-mac{display:none}
 .block{position:relative;display:flex;flex-direction:column;justify-content:flex-end;gap:var(--space-2);padding:var(--space-6);border-radius:var(--radius-lg);min-height:280px}
 .block--brand{background:var(--surface-brand);color:var(--on-brand)}
 .block--raised{background:var(--surface-raised);color:var(--ink);border:1px solid var(--border)}
@@ -174,6 +184,7 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
   .s h2{font-size:32px;line-height:38px;letter-spacing:-.5px}
   .blocks,.grid2{grid-template-columns:1fr}
   .passos{grid-template-columns:1fr 1fr}
+  .passos--prints{grid-template-columns:1fr}
   .block{min-height:200px}
   .kpis{grid-template-columns:repeat(2,1fr)}
 }
@@ -237,17 +248,21 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
     <div class="wrap">
       <span class="eyebrow">Comece por aqui</span>
       <h2>Seu pen drive com IA <em>em 4 passos.</em></h2>
-      <p class="lead">Feito para Windows e Mac, sem precisar entender de tecnologia. Você só precisa de um pen drive de 16 GB ou mais (tudo nele será apagado) e de internet na primeira vez.</p>
-      <ol class="passos">
-        <li><b>Baixe</b><span>Clique em <strong>Baixar para Windows</strong> ou <strong>Baixar para Mac</strong> e salve o instalador.</span></li>
-        <li><b>Abra</b><span>Dê dois cliques no arquivo baixado. No Mac, arraste o app para a pasta Aplicativos se o sistema pedir.</span></li>
-        <li><b>Espete o pen drive</b><span>Em qualquer porta USB. O instalador mostra o pen drive sozinho.</span></li>
-        <li><b>Siga as telas</b><span>Escolha <strong>Criar o pen drive da IA de Bolso</strong>, que é grátis. Depois plugue o pen drive, confirme que pode apagar, acompanhe a gravação e tire o pen drive quando aparecer "Pronto".</span></li>
-      </ol>
+      <p class="lead">Feito para Windows e Mac, sem precisar entender de tecnologia. Você só precisa de um pen drive de 16 GB ou mais (tudo nele será apagado) e de internet na primeira vez. Baixe o instalador, dê dois cliques no arquivo baixado (no Mac, arraste o app para a pasta Aplicativos se o sistema pedir) e escolha <strong>Criar o pen drive da IA de Bolso</strong>, que é grátis. Depois são quatro telas:</p>
       <div class="cta">
         <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Windows.exe">Baixar para Windows <span class="btn__arrow" aria-hidden="true">↓</span></a>
         <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Mac.dmg">Baixar para Mac <span class="btn__arrow" aria-hidden="true">↓</span></a>
       </div>
+      <div class="so" role="radiogroup" aria-label="Mostrar as telas no">
+        <input type="radio" name="so" id="so-win" checked><label for="so-win">Windows</label>
+        <input type="radio" name="so" id="so-mac"><label for="so-mac">Mac</label>
+      </div>
+      <ol class="passos passos--prints">
+        <li><figure><img class="so-win" src="assets/instalador/1-plugue-windows.webp" width="864" height="720" loading="lazy" alt="Primeira tela do instalador: &quot;Plugue o pen drive&quot;, com o pen drive SanDisk 32 GB já escolhido e o botão Continuar. No Windows."><img class="so-mac" src="assets/instalador/1-plugue-mac.webp" width="864" height="716" loading="lazy" alt="Primeira tela do instalador: &quot;Plugue o pen drive&quot;, com o pen drive SanDisk 32 GB já escolhido e o botão Continuar. No Mac."></figure><b>Plugue o pen drive</b><span>Espete em qualquer porta USB. O instalador acha o pen drive sozinho; confira o nome e clique em <strong>Continuar</strong>.</span></li>
+        <li><figure><img class="so-win" src="assets/instalador/2-confirmar-windows.webp" width="864" height="720" loading="lazy" alt="Segunda tela: &quot;Confirme antes de apagar&quot;, com o aviso de que os 3 arquivos do pen drive vão sumir, a caixa &quot;Pode apagar&quot; marcada e o botão Gravar pen drive. No Windows."><img class="so-mac" src="assets/instalador/2-confirmar-mac.webp" width="864" height="716" loading="lazy" alt="Segunda tela: &quot;Confirme antes de apagar&quot;, com o aviso de que os 3 arquivos do pen drive vão sumir, a caixa &quot;Pode apagar&quot; marcada e o botão Gravar pen drive. No Mac."></figure><b>Confirme</b><span>Ele avisa quantos arquivos vão sumir. Marque <strong>Pode apagar</strong> e clique em <strong>Gravar pen drive</strong>.</span></li>
+        <li><figure><img class="so-win" src="assets/instalador/3-gravando-windows.webp" width="864" height="720" loading="lazy" alt="Terceira tela: &quot;Gravando... 42%&quot;, com a barra de progresso, o texto &quot;Baixando o modelo (3,3 de 3,9 GB)&quot; e &quot;Faltam uns 6 minutos&quot;. No Windows."><img class="so-mac" src="assets/instalador/3-gravando-mac.webp" width="864" height="716" loading="lazy" alt="Terceira tela: &quot;Gravando... 42%&quot;, com a barra de progresso, o texto &quot;Baixando o modelo (3,3 de 3,9 GB)&quot; e &quot;Faltam uns 6 minutos&quot;. No Mac."></figure><b>Espere gravar</b><span>A barra mostra o andamento e quanto falta. Na primeira vez ele baixa uns 3,9 GB. Pode deixar rodando.</span></li>
+        <li><figure><img class="so-win" src="assets/instalador/4-pronto-windows.webp" width="864" height="720" loading="lazy" alt="Quarta tela: selo de concluído e a frase &quot;Pronto, pode tirar o pen drive&quot;, com o botão Gravar outro. No Windows."><img class="so-mac" src="assets/instalador/4-pronto-mac.webp" width="864" height="716" loading="lazy" alt="Quarta tela: selo de concluído e a frase &quot;Pronto, pode tirar o pen drive&quot;, com o botão Gravar outro. No Mac."></figure><b>Tire o pen drive</b><span>Quando aparecer <strong>Pronto, pode tirar o pen drive</strong>, é só tirar. A IA já está dentro dele.</span></li>
+      </ol>
       <p class="note"><strong>Windows:</strong> se aparecer "O Windows protegeu o computador", clique em <strong>Mais informações</strong> e depois em <strong>Executar assim mesmo</strong>.<br><strong>Mac:</strong> se o Mac não deixar abrir, vá em Ajustes do Sistema, Privacidade e Segurança, e clique em <strong>Abrir mesmo assim</strong>.</p>
       <p class="note">Quer a IA direto no computador, sem pen drive? No mesmo instalador, escolha <strong>Instalar neste computador</strong> e compre a cópia por R$ 25. Ele abre o pagamento no navegador, recebe a chave de volta e baixa e instala a IA sozinho. Quem já tem a chave neste computador reinstala sem pagar de novo. <a href="condicoes-instalacao.html">Condições da cópia</a>.</p>
       <p class="note">Na primeira vez ele baixa uns 3,9 GB, então leva alguns minutos. O instalador esconde discos acima de 256 GB, de boot e do Time Machine; para esses casos, use o jeito técnico. Para usar o pen drive pronto, espete em qualquer computador e dê dois cliques em <code>IA de Bolso</code> (<code>.exe</code> no Windows, <code>.app</code> no Mac).</p>
@@ -422,5 +437,6 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
     </div>
   </div>
 </footer>
+<script>if(/Mac/.test(navigator.platform))document.getElementById("so-mac").checked=true</script>
 </body>
 </html>
