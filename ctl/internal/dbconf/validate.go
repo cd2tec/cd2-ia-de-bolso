@@ -203,6 +203,10 @@ func Validate(in Input, saved *Config) (Config, error) {
 	if c.Schema == "" {
 		c.Schema = DefaultSchema(c.Engine, c.User, c.Name)
 	}
+	// O Oracle guarda o dono em maiúsculas; "consinco" não casa com owner = 'CONSINCO' nas receitas.
+	if c.Engine == "oracle" {
+		c.Schema = strings.ToUpper(c.Schema)
+	}
 	if err := check(c); err != nil {
 		return Config{}, err
 	}

@@ -25,6 +25,7 @@ func TestValidatePreencheOsPadroes(t *testing.T) {
 		{Input{Motor: "firebird", Host: "h", Base: `C:\dados\erp.fdb`, Usuario: "LEITURA_RO"}, "3050", ""},
 		{Input{Motor: "dbf", Base: `C:\dados\loja`}, "0", ""},
 		{Input{Motor: "postgres", Host: "h", Porta: json.RawMessage(`"6543"`), Base: "d", Usuario: "u", Schema: "vendas"}, "6543", "vendas"},
+		{Input{Motor: "oracle", Host: "h", Base: "PRD", Usuario: "CONSINCO", Schema: "consinco"}, "1521", "CONSINCO"},
 		{Input{Motor: "postgres", Host: "h", Porta: json.RawMessage(`""`), Base: "d", Usuario: "u"}, "5432", "public"},
 		{Input{Motor: "postgres", Host: "h", Porta: json.RawMessage(`null`), Base: "d", Usuario: "u"}, "5432", "public"},
 	}
