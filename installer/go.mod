@@ -3,6 +3,7 @@ module github.com/cd2tec/cd2-ia-de-bolso/installer
 go 1.23
 
 require (
+	github.com/cd2tec/cd2-ia-de-bolso/instalacao v0.0.0
 	github.com/wailsapp/wails/v2 v2.10.1
 	howett.net/plist v1.0.1
 )
@@ -35,3 +36,5 @@ require (
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 )
+
+replace github.com/cd2tec/cd2-ia-de-bolso/instalacao => ../instalacao
