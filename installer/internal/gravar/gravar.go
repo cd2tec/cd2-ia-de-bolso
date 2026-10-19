@@ -133,21 +133,28 @@ type andamento struct {
 	// pesos em bytes: o que falta baixar e o total da cópia (que conta duas
 	// vezes: copiar e conferir).
 	baixar, copiar int64
-	ultima         float64 // maior fração já calculada
-	etapa          string
-	etapaEmitida   string
-	inicio         time.Time
-	amostras       []amostra // janela (instante, bytes feitos) da etapa atual
-	ultimaFrase    string
-	emitiu         bool
-	emitida        float64
+	// copiaUmaVez: a cópia pesa uma vez só (instalar no computador, onde a
+	// conferência acontece dentro da própria cópia).
+	copiaUmaVez  bool
+	ultima       float64 // maior fração já calculada
+	etapa        string
+	etapaEmitida string
+	inicio       time.Time
+	amostras     []amostra // janela (instante, bytes feitos) da etapa atual
+	ultimaFrase  string
+	emitiu       bool
+	emitida      float64
 }
 
 // publicar emite um evento. feitos/total são da etapa; base é o que as
 // etapas anteriores já pesaram. A fração nunca diminui.
 func (a *andamento) publicar(etapa, frase string, feitos, total, base int64, forcar bool) {
 	var f float64
-	if peso := a.baixar + 2*a.copiar; peso > 0 {
+	peso := a.baixar + 2*a.copiar
+	if a.copiaUmaVez {
+		peso = a.baixar + a.copiar
+	}
+	if peso > 0 {
 		f = float64(base+feitos) / float64(peso)
 	}
 	if f > 0.999 {

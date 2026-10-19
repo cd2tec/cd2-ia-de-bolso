@@ -19,7 +19,7 @@ Plugou, clicou, conversou. A IA de Bolso abre uma janela com a identidade da CD2
 
 ## Crie o seu pen drive em 4 passos
 
-O jeito mais fácil é o instalador para Windows e Mac, com quatro telas: veja [O jeito mais fácil: o instalador](docs/criar-pendrive.md#o-jeito-mais-fácil-o-instalador). Os passos abaixo são o jeito técnico, com os scripts do ZIP.
+O jeito mais fácil é o instalador para Windows e Mac. Na primeira tela, escolha **Criar o pen drive da IA de Bolso** (grátis) e siga as telas: veja [O jeito mais fácil: o instalador](docs/criar-pendrive.md#o-jeito-mais-fácil-o-instalador). Os passos abaixo são o jeito técnico, com os scripts do ZIP.
 
 Feito para Windows e Mac, sem precisar entender de tecnologia. Você só precisa de um pen drive de 16 GB ou mais (tudo nele será apagado) e de internet na primeira vez.
 
@@ -112,11 +112,16 @@ Windows e Mac modernos **não executam nada automaticamente** ao plugar o pen dr
 
 ## Instalar no computador
 
-Gostou e quer usar a IA sem o pen drive? Com a IA aberta pelo pen drive, clique em **Instalar no computador** (na barra de cima da conversa ou na janelinha do lançador).
+Quer usar a IA sem o pen drive? Há dois caminhos, e os dois levam à mesma cópia:
+
+- **Pelo instalador do site.** Abra o instalador e escolha **Instalar neste computador**. Ele mostra as condições, abre o pagamento no navegador e, quando você paga, segue sozinho: baixa a IA (uns 3,9 GB na primeira vez; se você já gravou um pen drive neste computador, não baixa de novo), confere e instala. Antes de pagar, ele confere se cabe no disco. Se a volta do pagamento não chegar, cole a chave que veio no e-mail. No Windows, o instalador abre como administrador para poder formatar pen drive; para instalar, ele reabre sozinho sem administrador, para a IA ficar na sua conta e não na de outra pessoa.
+- **Pelo pen drive.** Com a IA aberta pelo pen drive, clique em **Instalar no computador** (na barra de cima da conversa ou na janelinha do lançador).
+
+As condições são as mesmas nos dois:
 
 - **Quanto custa:** R$ 25 por computador, em pagamento único, pelo Stripe. É uma cópia avulsa para este computador, não é assinatura nem licença.
-- **O que você leva:** a IA copiada do pen drive para o computador, que abre sem o pen drive, com ícone nos programas e atalho na área de trabalho se você quiser. Se quiser, ela acorda junto com o computador (ocupa de 4 a 5 GB de memória desde que ele liga, e dá para desligar). E dá para desinstalar quando quiser.
-- **A chave:** chega por e-mail e na tela, depois do pagamento. Guarde. Ela reinstala no mesmo computador, sem pagar de novo.
+- **O que você leva:** a IA instalada no computador (copiada do pen drive ou baixada pelo instalador), que abre sem o pen drive, com ícone nos programas e atalho na área de trabalho se você quiser. Se quiser, ela acorda junto com o computador (ocupa de 4 a 5 GB de memória desde que ele liga, e dá para desligar). E dá para desinstalar quando quiser.
+- **A chave:** chega por e-mail e na tela, depois do pagamento. Guarde. Ela reinstala no mesmo computador, sem pagar de novo. Se a chave já está guardada neste computador, o instalador e a conversa oferecem **Reinstalar com a minha chave**, sem passar pelo pagamento.
 - **As regras:** vale para um computador (todas as contas de usuário dele). Trocou de computador ou perdeu a chave, é uma nova instalação, com novo pagamento.
 
 O teste pelo pen drive continua livre e completo. As condições completas estão em [condicoes-instalacao.html](https://cd2tec.github.io/cd2-ia-de-bolso/condicoes-instalacao.html).

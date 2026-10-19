@@ -25,4 +25,5 @@ Para testar sem cobrar de verdade há um segundo Worker, `cd2-instalacao-sandbox
 - Segredos, todos com `--env sandbox`: `STRIPE_SECRET_KEY` e `STRIPE_PRICE_ID` da sandbox do Stripe, e `CHAVE_PRIVADA` com a chave de TESTE (`instalacao/testdata/vetor.json`), nunca a de produção.
 - O pen drive de teste usa o build com `-tags sandbox`: `CD2_GO_TAGS=sandbox sh ctl/build.sh "..."` e `wails build -tags sandbox ...`. Esse build compra no Worker de teste, confere com a chave de teste e mostra "modo de teste" no modal.
 - Uma chave da sandbox não abre o build oficial, e uma de produção não abre o de teste.
+- O instalador de teste (`wails build -tags sandbox` em `installer/`) compra na sandbox, mas baixa a IA do release oficial, que só aceita chave de produção. Para testar de ponta a ponta, troque na IA instalada o lançador (`IA de Bolso.app` inteiro, porque o macOS não deixa mexer dentro dele) e o `bin/ctl/<os>-<arch>/cd2-ctl` pelos builds com `-tags sandbox`. Reinstalar traz os oficiais de volta.
 - O Worker de produção só deve ter as chaves do Stripe no modo real. Com chaves da sandbox nele, um pagamento de mentira geraria uma chave de produção válida.
