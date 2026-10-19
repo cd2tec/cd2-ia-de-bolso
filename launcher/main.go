@@ -81,6 +81,15 @@ func dormirNoSinal(a *App) {
 	}()
 }
 
+// pastaWebView2 só procura pasta no Windows: nos outros sistemas o campo é ignorado.
+func pastaWebView2() string {
+	if runtime.GOOS != "windows" {
+		return ""
+	}
+	home, _ := os.UserHomeDir()
+	return pastaDadosWebView2(candidatasWebView2(os.Getenv, home))
+}
+
 func main() {
 	args := lerArgs(os.Args[1:])
 	if args.Esperar > 0 {
@@ -104,7 +113,10 @@ func main() {
 		OnBeforeClose:     app.antesDeFechar,
 		OnShutdown:        app.encerrar,
 		Bind:              []interface{}{app},
-		Windows:           &windows.Options{Messages: mensagensWebView2()},
+		Windows: &windows.Options{
+			Messages:            mensagensWebView2(),
+			WebviewUserDataPath: pastaWebView2(),
+		},
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: idUnico,
 			// Args vem sem o nome do programa (os.Args[1:] da outra cópia).

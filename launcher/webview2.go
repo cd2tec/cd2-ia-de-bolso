@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/cache"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
@@ -50,4 +51,41 @@ func registrarFalha(dir, versao string, falha error) error {
 		err = errFechar
 	}
 	return err
+}
+
+// candidatasWebView2 são as pastas, em ordem de preferência, para os dados do
+// WebView2 no Windows. Sem elas o Wails usa %APPDATA%\<nome do exe>, a pasta
+// Roaming, que em rede de empresa costuma ser redirecionada ou bloqueada, e aí
+// a janelinha não abre ("não pode ler e gravar no diretório de dados").
+func candidatasWebView2(env func(string) string, home string) []string {
+	var c []string
+	if env("LOCALAPPDATA") != "" {
+		c = append(c, cache.Pasta("windows", env, home)+`\webview2`)
+	}
+	if env("TEMP") != "" {
+		c = append(c, cache.PastaLogs("windows", env, home)+`\webview2`)
+	}
+	return c
+}
+
+// pastaDadosWebView2 devolve a primeira candidata em que dá para gravar de
+// fato (cria a pasta e um arquivo de teste). Vazio se nenhuma serve: o Wails
+// fica com o padrão dele, que ainda pode dar certo.
+func pastaDadosWebView2(candidatas []string) string {
+	for _, dir := range candidatas {
+		if dir == "" {
+			continue
+		}
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			continue
+		}
+		f, err := os.CreateTemp(dir, "grava-*")
+		if err != nil {
+			continue
+		}
+		f.Close()
+		os.Remove(f.Name())
+		return dir
+	}
+	return ""
 }
