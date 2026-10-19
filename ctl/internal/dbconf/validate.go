@@ -8,18 +8,23 @@ import (
 )
 
 // Engines aceitos, na ordem da tela.
-var Engines = []string{"postgres", "oracle", "mariadb", "sqlserver", "firebird"}
+var Engines = []string{"postgres", "oracle", "mariadb", "sqlserver", "firebird", "dbf"}
 
-var defaultPorts = map[string]int{"postgres": 5432, "oracle": 1521, "mariadb": 3306, "sqlserver": 1433, "firebird": 3050}
+var defaultPorts = map[string]int{"postgres": 5432, "oracle": 1521, "mariadb": 3306, "sqlserver": 1433, "firebird": 3050, "dbf": 0}
 
 const (
 	msgControl = "não pode ter quebra de linha nem caractere de controle"
 	msgPort    = "use um número de 1 a 65535"
-	msgEngine  = "use postgres, oracle, mariadb, sqlserver ou firebird"
+	msgEngine  = "use postgres, oracle, mariadb, sqlserver, firebird ou dbf"
 )
 
-// DefaultPort devolve a porta padrão do motor (0 se o motor não existe).
+// DefaultPort devolve a porta padrão do motor (0 se o motor não existe ou não usa porta, como o DBF).
 func DefaultPort(engine string) int { return defaultPorts[engine] }
+
+func knownEngine(engine string) bool {
+	_, ok := defaultPorts[engine]
+	return ok
+}
 
 // DefaultSchema segue as regras da v0.5.0 (core/db-env.sh): Postgres public, Oracle o usuário
 // em maiúsculas, MariaDB o nome da base, SQL Server dbo. Firebird não tem schema.
@@ -33,7 +38,7 @@ func DefaultSchema(engine, user, name string) string {
 		return name
 	case "sqlserver":
 		return "dbo"
-	case "firebird":
+	case "firebird", "dbf":
 		return ""
 	}
 	return ""
@@ -110,8 +115,17 @@ func parsePort(raw json.RawMessage) (int, error) {
 
 // check confere uma Config já normalizada (porta como texto).
 func check(c Config) error {
-	if defaultPorts[c.Engine] == 0 {
+	if !knownEngine(c.Engine) {
 		return bad("motor", msgEngine)
+	}
+	if c.Engine == "dbf" {
+		if hasControl(c.Name) {
+			return bad("base", msgControl)
+		}
+		if c.Name == "" {
+			return bad("base", "obrigatório")
+		}
+		return nil
 	}
 	fields := []struct{ name, v string }{
 		{"host", c.Host}, {"porta", c.Port}, {"base", c.Name}, {"usuario", c.User}, {"senha", c.Password}, {"schema", c.Schema},
@@ -163,7 +177,7 @@ func Validate(in Input, saved *Config) (Config, error) {
 		return Config{}, bad("senha", msgControl)
 	}
 	engine := strings.TrimSpace(in.Motor)
-	if defaultPorts[engine] == 0 {
+	if !knownEngine(engine) {
 		return Config{}, bad("motor", msgEngine)
 	}
 	port, err := parsePort(in.Porta)

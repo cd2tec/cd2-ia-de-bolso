@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbconf"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbf"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/secret"
 )
 
@@ -90,6 +91,11 @@ func (s *Supervisor) Running() bool {
 func (s *Supervisor) Start(cfg dbconf.Config) error {
 	if s.Running() {
 		return &StartError{Msg: "O toolbox já está rodando."}
+	}
+	if cfg.Engine == "dbf" {
+		if err := dbf.Import(cfg.Name, s.sqlitePath()); err != nil {
+			return &StartError{Msg: err.Error()}
+		}
 	}
 	bin, err := s.prepareBinary()
 	if err != nil {
@@ -180,7 +186,15 @@ func (s *Supervisor) env(cfg dbconf.Config) []string {
 	}
 	c := cfg
 	c.Password = secret.YamlDQ(cfg.Password)
-	return append(env, c.Env()...)
+	env = append(env, c.Env()...)
+	if cfg.Engine == "dbf" {
+		env = append(env, "CD2_DB_SQLITE="+s.sqlitePath())
+	}
+	return env
+}
+
+func (s *Supervisor) sqlitePath() string {
+	return filepath.Join(s.opt.CacheDir, "dbf.sqlite")
 }
 
 // livenessTimeout limita só o GET / (o toolbox responde na hora quando está no ar). O initialize

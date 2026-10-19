@@ -218,7 +218,8 @@ test('ask: no SQL Server o ORDER BY sem TOP ganha OFFSET 0 ROWS', async () => {
 test('buildMessages: dialeto e exemplos por motor, tabelas listadas, tentativa anterior', () => {
   const tabelas = Cat.rankTables(CAT2, 'vendas');
   const sys = m => A.buildMessages({ pergunta:'p', tabelas, motor:m })[0].content;
-  assert.match(sys('postgres'), /LIMIT 10/); assert.match(sys('sqlserver'), /TOP \(10\)/); assert.match(sys('oracle'), /FETCH FIRST 10 ROWS ONLY/); assert.match(sys('firebird'), /ROWS 10/);
+  assert.match(sys('postgres'), /LIMIT 10/); assert.match(sys('sqlserver'), /TOP \(10\)/); assert.match(sys('oracle'), /FETCH FIRST 10 ROWS ONLY/); assert.match(sys('firebird'), /ROWS 10/); assert.match(sys('dbf'), /LIMIT 10/);
+  assert.match(sys('dbf'), /strftime/);
   assert.match(sys('firebird'), /sem WITH/);
   assert.match(sys('mariadb'), /DATE_FORMAT/); assert.match(sys('postgres'), /venda \(cerca de 100 linhas\): dt_venda date, valor numeric, loja varchar\(20\)/);
   const u = A.buildMessages({ pergunta:'p', tabelas, motor:'postgres', anterior:{ sql:'SELECT x', erro:'boom' } })[1].content;
