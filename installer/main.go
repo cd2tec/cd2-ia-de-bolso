@@ -22,6 +22,9 @@ var telas embed.FS
 var versao = "dev"
 
 func main() {
+	if servirAjudante(os.Args[1:]) {
+		return
+	}
 	app := NovaApp()
 	app.iniciarComArgs(os.Args[1:])
 	err := wails.Run(&options.App{

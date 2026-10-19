@@ -114,7 +114,7 @@ Windows e Mac modernos **não executam nada automaticamente** ao plugar o pen dr
 
 Quer usar a IA sem o pen drive? Há dois caminhos, e os dois levam à mesma cópia:
 
-- **Pelo instalador do site.** Abra o instalador e escolha **Instalar neste computador**. Ele mostra as condições, abre o pagamento no navegador e, quando você paga, segue sozinho: baixa a IA (uns 3,9 GB na primeira vez; se você já gravou um pen drive neste computador, não baixa de novo), confere e instala. Antes de pagar, ele confere se cabe no disco. Se a volta do pagamento não chegar, cole a chave que veio no e-mail. No Windows, o instalador abre como administrador para poder formatar pen drive; para instalar, ele reabre sozinho sem administrador, para a IA ficar na sua conta e não na de outra pessoa.
+- **Pelo instalador do site.** Abra o instalador e escolha **Instalar neste computador**. Ele mostra as condições, abre o pagamento no navegador e, quando você paga, segue sozinho: baixa a IA (uns 3,9 GB na primeira vez; se você já gravou um pen drive neste computador, não baixa de novo), confere e instala. Antes de pagar, ele confere se cabe no disco. Se a volta do pagamento não chegar, cole a chave que veio no e-mail. No Windows, o instalador abre na sua conta, sem administrador. Só na hora de procurar o pen drive o Windows pede a permissão de administrador, para formatar. Assim a janela abre mesmo em computador de empresa, onde essa permissão vem com a senha da TI.
 - **Pelo pen drive.** Com a IA aberta pelo pen drive, clique em **Instalar no computador** (na barra de cima da conversa ou na janelinha do lançador).
 
 As condições são as mesmas nos dois:

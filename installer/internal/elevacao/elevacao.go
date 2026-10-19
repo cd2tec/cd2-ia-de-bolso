@@ -21,6 +21,10 @@ const ArgSinal = "--sinal="
 // tamSinal é o tamanho do nonce em hexadecimal minúsculo.
 const tamSinal = 32
 
+// ErrRecusou é a resposta de AbrirComoAdmin quando a pessoa não dá a
+// permissão de administrador.
+var ErrRecusou = errors.New("a permissão de administrador não foi dada")
+
 // PrazoSinal é quanto a instância elevada espera o sinal da reaberta.
 const PrazoSinal = 10 * time.Second
 
