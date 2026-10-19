@@ -20,6 +20,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/webview2"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/cache"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/raiz"
 )
@@ -81,15 +82,6 @@ func dormirNoSinal(a *App) {
 	}()
 }
 
-// pastaWebView2 só procura pasta no Windows: nos outros sistemas o campo é ignorado.
-func pastaWebView2() string {
-	if runtime.GOOS != "windows" {
-		return ""
-	}
-	home, _ := os.UserHomeDir()
-	return pastaDadosWebView2(candidatasWebView2(os.Getenv, home))
-}
-
 func main() {
 	args := lerArgs(os.Args[1:])
 	if args.Esperar > 0 {
@@ -115,7 +107,7 @@ func main() {
 		Bind:              []interface{}{app},
 		Windows: &windows.Options{
 			Messages:            mensagensWebView2(),
-			WebviewUserDataPath: pastaWebView2(),
+			WebviewUserDataPath: webview2.Pasta("lancador"),
 		},
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: idUnico,

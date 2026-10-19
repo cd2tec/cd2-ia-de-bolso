@@ -10,6 +10,9 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
+
+	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/webview2"
 )
 
 //go:embed all:frontend/dist
@@ -32,6 +35,8 @@ func main() {
 		OnBeforeClose:    app.antesDeFechar,
 		OnShutdown:       app.encerrar,
 		Bind:             []interface{}{app},
+		// Fora da Roaming: em rede de empresa ela pode não aceitar escrita.
+		Windows: &windows.Options{WebviewUserDataPath: webview2.Pasta("instalador")},
 	})
 	if err != nil {
 		log.Fatalf("instalador %s: %v", versao, err)
