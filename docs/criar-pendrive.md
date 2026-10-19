@@ -14,7 +14,12 @@ Tudo que estiver no pen drive será apagado. Guarde o que importa antes.
 
 ## O jeito mais fácil: o instalador
 
-Baixe o instalador na [página do projeto](https://cd2tec.github.io/cd2-ia-de-bolso/#pendrive) (`CD2-IA-de-Bolso-Windows.exe` ou `CD2-IA-de-Bolso-Mac.dmg`), abra e siga as quatro telas:
+Baixe o instalador na [página do projeto](https://cd2tec.github.io/cd2-ia-de-bolso/#pendrive) (`CD2-IA-de-Bolso-Windows.exe` ou `CD2-IA-de-Bolso-Mac.dmg`) e abra. A primeira tela pergunta como você quer usar a IA de Bolso, com duas escolhas:
+
+- **Criar o pen drive da IA de Bolso**, grátis. É o caminho desta página.
+- **Instalar neste computador**, comprando a cópia por R$ 25. A IA é baixada e instalada direto no computador, sem pen drive. Veja [Instalar no computador](../README.md#instalar-no-computador).
+
+Escolhido o pen drive, siga as quatro telas:
 
 1. **Plugue o pen drive:** o instalador mostra o pen drive assim que ele aparece.
 2. **Confirme antes de apagar:** marque "Pode apagar" e clique em Gravar pen drive.
