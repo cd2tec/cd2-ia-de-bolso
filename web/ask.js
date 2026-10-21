@@ -305,7 +305,8 @@ async function rodarSalva(o){
   const m = Consultas.montarSql(c, o.valores);
   if(!m.ok) return { ok:false, motivo:'param', erro:m.erro };
   const g = Tb.guardSql(m.sql);
-  if(!g.ok) return { ok:false, motivo:'sql', sql:m.sql };
+  // barrado: o guardSql recusou o SQL montado (não foi ao banco); a tela explica o porquê.
+  if(!g.ok) return { ok:false, motivo:'sql', sql:m.sql, barrado:true };
   const sql = Tb.prepareSql(g.sql, o.motor);
   checkAbort(o.signal);
   const r = await o.runSql(sql, o.signal);
@@ -321,7 +322,7 @@ async function rodarSalva(o){
   const vs = Array.isArray(o.valores) ? o.valores : [];
   const out = { ok:true, visual:v.visual, x:v.x, y:v.y, titulo:String(c.nome || ''),
     frase:frase({ visual:v.visual, x:v.x, y:v.y, linhas:v.linhas, todas:r.rows }), colunas, linhas:v.linhas, todas:r.rows, sql,
-    valores:params.map((p, i) => vs[i] == null ? p.valor : vs[i]) };
+    valores:Array.isArray(m.valores) ? m.valores : params.map((p, i) => vs[i] == null ? p.valor : vs[i]) };
   if(v.aviso) out.aviso = v.aviso;
   return out;
 }

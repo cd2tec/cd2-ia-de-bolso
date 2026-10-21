@@ -556,10 +556,19 @@ test('rodarSalva roda sem chamar o modelo e usa o visual salvo', async () => {
   assert.deepEqual(r.valores, ['2026-09-01', "D'ÁVILA"]);
 });
 
+test('rodarSalva devolve o número normalizado em valores, não o digitado', async () => {
+  const s = 'SELECT loja FROM venda WHERE valor > 10 ORDER BY loja', i = s.indexOf('10');
+  const c = { nome:'Acima de', sql:s, visual:'tabela', params:[{ nome:'Valor', tipo:'numero', inicio:i, fim:i + 2, valor:'10' }] };
+  const runSql = fila([{ ok:true, rows:LINHAS }]);
+  const r = await A.rodarSalva({ consulta:c, valores:[' 2,5 '], motor:'postgres', runSql });
+  assert.equal(runSql.calls[0][0].includes('valor > 2.5'), true);
+  assert.deepEqual(r.valores, ['2.5']);
+});
+
 test('rodarSalva recusa SQL que não é leitura', async () => {
   const runSql = fila([{ ok:true, rows:LINHAS }]);
   const r = await A.rodarSalva({ consulta:{ nome:'x', sql:'DELETE FROM x', visual:'tabela', params:[] }, valores:[], motor:'postgres', runSql });
-  assert.deepEqual(r, { ok:false, motivo:'sql', sql:'DELETE FROM x' });
+  assert.deepEqual(r, { ok:false, motivo:'sql', sql:'DELETE FROM x', barrado:true });
   assert.equal(runSql.calls.length, 0);
 });
 

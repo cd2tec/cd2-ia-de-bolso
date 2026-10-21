@@ -89,7 +89,8 @@ test("montarSql escapa aspas: D'ÁVILA vira D''ÁVILA dentro do LIKE", () => {
 });
 
 test('montarSql sem valor usa o valor salvo de cada parâmetro', () => {
-  assert.deepEqual(C.montarSql(consulta(), []), { ok:true, sql:SQL });
+  const p = consulta().params;
+  assert.deepEqual(C.montarSql(consulta(), []), { ok:true, sql:SQL, valores:p.map(x => x.valor) });
 });
 
 test('montarSql recusa data e número inválidos com o nome do parâmetro', () => {
@@ -128,9 +129,34 @@ test('montarSql com parâmetro malformado devolve ok:false sem lançar', () => {
     let r;
     assert.doesNotThrow(() => { r = C.montarSql({ sql:SQL, params }, ['x', 'y']); });
     if(Array.isArray(params)){ assert.equal(r.ok, false, JSON.stringify(params)); assert.match(r.erro, /parâmetro inválido/); }
-    else assert.deepEqual(r, { ok:true, sql:SQL });
+    else assert.deepEqual(r, { ok:true, sql:SQL, valores:[] });
   }
   assert.deepEqual(C.montarSql({ sql:SQL, params:[{ tipo:'cor', inicio:1, fim:2 }] }, []), { ok:false, erro:'Parâmetro 1: parâmetro inválido.' });
   assert.equal(C.montarSql(null, []).ok, false);
   assert.equal(C.montarSql({ sql:42 }, []).ok, false);
+});
+
+test('montarSql recusa separador de milhar e normaliza a vírgula decimal', () => {
+  const c = consulta(), st = c.params[2];
+  const com = n => C.montarSql(c, [c.params[0].valor, c.params[1].valor, n, c.params[3].valor]);
+  const milhar = { ok:false, erro:'Status: use vírgula para decimal, sem separador de milhar.' };
+  assert.deepEqual(com('1.000'), milhar);
+  assert.deepEqual(com('10,000'), milhar);
+  assert.deepEqual(com('1.000,50'), milhar);
+  const r = com('1,5');
+  assert.equal(r.ok, true);
+  assert.equal(r.sql, SQL.slice(0, st.inicio) + '1.5' + SQL.slice(st.fim));
+  assert.deepEqual(r.valores, [c.params[0].valor, c.params[1].valor, '1.5', c.params[3].valor]);
+  const mil = com('1000');
+  assert.equal(mil.ok, true);
+  assert.equal(mil.sql, SQL.slice(0, st.inicio) + '1000' + SQL.slice(st.fim));
+});
+
+test('montarSql aceita o valor salvo mesmo quando ele tem o formato de milhar', () => {
+  const s = 'SELECT * FROM t WHERE taxa > 0.125';
+  const i = s.indexOf('0.125');
+  const c = { sql:s, params:[{ nome:'Taxa', tipo:'numero', inicio:i, fim:i + 5, valor:'0.125' }] };
+  assert.deepEqual(C.montarSql(c, []), { ok:true, sql:s, valores:['0.125'] });
+  assert.deepEqual(C.montarSql(c, ['0,125']), { ok:true, sql:s, valores:['0.125'] });
+  assert.equal(C.montarSql(c, ['1,125']).ok, false);
 });

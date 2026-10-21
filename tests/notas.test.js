@@ -149,6 +149,17 @@ test('planoImportacao: mesmo texto dos dois lados não é conflito', () => {
   assert.equal(p.resultado.consultas.length, 1);
 });
 
+test('planoImportacao: mesma consulta com valor de parâmetro diferente não é conflito', () => {
+  const comParam = (id, valor) => ({ ...q(id, 'Top', 'SELECT 1 WHERE a > 10'), params:[{ nome:'Mínimo', tipo:'numero', inicio:20, fim:22, valor }] });
+  const p = N.planoImportacao(dd({}, [comParam('1', '10')]), dd({}, [comParam('9', '25')]));
+  assert.deepEqual(p.conflitos, []);
+  assert.deepEqual(p.novas, { notas:0, consultas:0 });
+  assert.equal(p.resultado.consultas.length, 1);
+  // parâmetro em outro lugar continua sendo conflito
+  const outro = { ...comParam('9', '10') }; outro.params = [{ ...outro.params[0], nome:'Outro' }];
+  assert.equal(N.planoImportacao(dd({}, [comParam('1', '10')]), dd({}, [outro])).conflitos.length, 1);
+});
+
 test('mesmoBanco ignora caixa do host', () => {
   const a = { motor:'oracle', host:'DB.Local', porta:1521, base:'x', schema:'s' };
   assert.equal(N.mesmoBanco(a, { ...a, host:'db.local' }), true);

@@ -785,7 +785,7 @@ const USE_SCHEMA = true;
 const st = { cfg:{}, messages:[], provider:null, tools:[], busy:false, ctl:null, dbStatus:null,
   catalog:null, catalogPromise:null, catalogGen:0, suggestions:null,
   ctlKey:null, ctlUp:false, ctlStale:false, ctlStatus:null, ctlBusy:false, dbSenhaSalva:false,
-  notas:null, notasBanco:null, notasErro:'' };
+  notas:null, notasBanco:null, notasChave:null, notasErro:'' };
 
 /* ---------- storage (best effort) ---------- */
 const store = {
@@ -838,7 +838,7 @@ async function connectTools(){
   const url = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
   const tok = store.get('cd2.tok', true) || '';
   st.catalog = null; st.suggestions = null; st.catalogPromise = null; st.descricao = null; st.catalogGen++;
-  st.notas = null; st.notasBanco = null; fecharNotas(); syncBotaoNotas();
+  st.notas = null; st.notasBanco = null; st.notasChave = null; fecharNotas(); syncBotaoNotas();
   esconderFaixa();
   setPill('#pMcp', '', 'ferramentas…');
   try{
@@ -1161,7 +1161,10 @@ function renderAnswer(body, pergunta, r, o){
   body.innerHTML = '';
   if(!r.ok){
     const p = document.createElement('p');
-    p.textContent = r.motivo === 'param' ? (r.erro || CD2Ask.MENSAGENS.sql) : (CD2Ask.MENSAGENS[r.motivo] || CD2Ask.MENSAGENS.modelo); body.appendChild(p);
+    const textoBarrado = r.motivo === 'sql' && r.barrado && o.consulta && Array.isArray(o.consulta.params) && o.consulta.params.some(x => x && x.tipo === 'texto');
+    p.textContent = r.motivo === 'param' ? (r.erro || CD2Ask.MENSAGENS.sql)
+      : textoBarrado ? 'Algum valor digitado parece um comando SQL (por exemplo UPDATE ou DELETE) e foi barrado por segurança.'
+      : (CD2Ask.MENSAGENS[r.motivo] || CD2Ask.MENSAGENS.modelo); body.appendChild(p);
     if(r.sql) body.appendChild(sqlBox(r.sql));
     if(st.suggestions && st.suggestions.length) body.appendChild(suggestionChips());
     scrollDown(); return;
@@ -1171,7 +1174,9 @@ function renderAnswer(body, pergunta, r, o){
   const ps = (o.consulta && Array.isArray(o.consulta.params)) ? o.consulta.params : [];
   if(ps.length && Array.isArray(r.valores)){
     const v = document.createElement('p'); v.className = 'valores';
-    v.textContent = ps.map((p, i) => nomeParam(p, i) + ': ' + (p.tipo === 'data' ? dataBr(r.valores[i]) : String(r.valores[i] == null ? '' : r.valores[i]))).join(' · ');
+    // r.valores já vem normalizado do montarSql; número aparece como a janela Rodar mostra (1,5).
+    const mostra = (p, x) => p.tipo === 'data' ? dataBr(x) : p.tipo === 'numero' ? String(x == null ? '' : x).replace('.', ',') : String(x == null ? '' : x);
+    v.textContent = ps.map((p, i) => nomeParam(p, i) + ': ' + mostra(p, r.valores[i])).join(' · ');
     card.appendChild(v);
   }
   const f = document.createElement('p'); f.className = 'frase'; f.textContent = r.frase; card.appendChild(f);
@@ -1216,17 +1221,23 @@ function printPerfil(){
 }
 /* ---------- notas da TI (web/notas.js), guardadas pelo cd2-ctl, uma por banco ---------- */
 // Chamada quando o catálogo fica pronto: lê as notas do banco conectado e aplica no catálogo.
-// Falhou (cd2-ctl fora, sem banco)? Fica sem notas e sem o botão; nada de salvar por cima às cegas.
+// Falhou (cd2-ctl fora, sem banco, arquivo corrompido, 5 s sem resposta)? Fica sem notas e sem o
+// botão, com um aviso curto na conversa; nada de salvar por cima às cegas.
+// st.notasChave: identidade do banco que o cd2-ctl devolveu; vai em toda gravação (409 se mudou).
 async function carregarNotas(){
   const gen = st.catalogGen;
-  if(!st.ctlKey || !st.catalog) return;
+  if(!st.ctlKey || !st.catalog) return false;
   let r = null;
-  try{ r = await ctlRequest('GET', '/notas'); }catch(e){}
-  if(gen !== st.catalogGen || !st.catalog) return;
-  if(!r || r.status !== 200 || !r.data.dados || typeof r.data.dados !== 'object') return;
-  st.notas = r.data.dados; st.notasBanco = r.data.banco || null;
+  try{ r = await ctlRequest('GET', '/notas', null, 5000); }catch(e){}
+  if(gen !== st.catalogGen || !st.catalog) return false;
+  if(!r || r.status !== 200 || !r.data.dados || typeof r.data.dados !== 'object' || !r.data.chave){
+    addNote('Não consegui ler as notas da TI deste banco; a tela de notas e as consultas salvas ficam escondidas.');
+    return false;
+  }
+  st.notas = r.data.dados; st.notasBanco = r.data.banco || null; st.notasChave = r.data.chave;
   CD2Notas.aplicar(st.catalog, st.notas);
   syncBotaoNotas();
+  return true;
 }
 // Grava as notas (padrão: st.notas) e reaplica no catálogo. Devolve true|false; o motivo da falha
 // fica em st.notasErro para a tela que chamou mostrar. Em falha st.notas não muda.
@@ -1238,8 +1249,16 @@ async function salvarNotas(dados, rota){
   st.notasErro = '';
   if(!dados){ st.notasErro = 'As notas deste banco não foram carregadas.'; return false; }
   let r;
-  try{ r = await ctlRequest('POST', rota || '/notas', { dados }); }
+  try{ r = await ctlRequest('POST', rota || '/notas', { chave:st.notasChave || '', dados }); }
   catch(e){ st.notasErro = 'O controle do banco não respondeu. Feche e abra a IA de Bolso pelo atalho INICIAR.'; return false; }
+  if(r.status === 409){
+    // O banco do cd2-ctl não é o que a tela leu: nada foi gravado. Relê as notas do banco de agora.
+    st.notasErro = (r.data && r.data.erro) || 'O banco conectado mudou. Abra a tela de novo.';
+    const erro = st.notasErro;
+    if(gen === st.catalogGen) await carregarNotas();
+    st.notasErro = erro;
+    return false;
+  }
   if(r.status !== 200){ st.notasErro = (r.data && r.data.erro) || ('O controle do banco respondeu HTTP ' + r.status + '.'); return false; }
   if(gen !== st.catalogGen){ st.notasErro = 'O banco mudou enquanto salvava.'; return false; }
   st.notas = dados;
@@ -1249,10 +1268,13 @@ async function salvarNotas(dados, rota){
 // Fila única do documento de notas: a tela de notas, as consultas salvas e a importação gravam o
 // mesmo documento. Cada alteração parte do st.notas da vez dela (mudar(atual) devolve o documento
 // novo), então duas seguidas não se atropelam. Trocou de banco no meio, não grava (era do anterior).
-function gravarNotas(mudar, rota){
+// chave (opcional): a do banco em que o rascunho nasceu (tela de notas, importação); se as notas foram
+// relidas de outro banco depois de um 409, não grava o rascunho antigo por cima.
+function gravarNotas(mudar, rota, chave){
   const gen = st.catalogGen;
   const vez = (st.filaNotas || Promise.resolve()).then(async () => {
     if(gen !== st.catalogGen){ st.notasErro = 'O banco mudou.'; return false; }
+    if(chave && chave !== st.notasChave){ st.notasErro = 'O banco conectado mudou. Abra a tela de novo.'; return false; }
     if(!st.notas){ st.notasErro = 'As notas deste banco não foram carregadas.'; return false; }
     const ok = await salvarNotas(mudar(st.notas), rota);
     renderSalvas();
@@ -1271,7 +1293,7 @@ function syncBotaoNotas(){
 }
 // Estado da tela: tabela aberta, busca e o rascunho de todas as notas (copiado de st.notas ao abrir;
 // trocar de tabela não perde o que foi digitado, só o "Salvar notas" grava).
-const nt = { aberta:false, sel:null, rascunho:null, sujo:false, msg:'', erro:false };
+const nt = { aberta:false, sel:null, rascunho:null, sujo:false, msg:'', erro:false, chave:'' };
 const MAX_ITENS_NOTAS = 300;
 const PAPEL_ROTULO = { movimento:'movimento', itens:'itens', cadastro:'cadastro', parametro:'parâmetro', vazia:'vazia', indefinida:'indefinida' };
 const copiaTabelas = d => JSON.parse(JSON.stringify((d && d.tabelas) || {}));
@@ -1279,7 +1301,9 @@ const notaDe = (nome) => (Object.prototype.hasOwnProperty.call(nt.rascunho, nome
 const temNota = nome => { const n = notaDe(nome); return !!(n && ((n.nota || '').trim() || Object.values(n.campos || {}).some(v => String(v).trim()))); };
 function abrirNotas(){
   if(!st.catalog || !st.notas) return;
-  if(!nt.rascunho){ nt.rascunho = copiaTabelas(st.notas); nt.sujo = false; nt.msg = ''; }
+  // Rascunho de outro banco (as notas foram relidas depois de um 409, já avisado na tela): começa de novo.
+  if(nt.rascunho && nt.chave !== st.notasChave) nt.rascunho = null;
+  if(!nt.rascunho){ nt.rascunho = copiaTabelas(st.notas); nt.chave = st.notasChave || ''; nt.sujo = false; nt.msg = ''; nt.erro = false; }
   if(!nt.sel || !st.catalog.tables.some(t => t.name === nt.sel)) nt.sel = st.catalog.tables.length ? st.catalog.tables[0].name : null;
   nt.aberta = true; document.body.classList.add('com-notas'); $('#notas').hidden = false;
   renderNotas(); $('#nTitulo').focus();
@@ -1393,7 +1417,7 @@ function renderDetalheNotas(){
   acts.innerHTML = '<button class="sm primary" id="nSalvar">Salvar notas</button><span class="hint" id="nStatus" role="status" aria-live="polite"></span>';
   const status = acts.querySelector('#nStatus');
   if(nt.erro && nt.msg){ status.innerHTML = '<span class="tag tag--atencao">Atenção</span> '; status.appendChild(document.createTextNode(nt.msg)); }
-  else status.textContent = nt.msg || (nt.sujo ? 'Alterações não salvas.' : '');
+  else status.textContent = nt.msg || (nt.sujo ? 'Alterações não salvas.' : 'Salvo neste computador');
   acts.querySelector('#nSalvar').onclick = salvarTelaNotas;
   det.appendChild(acts);
 }
@@ -1408,7 +1432,7 @@ async function salvarTelaNotas(){
     for(const [c, v] of Object.entries(n.campos || {})){ const x = CD2Notas.limpar(v, L.campo); if(x) Object.defineProperty(campos, c, { value:x, enumerable:true, writable:true, configurable:true }); }
     if(nota || Object.keys(campos).length) Object.defineProperty(tabelas, nome, { value:{ nota, campos }, enumerable:true, writable:true, configurable:true });
   }
-  const ok = await gravarNotas(atual => Object.assign({}, atual, { versao:1, tabelas }));
+  const ok = await gravarNotas(atual => Object.assign({}, atual, { versao:1, tabelas }), undefined, nt.chave);
   if(ok && nt.rascunho){ nt.rascunho = copiaTabelas(st.notas); nt.sujo = false; nt.erro = false; nt.msg = 'Salvo neste computador'; }
   if(!nt.aberta) return;
   if(ok) renderNotas();
@@ -1422,7 +1446,7 @@ async function salvarTelaNotas(){
 // Exportar existe sempre (no pen drive é o jeito de não perder o trabalho); importar, só na versão
 // instalada: levar o trabalho para outro computador pede a versão instalada (o cd2-ctl também barra).
 const MAX_ARQUIVO_NOTAS = 5 * 1024 * 1024;
-const imp = { dados:null, banco:null, exportado:'', gen:0, etapa:'' };
+const imp = { dados:null, banco:null, exportado:'', gen:0, chave:'', etapa:'' };
 const CONFLITO_ROTULO = { tabela:'nota da tabela', campo:'nota do campo', consulta:'consulta salva' };
 function syncImportar(){
   const b = $('#nImportar'); if(b) b.hidden = !(inst.status && inst.status.origem === 'instalada');
@@ -1442,7 +1466,7 @@ function escolherArquivoNotas(){
 async function lerArquivoNotas(){
   const f = $('#nArquivo').files[0];
   if(!f) return;
-  imp.dados = null; imp.exportado = ''; imp.gen = st.catalogGen;
+  imp.dados = null; imp.exportado = ''; imp.gen = st.catalogGen; imp.chave = st.notasChave || '';
   let r;
   if(f.size > MAX_ARQUIVO_NOTAS) r = CD2Notas.lerArquivo('');
   else{
@@ -1500,11 +1524,11 @@ async function confirmarImportar(){
   if(imp.gen !== st.catalogGen) return mostrarErro(msg, 'O banco mudou. Feche e importe de novo.');
   const dados = imp.dados;
   ok.disabled = true;
-  const feito = await gravarNotas(atual => CD2Notas.planoImportacao(atual, dados).resultado, '/notas/importar');
+  const feito = await gravarNotas(atual => CD2Notas.planoImportacao(atual, dados).resultado, '/notas/importar', imp.chave);
   ok.disabled = false;
   if(!feito) return mostrarErro(msg, 'Não deu para importar: ' + st.notasErro);
   $('#importar').close(); imp.dados = null;
-  nt.rascunho = nt.rascunho ? copiaTabelas(st.notas) : null; nt.sujo = false; nt.erro = false; nt.msg = 'Importado neste computador';
+  nt.rascunho = nt.rascunho ? copiaTabelas(st.notas) : null; nt.chave = st.notasChave || ''; nt.sujo = false; nt.erro = false; nt.msg = 'Importado neste computador';
   syncBotaoNotas(); renderNotas();
 }
 /* ---------- consultas salvas (web/consultas.js): 👍, barra lateral e rodar de novo sem o modelo ---------- */
@@ -1514,7 +1538,7 @@ const TIPO_ROTULO = { data:'data', numero:'número', texto:'texto' };
 const MAX_NOME_CONSULTA = 120, MAX_NOME_PARAM = 60;
 const sb = { menu:null, modo:'', erro:'', focar:false, voltar:null };  // barra: item com o menu aberto, 'menu' | 'renomear' | 'apagar'
 const sv = { r:null, botao:null, linhas:[], sel:null };  // janela Salvar consulta
-const rd = { consulta:null };                        // janela de rodar com parâmetros
+const rd = { consulta:null, gen:0 };                 // janela de rodar com parâmetros
 const consultasSalvas = () => (st.notas && Array.isArray(st.notas.consultas)) ? st.notas.consultas : [];
 const nomeParam = (p, i) => (p && typeof p.nome === 'string' && p.nome.trim()) || ('Parâmetro ' + (i + 1));
 const mesmoNome = (a, b) => String(a == null ? '' : a).trim().toLowerCase() === String(b == null ? '' : b).trim().toLowerCase();
@@ -1531,7 +1555,7 @@ const gravarConsultas = mudar => gravarNotas(atual => Object.assign({}, atual, {
 function syncSalvas(){
   const a = $('#salvas'), on = podeSalvar();
   a.hidden = !on;
-  if(on) renderSalvas(); else{ sb.menu = null; sb.modo = ''; sb.erro = ''; }
+  if(on) renderSalvas(); else{ sb.menu = null; sb.modo = ''; sb.erro = ''; fecharRodar(); }
 }
 function renderSalvas(){
   const a = $('#salvas'); if(a.hidden) return;
@@ -1624,7 +1648,7 @@ function clicarSalva(c){
 
 /* janela de rodar com parâmetros */
 function abrirRodar(c){
-  rd.consulta = c;
+  rd.consulta = c; rd.gen = st.catalogGen;
   $('#rTitulo').textContent = String(c.nome || '');
   const box = $('#rCampos'); box.innerHTML = '';
   c.params.forEach((p, i) => {
@@ -1633,7 +1657,9 @@ function abrirRodar(c){
     const inp = document.createElement('input'); inp.id = 'rP' + i; inp.autocomplete = 'off'; inp.spellcheck = false;
     inp.type = p && p.tipo === 'data' ? 'date' : 'text';
     if(p && p.tipo === 'numero') inp.inputMode = 'decimal';
-    inp.value = String(p && p.valor != null ? p.valor : '');
+    // Número da última vez em formato brasileiro (1.5 → 1,5): nunca no padrão ambíguo do milhar.
+    const ultimo = String(p && p.valor != null ? p.valor : '');
+    inp.value = p && p.tipo === 'numero' ? ultimo.replace('.', ',') : ultimo;
     inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); confirmarRodar(); } });
     d.appendChild(lb); d.appendChild(inp); box.appendChild(d);
   });
@@ -1641,17 +1667,23 @@ function abrirRodar(c){
   $('#rodar').showModal();
   const f = box.querySelector('input'); if(f) f.focus();
 }
+function fecharRodar(){
+  const d = $('#rodar'); if(d.open) d.close();
+  rd.consulta = null;
+}
 function confirmarRodar(){
   const c = rd.consulta; if(!c) return;
+  // A janela foi aberta para outro banco (catálogo trocou): fecha sem rodar.
+  if(rd.gen !== st.catalogGen || !podeSalvar()) return fecharRodar();
   const valores = c.params.map((p, i) => { const el = $('#rP' + i); return el ? el.value.trim() : ''; });
   if(st.busy || !st.provider) return mostrarErro($('#rErro'), 'Espere a resposta atual terminar.');
   const m = CD2Consultas.montarSql(c, valores);
   if(!m.ok) return mostrarErro($('#rErro'), m.erro);
-  $('#rodar').close(); rd.consulta = null;
+  fecharRodar();
   executarSalva(c, valores);
 }
-// Roda direto no banco, sem o modelo, e mostra o card na conversa. Rodou (os valores passaram),
-// os valores usados viram os da próxima vez.
+// Roda direto no banco, sem o modelo, e mostra o card na conversa. Rodou com resultado, os valores
+// usados (normalizados pelo montarSql) viram os da próxima vez.
 async function executarSalva(c, valores){
   if(st.busy || !st.provider) return;
   st.busy = true; st.ctl = new AbortController(); toggleBusy();
@@ -1664,7 +1696,7 @@ async function executarSalva(c, valores){
     const r = await CD2Ask.rodarSalva({ consulta:c, valores, motor:s.engine || 'postgres',
       runSql:CD2Ask.toolRunner(st.provider, { timeoutMs:15000 }), signal:st.ctl.signal });
     renderAnswer(body, String(c.nome || ''), r, { consulta:c });
-    if(r.ok || r.motivo !== 'param') lembrarValores(c, valores);
+    if(r.ok) lembrarValores(c, r.valores || valores);
   }catch(e){
     el.remove();
     if(e.name !== 'AbortError') addNote('Erro: ' + (e.message || e), true); else addNote('Interrompido.');
@@ -1882,10 +1914,16 @@ function loadCtlKey(){
   }
   st.ctlKey = store.get('cd2.ctlKey', true) || k || null;
 }
-async function ctlRequest(method, path, body){
+// timeoutMs (opcional): desiste depois desse tempo (o fetch lança, como no cd2-ctl fora do ar).
+async function ctlRequest(method, path, body, timeoutMs){
   const headers = { Authorization:'Bearer ' + st.ctlKey };
   if(body) headers['Content-Type'] = 'application/json';
-  const r = await fetch(CD2Toolbox.ctlUrlFor(location) + path, { method, headers, body: body ? JSON.stringify(body) : undefined, cache:'no-store' });
+  let signal;
+  if(timeoutMs){
+    if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout) signal = AbortSignal.timeout(timeoutMs);
+    else{ const ac = new AbortController(); setTimeout(() => ac.abort(), timeoutMs); signal = ac.signal; }
+  }
+  const r = await fetch(CD2Toolbox.ctlUrlFor(location) + path, { method, headers, body: body ? JSON.stringify(body) : undefined, cache:'no-store', signal });
   let data = {};
   try{ data = (await r.json()) || {}; }catch(e){}
   return { status:r.status, data };
@@ -2007,7 +2045,7 @@ async function disconnectDb(ev){
   let r = null;
   try{ r = await ctlRequest('DELETE', '/config'); }catch(e){ st.ctlUp = false; }
   st.ctlBusy = false;
-  if(r && r.status === 200){ st.ctlStatus = r.data; st.notas = null; st.notasBanco = null; fecharNotas(); syncBotaoNotas(); }
+  if(r && r.status === 200){ st.ctlStatus = r.data; st.notas = null; st.notasBanco = null; st.notasChave = null; fecharNotas(); syncBotaoNotas(); }
   st.dbStatus = null;
   if((store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode)) === 'toolbox'){ st.tools = []; st.provider = null; setPill('#pMcp', 'err', 'sem banco'); }
   fillDbForm(null); renderToolbox();

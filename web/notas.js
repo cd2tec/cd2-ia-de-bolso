@@ -116,7 +116,9 @@ function mesmoBanco(a, b){
 }
 
 const chaveConsulta = c => String(c.nome).trim().toLowerCase();
-const igualConsulta = (a, b) => ['sql', 'visual', 'x', 'y'].every(k => a[k] === b[k]) && JSON.stringify(a.params) === JSON.stringify(b.params);
+// O valor do parâmetro é só o da última vez (muda a cada execução): não conta como diferença.
+const formaParams = ps => JSON.stringify((Array.isArray(ps) ? ps : []).map(p => p && typeof p === 'object' ? [p.nome, p.tipo, p.inicio, p.fim] : p));
+const igualConsulta = (a, b) => ['sql', 'visual', 'x', 'y'].every(k => a[k] === b[k]) && formaParams(a.params) === formaParams(b.params);
 
 // Junta o que chega com o que existe. Só há conflito quando os dois lados têm texto e ele difere;
 // nesse caso o resultado fica com o que chega. Não muta as entradas.

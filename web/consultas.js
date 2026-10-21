@@ -17,6 +17,8 @@ const ERRO_TRECHO = 'Selecione um valor dentro de aspas ou um número inteiro.';
 const ERRO_VALOR = 'Esse valor não aparece na consulta.';
 const DATA_RE = /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/;
 const NUM_RE = /^\d+(\.\d+)?$/;
+// "1.000" e "10,000" podem ser mil ou um/dez: separador de milhar é recusado, nunca adivinhado.
+const MILHAR_RE = /^\d{1,3}(\.\d{3})+$|^\d{1,3}(,\d{3})+$|^\d.*\..*,|^\d.*,.*\./;
 const TEXTO_RUIM = /[\u0000-\u001f\u007f\\;]|--|\/\*|\*\//;
 const ANTES_NUM = /[A-Za-z0-9_$#.@]/;
 
@@ -136,7 +138,7 @@ function montarSql(consulta, valores){
   const sql = consulta.sql, v = varrer(sql);
   const params = Array.isArray(consulta.params) ? consulta.params : [];
   const vs = Array.isArray(valores) ? valores : [];
-  const itens = [];
+  const itens = [], normal = [];
   for(let i = 0; i < params.length; i++){
     const p = params[i];
     const nome = (p && typeof p.nome === 'string' && p.nome.trim()) || ('Parâmetro ' + (i + 1));
@@ -149,8 +151,15 @@ function montarSql(consulta, valores){
     const valor = String(bruto == null ? '' : bruto).trim();
     let texto;
     if(p.tipo === 'data'){ if(!dataValida(valor)) return { ok:false, erro:nome + ': data inválida.' }; texto = valor; }
-    else if(p.tipo === 'numero'){ const t = valor.replace(',', '.'); if(!NUM_RE.test(t)) return { ok:false, erro:nome + ': número inválido.' }; texto = t; }
+    else if(p.tipo === 'numero'){
+      // O valor salvo (com ponto, ou com vírgula como a janela Rodar mostra) já é o que rodou: não é ambíguo.
+      const salvo = String(p.valor == null ? '' : p.valor);
+      if(valor !== salvo && valor !== salvo.replace('.', ',') && MILHAR_RE.test(valor)) return { ok:false, erro:nome + ': use vírgula para decimal, sem separador de milhar.' };
+      const t = valor.replace(',', '.'); if(!NUM_RE.test(t)) return { ok:false, erro:nome + ': número inválido.' }; texto = t;
+      normal[i] = t;
+    }
     else { if(TEXTO_RUIM.test(valor)) return { ok:false, erro:nome + ': texto inválido.' }; texto = valor.replace(/'/g, "''"); }
+    if(normal[i] == null) normal[i] = valor;
     itens.push({ inicio:p.inicio, fim:p.fim, texto, invalido });
   }
   const ordem = itens.slice().sort((x, y) => x.inicio - y.inicio);
@@ -162,7 +171,8 @@ function montarSql(consulta, valores){
   const w = varrer(out);
   if(w.strings.length !== v.strings.length || w.numeros.length !== v.numeros.length || (w.parou === null) !== (v.parou === null)
     || comComentario(w, out) > comComentario(v, sql)) return { ok:false, erro:'Esses valores quebrariam a consulta.' };
-  return { ok:true, sql:out };
+  // valores: o que de fato entrou no SQL (número já com ponto), para o card e para a próxima vez.
+  return { ok:true, sql:out, valores:normal };
 }
 
 const api = { TIPOS, acharLiterais, paramDeTrecho, paramDeValor, montarSql };
