@@ -8,6 +8,7 @@ const Chart = isNode ? require('./chart.js') : root.CD2Chart;
 const Cat = isNode ? require('./catalog.js') : root.CD2Catalog;
 const Notas = isNode ? require('./notas.js') : root.CD2Notas;
 const Tb = isNode ? require('./toolbox.js') : root.CD2Toolbox;
+const Consultas = isNode ? require('./consultas.js') : root.CD2Consultas;
 
 const VISUALS = ['barra', 'linha', 'pizza', 'tabela', 'numero'];
 const MENSAGENS = {
@@ -297,6 +298,34 @@ async function ask(o){
   return falha === 'sql' ? { ok:false, motivo:'sql', sql:ultimoSql } : { ok:false, motivo:'modelo' };
 }
 
+// Consulta salva: monta o SQL com os valores, passa pela mesma guarda e roda direto, sem o modelo.
+// O visual salvo vai para o pickVisual, que ainda decide pelo que o banco devolveu agora.
+async function rodarSalva(o){
+  const c = (o && o.consulta) || {};
+  const m = Consultas.montarSql(c, o.valores);
+  if(!m.ok) return { ok:false, motivo:'param', erro:m.erro };
+  const g = Tb.guardSql(m.sql);
+  if(!g.ok) return { ok:false, motivo:'sql', sql:m.sql };
+  const sql = Tb.prepareSql(g.sql, o.motor);
+  checkAbort(o.signal);
+  const r = await o.runSql(sql, o.signal);
+  checkAbort(o.signal);
+  if(!r.ok){
+    if(r.timeout) return { ok:false, motivo:(r.front && (o.motor === 'sqlserver' || o.motor === 'oracle' || o.motor === 'firebird')) ? 'timeout_front' : 'timeout', sql };
+    return { ok:false, motivo:'sql', sql };
+  }
+  if(!r.rows.length || r.rows.every(l => Object.values(l).every(v => v == null || v === ''))) return { ok:false, motivo:'vazio', sql };
+  const colunas = Object.keys(r.rows[0]);
+  const v = pickVisual({ visual:c.visual, x:c.x, y:c.y }, colunas, r.rows);
+  const params = Array.isArray(c.params) ? c.params : [];
+  const vs = Array.isArray(o.valores) ? o.valores : [];
+  const out = { ok:true, visual:v.visual, x:v.x, y:v.y, titulo:String(c.nome || ''),
+    frase:frase({ visual:v.visual, x:v.x, y:v.y, linhas:v.linhas, todas:r.rows }), colunas, linhas:v.linhas, todas:r.rows, sql,
+    valores:params.map((p, i) => vs[i] == null ? p.valor : vs[i]) };
+  if(v.aviso) out.aviso = v.aviso;
+  return out;
+}
+
 function modelCaller(o){
   const schema = o.schema || SCHEMA, nome = o.schemaName || 'consulta', maxTokens = o.maxTokens || 1024;
   return async function(messages, signal){
@@ -332,6 +361,6 @@ function toolRunner(client, o){
   };
 }
 
-const api = { VISUALS, MENSAGENS, SCHEMA, parseRows, parseModelJson, isTimeout, pickVisual, frase, buildMessages, somaDoCabecalho, ask, modelCaller, toolRunner };
+const api = { VISUALS, MENSAGENS, SCHEMA, parseRows, parseModelJson, isTimeout, pickVisual, frase, buildMessages, somaDoCabecalho, ask, rodarSalva, modelCaller, toolRunner };
 if(isNode) module.exports = api; else root.CD2Ask = api;
 })(typeof window !== 'undefined' ? window : globalThis);

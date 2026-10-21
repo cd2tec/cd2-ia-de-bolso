@@ -536,3 +536,41 @@ test('ask devolve sqlBase sem o limite do prepareSql', async () => {
   assert.notEqual(r.sql, r.sqlBase);
   assert.equal(r.sql, 'SELECT loja FROM venda ORDER BY loja OFFSET 0 ROWS');
 });
+
+// Consultas salvas: rodam direto no banco, sem o modelo.
+const SALVA_SQL = "SELECT loja, SUM(valor) AS total FROM venda WHERE dt_venda >= '2026-10-01' AND loja LIKE '%CENTRO%' GROUP BY loja ORDER BY total DESC";
+function salva(){
+  const i = SALVA_SQL.indexOf('2026-10-01'), j = SALVA_SQL.indexOf('CENTRO');
+  return { id:'c1', nome:'Vendas do centro', sql:SALVA_SQL, visual:'barra', x:'loja', y:'total', criada:'2026-10-21',
+    params:[{ nome:'Desde', tipo:'data', inicio:i, fim:i + 10, valor:'2026-10-01' }, { nome:'Loja', tipo:'texto', inicio:j, fim:j + 6, valor:'CENTRO' }] };
+}
+
+test('rodarSalva roda sem chamar o modelo e usa o visual salvo', async () => {
+  const runSql = fila([{ ok:true, rows:LINHAS }]);
+  const r = await A.rodarSalva({ consulta:salva(), valores:['2026-09-01', "D'ÁVILA"], motor:'sqlserver', runSql });
+  const esperado = "SELECT loja, SUM(valor) AS total FROM venda WHERE dt_venda >= '2026-09-01' AND loja LIKE '%D''ÁVILA%' GROUP BY loja ORDER BY total DESC OFFSET 0 ROWS";
+  assert.equal(runSql.calls.length, 1); assert.equal(runSql.calls[0][0], esperado);
+  assert.equal(r.ok, true); assert.equal(r.titulo, 'Vendas do centro'); assert.equal(r.visual, 'barra');
+  assert.equal(r.x, 'loja'); assert.equal(r.y, 'total'); assert.equal(r.frase, 'Maior: B, 30. Total: 40 em 2 categorias.');
+  assert.deepEqual(r.colunas, ['loja', 'total']); assert.equal(r.todas.length, 2); assert.equal(r.sql, esperado);
+  assert.deepEqual(r.valores, ['2026-09-01', "D'ÁVILA"]);
+});
+
+test('rodarSalva recusa SQL que não é leitura', async () => {
+  const runSql = fila([{ ok:true, rows:LINHAS }]);
+  const r = await A.rodarSalva({ consulta:{ nome:'x', sql:'DELETE FROM x', visual:'tabela', params:[] }, valores:[], motor:'postgres', runSql });
+  assert.deepEqual(r, { ok:false, motivo:'sql', sql:'DELETE FROM x' });
+  assert.equal(runSql.calls.length, 0);
+});
+
+test('rodarSalva: parâmetro inválido não vai ao banco; vazio, erro e timeout como no ask', async () => {
+  const runSql = fila([]);
+  assert.deepEqual(await A.rodarSalva({ consulta:salva(), valores:['2026-02-30', 'X'], motor:'postgres', runSql }),
+    { ok:false, motivo:'param', erro:'Desde: data inválida.' });
+  assert.equal(runSql.calls.length, 0);
+  const sql = SALVA_SQL;
+  assert.deepEqual(await A.rodarSalva({ consulta:salva(), motor:'postgres', runSql:fila([{ ok:true, rows:[] }]) }), { ok:false, motivo:'vazio', sql });
+  assert.deepEqual(await A.rodarSalva({ consulta:salva(), motor:'postgres', runSql:fila([{ ok:false, error:'boom' }]) }), { ok:false, motivo:'sql', sql });
+  assert.deepEqual(await A.rodarSalva({ consulta:salva(), motor:'postgres', runSql:fila([{ ok:false, timeout:true, front:true }]) }), { ok:false, motivo:'timeout', sql });
+  assert.deepEqual(await A.rodarSalva({ consulta:salva(), motor:'oracle', runSql:fila([{ ok:false, timeout:true, front:true }]) }), { ok:false, motivo:'timeout_front', sql });
+});
