@@ -6,6 +6,7 @@
 const isNode = typeof module !== 'undefined' && module.exports;
 const Chart = isNode ? require('./chart.js') : root.CD2Chart;
 const Cat = isNode ? require('./catalog.js') : root.CD2Catalog;
+const Notas = isNode ? require('./notas.js') : root.CD2Notas;
 const Tb = isNode ? require('./toolbox.js') : root.CD2Toolbox;
 
 const VISUALS = ['barra', 'linha', 'pizza', 'tabela', 'numero'];
@@ -191,10 +192,14 @@ function buildMessages(o){
     return '; ' + p.papel + (c.data ? '; data: ' + limpo(c.data) : '') + (c.valor ? '; valor: ' + limpo(c.valor) : '') + (c.quantidade ? '; quantidade: ' + limpo(c.quantidade) : '');
   };
   // Descrição feita pelo modelo a partir da amostra: só texto, sem quebra de linha, até 160 caracteres.
-  const desc = t => t.perfil && t.perfil.descricao
-    ? 'descrição: ' + String(t.perfil.descricao).replace(/[\u0000-\u001f\u007f\s]+/g, ' ').trim().slice(0, 160) + ' | colunas: ' : '';
-  const tabs = o.tabelas.map(t => '- ' + pre + limpo(t.name) + ' (' + tam(t) + papel(t) + '): ' + desc(t)
-    + t.columns.map(c => limpo(c.name) + ' ' + limpo(c.type)).join(', ')).join('\n');
+  const sane = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\s]+/g, ' ').trim().slice(0, max);
+  const desc = t => (t.nota ? 'nota da TI: ' + sane(t.nota, Notas.LIMITE.tabela) + ' | ' : '')
+    + (t.perfil && t.perfil.descricao ? 'descrição: ' + sane(t.perfil.descricao, 160) + ' | ' : '')
+    + (t.nota || (t.perfil && t.perfil.descricao) ? 'colunas: ' : '');
+  const col = c => limpo(c.name) + ' ' + limpo(c.type) + (c.nota ? ' (nota da TI: ' + sane(c.nota, Notas.LIMITE.campo) + ')' : '');
+  // As notas da TI têm teto no prompt; passando dele, Notas.cortar tira as menos relevantes.
+  const tabs = Notas.cortar(o.tabelas, Notas.LIMITE.prompt).map(t => '- ' + pre + limpo(t.name) + ' (' + tam(t) + papel(t) + '): ' + desc(t)
+    + t.columns.map(col).join(', ')).join('\n');
   const lig = Cat.links(o.tabelas);
   const sys = [
     'Você transforma uma pergunta em uma consulta SQL de leitura e diz como mostrar o resultado.',
@@ -271,6 +276,7 @@ async function ask(o){
     if(!readsListedTable(g.sql, tabelas)){ falha = 'sql'; ultimoSql = g.sql; anterior = { sql:g.sql, erro:'A consulta precisa ler uma das tabelas listadas.' }; continue; }
     const dobra = somaDoCabecalho(g.sql, tabelas);
     if(dobra){ falha = 'sql'; ultimoSql = g.sql; anterior = { sql:g.sql, erro:dobra }; continue; }
+    const sqlBase = g.sql;
     const sql = Tb.prepareSql(g.sql, o.motor);
     ultimoSql = sql;
     const r = await o.runSql(sql, o.signal);
@@ -284,7 +290,7 @@ async function ask(o){
     const colunas = Object.keys(r.rows[0]);
     const v = pickVisual(req, colunas, r.rows);
     const out = { ok:true, visual:v.visual, x:v.x, y:v.y, titulo:safeTitle(req.titulo, o.pergunta),
-      frase:frase({ visual:v.visual, x:v.x, y:v.y, linhas:v.linhas, todas:r.rows }), colunas, linhas:v.linhas, todas:r.rows, sql };
+      frase:frase({ visual:v.visual, x:v.x, y:v.y, linhas:v.linhas, todas:r.rows }), colunas, linhas:v.linhas, todas:r.rows, sql, sqlBase };
     if(v.aviso) out.aviso = v.aviso;
     return out;
   }

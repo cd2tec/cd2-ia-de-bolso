@@ -62,7 +62,7 @@ test('rankTables: faturamento por mês escolhe a tabela de vendas com data', () 
   assert.equal(r[0].name, 'mov_venda');
   assert.ok(r.findIndex(t => t.name === 'log_integracao') !== 0);
   assert.ok(r.length <= 5);
-  assert.deepEqual(Object.keys(r[0]).sort(), ['columns', 'name', 'perfil', 'rows', 'score', 'type']);
+  assert.deepEqual(Object.keys(r[0]).sort(), ['columns', 'name', 'nota', 'perfil', 'rows', 'score', 'type']);
 });
 
 test('rankTables: produtos mais vendidos traz produto e itens de venda', () => {
@@ -382,4 +382,28 @@ test('links: SEQ colado é chave e liga tabelas; seq sozinho não liga', () => {
     { table_name:'GE_PESSOA', column_name:'SEQPESSOA', data_type:'NUMBER' }, { table_name:'GE_PESSOA', column_name:'SEQ', data_type:'NUMBER' }
   ]);
   assert.deepEqual(C.links(cat.tables).map(x => x.a + '.' + x.col + ' = ' + x.b + '.' + x.colB), ['FI_TITULO.SEQPESSOA = GE_PESSOA.SEQPESSOA']);
+});
+
+test('rankTables: nota da TI faz a tabela entrar mesmo sem bater no nome', () => {
+  const cat = C.buildCatalog([
+    { table_name:'tb_x', table_type:'TABLE', num_rows:500, column_name:'c1', data_type:'integer', ordinal:1 },
+    { table_name:'tb_y', table_type:'TABLE', num_rows:500, column_name:'c1', data_type:'integer', ordinal:1 }
+  ]);
+  assert.deepEqual(C.rankTables(cat, 'vendas do mês'), []);
+  cat.tables[0].nota = 'cupons de venda oficiais'; cat.tables[0].notaTokens = C.tokens('cupons de venda oficiais', true);
+  const r = C.rankTables(cat, 'vendas do mês');
+  assert.deepEqual(r.map(t => t.name), ['tb_x']);
+  assert.equal(r[0].nota, 'cupons de venda oficiais');
+});
+
+test('pickColumns: coluna com nota entra mesmo além do limite de 25', () => {
+  const rows = [];
+  for(let i = 1; i <= 40; i++) rows.push({ table_name:'t', table_type:'TABLE', num_rows:10, column_name:'campo' + i, data_type:'text', ordinal:i });
+  const cat = C.buildCatalog(rows);
+  cat.tables[0].columns[38].nota = '9 = cancelado';
+  const r = C.rankTables(cat, 'campo1')[0];
+  const c = r.columns.find(x => x.name === 'campo39');
+  assert.ok(c); assert.equal(c.nota, '9 = cancelado');
+  assert.equal(r.columns.length, 26);
+  assert.equal(r.columns.find(x => x.name === 'campo38'), undefined);
 });

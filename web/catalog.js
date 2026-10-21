@@ -94,8 +94,11 @@ function buildCatalog(rows){
 
 function pickColumns(cols, hit, n){
   const rank = c => hit.has(c.name) ? 0 : c.kind === 'data' ? 1 : c.kind === 'numero' ? 2 : 3;
-  return cols.map((c, i) => ({ c, i })).sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i).slice(0, n)
-    .sort((a, b) => a.i - b.i).map(({ c }) => ({ name:c.name, type:c.type, kind:c.kind }));
+  // Coluna com nota da TI entra sempre, mesmo além de n: a TI escreveu por um motivo.
+  const ord = cols.map((c, i) => ({ c, i })).sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i);
+  const pick = ord.slice(0, n), usados = new Set(pick);
+  for(const x of ord) if(x.c.nota && !usados.has(x)) pick.push(x);
+  return pick.sort((a, b) => a.i - b.i).map(({ c }) => { const o = { name:c.name, type:c.type, kind:c.kind }; if(c.nota) o.nota = c.nota; return o; });
 }
 // Tipo de pergunta, pelas palavras cruas (as de parada contam aqui: "quanto", "quantos").
 // Medida: valor, total, faturamento, contagem de movimento, evolução no tempo. Entidade: contar ou
@@ -144,7 +147,8 @@ function rankTables(catalog, pergunta, opts){
   for(const t of (catalog && catalog.tables) || []){
     const papel = t.perfil && t.perfil.papel;
     if(papel === 'vazia') continue;
-    const desc = (t.perfil && t.perfil.descricaoTokens) || [];
+    // A nota da TI conta como descrição: mesmas palavras, mesmo peso (1,5, até 3 palavras).
+    const desc = ((t.perfil && t.perfil.descricaoTokens) || []).concat(t.notaTokens || []);
     let tableHits = 0, nomeEntidade = 0, colHits = 0, descHits = 0; const hitCols = new Set();
     for(const q of qs){
       if(t.tokens.some(x => match(q, x))){ tableHits++; if(!MEDIDA_Q.has(q)) nomeEntidade++; }
@@ -163,7 +167,7 @@ function rankTables(catalog, pergunta, opts){
   }
   scored.sort((a, b) => b.score - a.score || a.t.name.localeCompare(b.t.name));
   return scored.slice(0, max).map(({ t, score, hitCols }) => ({ name:t.name, type:t.type, rows:t.rows, score,
-    columns:pickColumns(t.columns, hitCols, maxCols), perfil:t.perfil || null }));
+    columns:pickColumns(t.columns, hitCols, maxCols), perfil:t.perfil || null, nota:t.nota || '' }));
 }
 
 function humanize(name){
