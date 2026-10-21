@@ -170,3 +170,60 @@ func TestGravarNaoDeixaTemporario(t *testing.T) {
 		t.Errorf("pasta = %v, quero só o .json", nomes)
 	}
 }
+
+func TestEntendimentoLerVazio(t *testing.T) {
+	got, err := NewEntendimento(t.TempDir()).Ler(Banco{Motor: "postgres", Base: "erp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != `{"versao":1,"tabelas":{}}` {
+		t.Errorf("got %s", got)
+	}
+}
+
+func TestEntendimentoGravarELer(t *testing.T) {
+	dir := t.TempDir()
+	s := NewEntendimento(dir)
+	b := Banco{Motor: "postgres", Host: "h", Porta: 5432, Base: "erp"}
+	dados := []byte(`{"versao":1,"tabelas":{"vendas":{"papel":"movimento"}},"completo":true}`)
+	if err := s.Gravar(b, dados); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Ler(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, dados) {
+		t.Errorf("got %s", got)
+	}
+	info, err := os.Stat(filepath.Join(dir, "entendimento", Chave(b)+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+		t.Errorf("modo = %v, quero 0600", info.Mode().Perm())
+	}
+}
+
+func TestEntendimentoRecusaInvalido(t *testing.T) {
+	s := NewEntendimento(t.TempDir())
+	b := Banco{Motor: "postgres", Base: "erp"}
+	for _, r := range []string{`[]`, `{"versao":2,"tabelas":{}}`, `{"versao":1}`, `{"versao":1,"tabelas":[]}`} {
+		if err := s.Gravar(b, []byte(r)); !errors.Is(err, ErrDados) {
+			t.Errorf("Gravar(%q) err = %v, quero ErrDados", r, err)
+		}
+	}
+}
+
+func TestEntendimentoAceitaGrande(t *testing.T) {
+	s := NewEntendimento(t.TempDir())
+	b := Banco{Motor: "postgres", Base: "erp"}
+	grande := append([]byte(`{"versao":1,"tabelas":{},"x":"`), bytes.Repeat([]byte("a"), 2<<20)...)
+	grande = append(grande, '"', '}')
+	if err := s.Gravar(b, grande); err != nil {
+		t.Fatalf("2 MiB deveria caber: %v", err)
+	}
+	if err := New(t.TempDir()).Gravar(b, grande); !errors.Is(err, ErrDados) {
+		t.Errorf("notas deveria recusar: %v", err)
+	}
+}

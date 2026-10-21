@@ -38,17 +38,22 @@ func (s *server) bancoAtual(w http.ResponseWriter) (notas.Banco, bool) {
 }
 
 func (s *server) notasLer(w http.ResponseWriter) {
+	s.lerDoc(w, s.notas, "notas")
+}
+
+// lerDoc devolve {banco, chave, dados} do Store dado; "o que" entra nas mensagens de erro.
+func (s *server) lerDoc(w http.ResponseWriter, st *notas.Store, oQue string) {
 	b, ok := s.bancoAtual(w)
 	if !ok {
 		return
 	}
-	dados, err := s.notas.Ler(b)
+	dados, err := st.Ler(b)
 	if errors.Is(err, notas.ErrCorrompido) {
-		fail(w, http.StatusInternalServerError, "O arquivo de notas deste banco está corrompido; nada foi apagado.")
+		fail(w, http.StatusInternalServerError, "O arquivo de "+oQue+" deste banco está corrompido; nada foi apagado.")
 		return
 	}
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "Não consegui ler as notas.")
+		fail(w, http.StatusInternalServerError, "Não consegui ler "+oQue+".")
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -59,6 +64,24 @@ func (s *server) notasLer(w http.ResponseWriter) {
 }
 
 func (s *server) notasGravar(w http.ResponseWriter, r *http.Request) {
+	s.gravarDoc(w, r, s.notas, "as notas", "1 MB")
+}
+
+// entendimentoRota atende GET/POST /entendimento (sem rota de importação).
+func (s *server) entendimentoRota(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.lerDoc(w, s.entend, "o entendimento")
+	case http.MethodPost:
+		s.gravarDoc(w, r, s.entend, "o entendimento", "16 MB")
+	default:
+		notAllowed(w, "GET, POST")
+	}
+}
+
+// gravarDoc valida a chave contra o banco conectado e grava no Store dado; "limiteTxt" é o
+// limite do Store em texto, para a mensagem do 413.
+func (s *server) gravarDoc(w http.ResponseWriter, r *http.Request, st *notas.Store, oQue, limiteTxt string) {
 	b, ok := s.bancoAtual(w)
 	if !ok {
 		return
@@ -69,11 +92,12 @@ func (s *server) notasGravar(w http.ResponseWriter, r *http.Request) {
 		Dados json.RawMessage `json:"dados"`
 	}
 	// folga de 4 KB para o envelope {"dados": ...}
-	if !decodeJSONLimite(w, r, &in, notas.MaxDados+4096, "corpo: acima de 1 MB") {
+	msg413 := "corpo: acima de " + limiteTxt
+	if !decodeJSONLimite(w, r, &in, int64(st.Limite())+4096, msg413) {
 		return
 	}
-	if len(in.Dados) > notas.MaxDados {
-		fail(w, http.StatusRequestEntityTooLarge, "corpo: acima de 1 MB")
+	if len(in.Dados) > st.Limite() {
+		fail(w, http.StatusRequestEntityTooLarge, msg413)
 		return
 	}
 	if in.Chave == "" {
@@ -84,13 +108,13 @@ func (s *server) notasGravar(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusConflict, "O banco conectado mudou. Abra a tela de novo.")
 		return
 	}
-	err := s.notas.Gravar(b, in.Dados)
+	err := st.Gravar(b, in.Dados)
 	if errors.Is(err, notas.ErrDados) {
 		fail(w, http.StatusBadRequest, "dados: formato inválido")
 		return
 	}
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "Não consegui gravar as notas.")
+		fail(w, http.StatusInternalServerError, "Não consegui gravar "+oQue+".")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

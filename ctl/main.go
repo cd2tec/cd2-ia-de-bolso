@@ -110,6 +110,7 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	srv := &http.Server{
 		Handler: api.Handler(api.Options{Key: key, HarnessPort: *hport, CtlPort: ctlPort, Instalacao: instalacao,
 			Notas:        notas.New(*cache),
+			Entendimento: notas.NewEntendimento(*cache),
 			PodeImportar: func() bool { return instalacao.Info().Origem == "instalada" },
 		}, ctl),
 		ReadHeaderTimeout: 5 * time.Second,

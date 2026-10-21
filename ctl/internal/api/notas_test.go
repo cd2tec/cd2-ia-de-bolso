@@ -136,3 +136,61 @@ func TestNotasArquivoCorrompido(t *testing.T) {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 }
+
+func newEntendimento(t *testing.T, st control.Status, ligado bool) http.Handler {
+	t.Helper()
+	o := Options{Key: key, HarnessPort: 8080, CtlPort: 11080}
+	if ligado {
+		o.Entendimento = notas.NewEntendimento(t.TempDir())
+	}
+	return Handler(o, &backendNotas{st: st})
+}
+
+func TestEntendimentoRotas(t *testing.T) {
+	h := newEntendimento(t, comBanco, true)
+	w := do(h, "GET", "/entendimento", "", nil)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"chave":"`+chaveOk+`"`) || !strings.Contains(w.Body.String(), `"tabelas":{}`) {
+		t.Fatalf("GET: %d %s", w.Code, w.Body)
+	}
+	corpo := func(chave string) string {
+		return `{"chave":"` + chave + `","dados":{"versao":1,"tabelas":{"vendas":{"papel":"movimento"}}}}`
+	}
+	if w := do(h, "POST", "/entendimento", corpo(chaveOk), nil); w.Code != 200 || !strings.Contains(w.Body.String(), `"ok":true`) {
+		t.Fatalf("POST: %d %s", w.Code, w.Body)
+	}
+	if w := do(h, "POST", "/entendimento", corpo(strings.Repeat("0", 32)), nil); w.Code != 409 || erro(w) != "O banco conectado mudou. Abra a tela de novo." {
+		t.Errorf("outra chave: %d %s", w.Code, w.Body)
+	}
+	if w := do(h, "POST", "/entendimento", `{"dados":{"versao":1,"tabelas":{}}}`, nil); w.Code != 400 {
+		t.Errorf("sem chave: %d %s", w.Code, w.Body)
+	}
+	if w := do(h, "POST", "/entendimento", `{"chave":"`+chaveOk+`","dados":[]}`, nil); w.Code != 400 {
+		t.Errorf("inválido: %d %s", w.Code, w.Body)
+	}
+	grande := `{"chave":"` + chaveOk + `","dados":{"versao":1,"tabelas":{},"x":"` + strings.Repeat("a", notas.MaxEntendimento) + `"}}`
+	if w := do(h, "POST", "/entendimento", grande, nil); w.Code != 413 {
+		t.Errorf("grande: %d", w.Code)
+	}
+	if g := do(h, "GET", "/entendimento", "", nil); !strings.Contains(g.Body.String(), `"papel":"movimento"`) || strings.Contains(g.Body.String(), `"x":"a`) {
+		t.Errorf("estado final: %s", g.Body)
+	}
+	if w := do(newEntendimento(t, control.Status{}, true), "GET", "/entendimento", "", nil); w.Code != 409 {
+		t.Errorf("sem banco GET: %d", w.Code)
+	}
+	if w := do(newEntendimento(t, control.Status{}, true), "POST", "/entendimento", corpo(chaveOk), nil); w.Code != 409 {
+		t.Errorf("sem banco POST: %d", w.Code)
+	}
+	if w := do(h, "DELETE", "/entendimento", "", nil); w.Code != 405 {
+		t.Errorf("DELETE: %d", w.Code)
+	}
+	if w := do(h, "POST", "/entendimento/importar", corpo(chaveOk), nil); w.Code != 404 {
+		t.Errorf("importar: %d", w.Code)
+	}
+}
+
+func TestEntendimentoDesligado(t *testing.T) {
+	h := newEntendimento(t, comBanco, false)
+	if w := do(h, "GET", "/entendimento", "", nil); w.Code != 404 {
+		t.Errorf("%d", w.Code)
+	}
+}

@@ -27,6 +27,8 @@ type Options struct {
 	Instalacao Instalacao
 	// Notas liga as rotas /notas*; nil as deixa em 404.
 	Notas *notas.Store
+	// Entendimento liga as rotas /entendimento; nil as deixa em 404.
+	Entendimento *notas.Store
 	// PodeImportar diz se POST /notas/importar é aceito (só na versão instalada).
 	PodeImportar func() bool
 }
@@ -42,6 +44,7 @@ type server struct {
 	b       Backend
 	inst    Instalacao
 	notas   *notas.Store
+	entend  *notas.Store
 	importa func() bool
 	auth    []byte
 	origins map[string]bool
@@ -55,6 +58,7 @@ func Handler(opt Options, b Backend) http.Handler {
 		b:       b,
 		inst:    opt.Instalacao,
 		notas:   opt.Notas,
+		entend:  opt.Entendimento,
 		importa: opt.PodeImportar,
 		auth:    []byte("Bearer " + opt.Key),
 		origins: map[string]bool{"http://127.0.0.1:" + h: true, "http://localhost:" + h: true},
@@ -133,6 +137,12 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.notasRota(w, r)
+	case "/entendimento":
+		if s.entend == nil {
+			fail(w, http.StatusNotFound, "rota não encontrada")
+			return
+		}
+		s.entendimentoRota(w, r)
 	default:
 		fail(w, http.StatusNotFound, "rota não encontrada")
 	}
