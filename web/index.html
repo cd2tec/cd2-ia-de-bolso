@@ -184,7 +184,7 @@ dialog > .row:last-child{position:sticky;bottom:calc(-1 * var(--dlg-pad));z-inde
 dialog::backdrop{background:rgba(13,18,51,.55)}
 dialog h2{margin:var(--space-6) 0 var(--space-4);font:700 22px/28px var(--font-sans)}
 label{display:block;font:600 13px/16px var(--font-sans);color:var(--ink);margin:var(--space-6) 0 var(--space-2)}
-input[type=text],input[type=password]{width:100%;height:44px;background:var(--surface-raised);color:var(--ink);border:1px solid var(--border-field);border-radius:var(--radius-sm);padding:0 var(--space-3);font:400 15px/24px var(--font-sans)}
+input[type=text],input[type=password],input[type=date]{width:100%;height:44px;background:var(--surface-raised);color:var(--ink);border:1px solid var(--border-field);border-radius:var(--radius-sm);padding:0 var(--space-3);font:400 15px/24px var(--font-sans)}
 input[type=radio]{accent-color:var(--brand);width:18px;height:18px;margin:0}
 .radio{display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-6);margin-top:var(--space-2)}
 .radio label{margin:0;font-weight:500;font-size:15px;display:flex;gap:var(--space-2);align-items:center;cursor:pointer}
@@ -305,7 +305,7 @@ button.contorno:hover{background:var(--surface-100)}
 #printArea{display:none}
 /* ---------- tela "Entendimento do banco": o que a IA entendeu e as notas da TI ---------- */
 /* Troca de tela: com a tela aberta, a conversa e o compositor somem e ela ocupa o lugar deles. */
-body.com-notas #main,body.com-notas footer{display:none}
+body.com-notas .palco,body.com-notas footer{display:none}
 .notas{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--surface-raised)}
 .notas[hidden]{display:none}
 .notas__top{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);padding:var(--space-3) var(--space-6);border-bottom:1px solid rgba(13,18,51,.12)}
@@ -344,6 +344,60 @@ body.com-notas #main,body.com-notas footer{display:none}
   .notas__corpo{flex-direction:column}
   .notas__lista{flex:0 0 auto;max-height:40vh;border-right:0;border-bottom:1px solid rgba(13,18,51,.12)}
   .notas__det{padding:var(--space-4)}
+}
+/* ---------- consultas salvas: barra lateral, 👍 e as janelas de salvar e de rodar ---------- */
+.palco{flex:1;min-height:0;display:flex}
+.palco > main{min-width:0}
+.salvas{flex:0 0 260px;display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3);background:var(--surface-100);border-right:1px solid rgba(13,18,51,.12);min-height:0}
+.salvas[hidden]{display:none}
+.salvas__cab{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2)}
+.salvas__cab h2{margin:0;font:700 12px/16px var(--font-sans);text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted)}
+.salvas__mostrar{display:none}
+.salvas__corpo{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--space-2)}
+.salvas__corpo > input{height:36px;font-size:13px}
+.salvas__itens{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:var(--space-2);padding:2px}
+.salvas__it{display:flex;flex-wrap:wrap;align-items:flex-start;background:var(--surface-raised);border:1px solid rgba(13,18,51,.12);border-radius:var(--radius-sm)}
+.salvas__it:hover,.salvas__it:focus-within{border-color:var(--brand)}
+.salvas__run{all:unset;box-sizing:border-box;display:block;flex:1;min-width:0;cursor:pointer;padding:var(--space-2);font:500 11px/16px var(--font-sans);color:var(--ink-muted)}
+.salvas__run b{display:block;font:700 12px/18px var(--font-sans);color:var(--ink);overflow-wrap:anywhere}
+.salvas__run:disabled{background:none;color:var(--ink-muted);cursor:wait;opacity:.6}
+.salvas__mais{all:unset;cursor:pointer;padding:var(--space-2);font:700 14px/18px var(--font-sans);color:var(--ink-muted);border-radius:var(--radius-sm)}
+.salvas__mais:hover{color:var(--ink-brand);background:none}
+.salvas__run:focus-visible,.salvas__mais:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.salvas__menu{flex:0 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);padding:0 var(--space-2) var(--space-2);font:500 12px/18px var(--font-sans)}
+.salvas__it > input{flex:0 0 calc(100% - 16px);height:32px;margin:var(--space-2);font-size:13px}
+.salvas__erro{flex:0 0 100%;margin:0;padding:0 var(--space-2) var(--space-2);font:500 12px/18px var(--font-sans);color:var(--ink)}
+.answer .valores{margin:0 0 var(--space-2);font:600 13px/20px var(--font-sans);color:var(--ink-muted)}
+.answer .acts{flex-wrap:wrap}
+#salvar{width:min(660px,92vw)}
+#salvar h2,#rodar h2{margin-top:0;overflow-wrap:anywhere}
+.sqlv{margin:0;max-height:220px;overflow:auto;padding:var(--space-3);border-radius:var(--radius-sm);background:var(--surface-100);font:400 12px/20px var(--font-mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.sqlv mark{background:var(--accent);color:var(--on-accent);border-radius:3px;font-weight:700}
+.sqlv mark.off{background:rgba(13,18,51,.1);color:var(--ink-muted);font-weight:400}
+.lits{border-collapse:collapse;width:100%;margin-top:var(--space-2);font-size:13px}
+.lits th{text-align:left;font:700 11px/16px var(--font-sans);text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted)}
+.lits th,.lits td{padding:var(--space-1) var(--space-2);border-bottom:1px solid rgba(13,18,51,.08);vertical-align:middle}
+.lits td:nth-child(2){font-family:var(--font-mono);font-size:12px;overflow-wrap:anywhere;max-width:180px}
+.lits td:nth-child(4){color:var(--ink-muted);white-space:nowrap}
+.lits input[type=text]{height:32px;font-size:13px}
+.lits input[type=checkbox]{accent-color:var(--brand);width:18px;height:18px;margin:0}
+.lits tr.extra{background:var(--surface-100)}
+.addp{margin-top:var(--space-3);padding:var(--space-3);border:1px dashed var(--brand);border-radius:var(--radius-sm)}
+.addp > b{font:700 13px/20px var(--font-sans)}
+.addp .hint{margin:var(--space-1) 0 var(--space-2)}
+.addp__campos{display:grid;grid-template-columns:1fr 1fr auto;gap:var(--space-2);align-items:center}
+.addp__campos input{height:36px;font-size:13px}
+.erro-campo{margin-top:var(--space-2);font:500 13px/20px var(--font-sans);color:var(--ink)}
+.erro-campo:empty{display:none}
+.rodar__campos{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--space-4)}
+.rodar__campos label{margin:var(--space-4) 0 var(--space-2);overflow-wrap:anywhere}
+@media (max-width:640px){
+  .palco{flex-direction:column}
+  .salvas{flex:none;border-right:0;border-bottom:1px solid rgba(13,18,51,.12);padding:var(--space-2) var(--space-4)}
+  .salvas__mostrar{display:inline-flex}
+  .salvas:not(.aberta) .salvas__corpo{display:none}
+  .salvas.aberta .salvas__corpo{max-height:45vh}
+  .addp__campos,.rodar__campos{grid-template-columns:1fr}
 }
 @media print{
   body > *:not(#printArea){display:none !important}
@@ -392,7 +446,16 @@ body.com-notas #main,body.com-notas footer{display:none}
 </div>
 <span class="oculto" id="analiseFase" aria-live="polite"></span>
 
-<main id="main"><div class="wrap" id="chat"></div></main>
+<div class="palco">
+  <aside class="salvas" id="salvas" aria-labelledby="sTitulo" hidden>
+    <div class="salvas__cab"><h2 id="sTitulo">Consultas salvas (0)</h2><button class="sm salvas__mostrar" id="sMostrar" aria-expanded="false" aria-controls="sCorpo">Mostrar</button></div>
+    <div class="salvas__corpo" id="sCorpo">
+      <input type="text" id="sBusca" placeholder="🔎 Buscar…" aria-label="Buscar consulta salva pelo nome" spellcheck="false" autocomplete="off">
+      <div class="salvas__itens" id="sItens" role="list"></div>
+    </div>
+  </aside>
+  <main id="main"><div class="wrap" id="chat"></div></main>
+</div>
 <section class="notas" id="notas" aria-labelledby="nTitulo" hidden>
   <div class="notas__top">
     <button class="sm" id="nVoltar">← Voltar para a conversa</button>
@@ -602,6 +665,48 @@ body.com-notas #main,body.com-notas footer{display:none}
       <button class="primary" id="iDeNovo">Tentar de novo</button>
     </div>
   </section>
+</dialog>
+
+<dialog id="salvar" aria-labelledby="svTitulo">
+  <h2 id="svTitulo">Salvar consulta</h2>
+  <div class="hint">Ela vai para a barra lateral e roda direto no banco, sem a IA.</div>
+  <label for="svNome">Nome</label>
+  <input type="text" id="svNome" maxlength="120" spellcheck="false" autocomplete="off">
+  <div id="svParams">
+    <label id="svSqlRot">Achei estes valores fixos na consulta</label>
+    <pre class="sqlv" id="svSql" aria-labelledby="svSqlRot"></pre>
+    <table class="lits">
+      <thead><tr><th scope="col"><span class="oculto">Perguntar a cada vez</span></th><th scope="col">Valor</th><th scope="col">Perguntar como</th><th scope="col">Tipo</th></tr></thead>
+      <tbody id="svLinhas"></tbody>
+    </table>
+    <div class="addp">
+      <b>+ Adicionar parâmetro</b>
+      <div class="hint">Selecione com o mouse um trecho da consulta acima, ou digite o valor exatamente como aparece nela.</div>
+      <div class="addp__campos">
+        <input type="text" id="svValor" placeholder="Valor na consulta" aria-label="Valor na consulta" spellcheck="false" autocomplete="off">
+        <input type="text" id="svComo" placeholder="Perguntar como" aria-label="Perguntar como" maxlength="60" spellcheck="false" autocomplete="off">
+        <button class="sm" id="svAdd">Adicionar</button>
+      </div>
+      <div class="erro-campo" id="svAddErro" role="alert"></div>
+    </div>
+    <div class="hint">Marque o que muda a cada vez. O resto fica fixo.</div>
+  </div>
+  <div class="row">
+    <span class="status hint" id="svErro" role="alert"></span>
+    <button id="svCancelar">Cancelar</button>
+    <button class="primary" id="svSalvar">Salvar</button>
+  </div>
+</dialog>
+
+<dialog id="rodar" aria-labelledby="rTitulo">
+  <h2 id="rTitulo"></h2>
+  <div class="hint">Confira os valores e rode. Vêm preenchidos com os da última vez.</div>
+  <div class="rodar__campos" id="rCampos"></div>
+  <div class="row">
+    <span class="status hint" id="rErro" role="alert"></span>
+    <button id="rCancelar">Cancelar</button>
+    <button class="primary" id="rRodar">Rodar</button>
+  </div>
 </dialog>
 
 <div id="printArea" aria-hidden="true"></div>
@@ -999,22 +1104,37 @@ function suggestionChips(){
   for(const s of st.suggestions || []){ const b = document.createElement('button'); b.className = 'chip'; b.textContent = s; b.onclick = () => send(s); c.appendChild(b); }
   return c;
 }
-function renderAnswer(body, pergunta, r){
+// o.consulta: resultado de uma consulta salva (valores usados abaixo do título e o 👍 já como "Salva").
+function renderAnswer(body, pergunta, r, o){
+  o = o || {};
   body.innerHTML = '';
   if(!r.ok){
-    const p = document.createElement('p'); p.textContent = CD2Ask.MENSAGENS[r.motivo] || CD2Ask.MENSAGENS.modelo; body.appendChild(p);
+    const p = document.createElement('p');
+    p.textContent = r.motivo === 'param' ? (r.erro || CD2Ask.MENSAGENS.sql) : (CD2Ask.MENSAGENS[r.motivo] || CD2Ask.MENSAGENS.modelo); body.appendChild(p);
     if(r.sql) body.appendChild(sqlBox(r.sql));
     if(st.suggestions && st.suggestions.length) body.appendChild(suggestionChips());
     scrollDown(); return;
   }
   const card = document.createElement('div'); card.className = 'answer';
   const h = document.createElement('h3'); h.textContent = r.titulo; card.appendChild(h);
+  const ps = (o.consulta && Array.isArray(o.consulta.params)) ? o.consulta.params : [];
+  if(ps.length && Array.isArray(r.valores)){
+    const v = document.createElement('p'); v.className = 'valores';
+    v.textContent = ps.map((p, i) => nomeParam(p, i) + ': ' + (p.tipo === 'data' ? dataBr(r.valores[i]) : String(r.valores[i] == null ? '' : r.valores[i]))).join(' · ');
+    card.appendChild(v);
+  }
   const f = document.createElement('p'); f.className = 'frase'; f.textContent = r.frase; card.appendChild(f);
   const viz = document.createElement('div'); viz.className = 'viz';
   viz.innerHTML = CD2Chart.render(r.visual, r.colunas, r.linhas, { x:r.x, y:r.y }); card.appendChild(viz);
   if(r.aviso){ const a = document.createElement('p'); a.className = 'hint'; a.textContent = r.aviso; card.appendChild(a); }
   card.appendChild(sqlBox(r.sql));
   const acts = document.createElement('div'); acts.className = 'acts';
+  if(o.consulta || (r.sqlBase && podeSalvar())){
+    const bJoia = document.createElement('button'); bJoia.className = 'sm contorno';
+    if(o.consulta){ bJoia.textContent = '👍 Salva'; bJoia.disabled = true; }
+    else{ const gen = st.catalogGen; bJoia.textContent = '👍 Salvar consulta'; bJoia.onclick = () => abrirSalvar(r, bJoia, gen); }
+    acts.appendChild(bJoia);
+  }
   const bCsv = document.createElement('button'); bCsv.className = 'sm'; bCsv.textContent = 'CSV'; bCsv.onclick = () => downloadCsv(r);
   const bPdf = document.createElement('button'); bPdf.className = 'sm primary'; bPdf.textContent = 'Imprimir/PDF'; bPdf.onclick = () => printAnswer(pergunta, r);
   acts.appendChild(bCsv); acts.appendChild(bPdf); card.appendChild(acts);
@@ -1073,10 +1193,12 @@ async function salvarNotas(dados){
   return true;
 }
 const modoAtual = () => store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
-// Botão só com banco conectado, catálogo pronto, notas lidas e fora da Demonstração.
+// Botão (e a barra das consultas salvas) só com banco conectado, catálogo pronto, notas lidas e fora da Demonstração.
+const podeSalvar = () => modoAtual() === 'toolbox' && st.provider !== demo && !!st.catalog && !!st.notas;
 function syncBotaoNotas(){
   const b = $('#bNotas'); if(!b) return;
-  b.hidden = !(modoAtual() === 'toolbox' && st.provider !== demo && st.catalog && st.notas);
+  b.hidden = !podeSalvar();
+  syncSalvas();
 }
 // Estado da tela: tabela aberta, busca e o rascunho de todas as notas (copiado de st.notas ao abrir;
 // trocar de tabela não perde o que foi digitado, só o "Salvar notas" grava).
@@ -1227,6 +1349,294 @@ async function salvarTelaNotas(){
     if(b) b.disabled = false;
   }
 }
+/* ---------- consultas salvas (web/consultas.js): 👍, barra lateral e rodar de novo sem o modelo ---------- */
+// Ficam em st.notas.consultas, gravadas pelo cd2-ctl junto com as notas do banco conectado.
+const VISUAL_ROTULO = { barra:'barra', linha:'linha', pizza:'pizza', tabela:'tabela', numero:'número' };
+const TIPO_ROTULO = { data:'data', numero:'número', texto:'texto' };
+const MAX_NOME_CONSULTA = 120, MAX_NOME_PARAM = 60;
+const sb = { menu:null, modo:'', erro:'', focar:false, voltar:null };  // barra: item com o menu aberto, 'menu' | 'renomear' | 'apagar'
+const sv = { r:null, botao:null, linhas:[], sel:null };  // janela Salvar consulta
+const rd = { consulta:null };                        // janela de rodar com parâmetros
+const consultasSalvas = () => (st.notas && Array.isArray(st.notas.consultas)) ? st.notas.consultas : [];
+const nomeParam = (p, i) => (p && typeof p.nome === 'string' && p.nome.trim()) || ('Parâmetro ' + (i + 1));
+const mesmoNome = (a, b) => String(a == null ? '' : a).trim().toLowerCase() === String(b == null ? '' : b).trim().toLowerCase();
+function hojeIso(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function dataBr(v){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v == null ? '' : v)); return m ? m[3] + '/' + m[2] + '/' + m[1] : String(v == null ? '' : v); }
+function mostrarErro(el, texto){
+  el.textContent = ''; if(!texto) return;
+  el.innerHTML = '<span class="tag tag--atencao">Atenção</span> '; el.appendChild(document.createTextNode(texto));
+}
+// Grava em fila: cada alteração parte do st.notas da vez dela, então duas seguidas não se atropelam.
+// Trocou de banco no meio, não grava (a alteração era do banco anterior).
+function gravarConsultas(mudar){
+  const gen = st.catalogGen;
+  const vez = (st.filaConsultas || Promise.resolve()).then(async () => {
+    if(gen !== st.catalogGen){ st.notasErro = 'O banco mudou.'; return false; }
+    if(!st.notas){ st.notasErro = 'As notas deste banco não foram carregadas.'; return false; }
+    const ok = await salvarNotas(Object.assign({}, st.notas, { consultas:mudar(consultasSalvas().slice()) }));
+    renderSalvas();
+    return ok;
+  });
+  st.filaConsultas = vez.catch(() => false);
+  return vez;
+}
+
+/* barra lateral */
+function syncSalvas(){
+  const a = $('#salvas'), on = podeSalvar();
+  a.hidden = !on;
+  if(on) renderSalvas(); else{ sb.menu = null; sb.modo = ''; sb.erro = ''; }
+}
+function renderSalvas(){
+  const a = $('#salvas'); if(a.hidden) return;
+  const todas = consultasSalvas();
+  $('#sTitulo').textContent = 'Consultas salvas (' + todas.length + ')';
+  const q = $('#sBusca').value.trim().toLowerCase(), box = $('#sItens');
+  const lista = todas.slice().reverse().filter(c => !q || String(c.nome || '').toLowerCase().includes(q));
+  if(sb.menu && !todas.some(c => c.id === sb.menu)){ sb.menu = null; sb.modo = ''; sb.erro = ''; }
+  box.innerHTML = '';
+  let foco = null;
+  for(const c of lista){ const it = itemSalva(c); box.appendChild(it.el); if(it.foco) foco = it.foco; }
+  if(!lista.length){
+    const p = document.createElement('p'); p.className = 'notas__mais';
+    p.textContent = todas.length ? 'Nenhuma consulta com esse nome.' : 'Nenhuma consulta salva ainda. Dê 👍 numa resposta para guardar aqui.';
+    box.appendChild(p);
+  }
+  if(foco && sb.focar) foco.focus();
+  sb.focar = false; sb.voltar = null;
+}
+function botaoSm(texto, cls){ const b = document.createElement('button'); b.type = 'button'; b.className = 'sm' + (cls ? ' ' + cls : ''); b.textContent = texto; return b; }
+// Fechou o menu: o foco volta para o ⋯ do item.
+function fecharMenuSalva(){ sb.voltar = sb.menu; sb.focar = true; sb.menu = null; sb.modo = ''; sb.erro = ''; renderSalvas(); }
+function abrirMenuSalva(c, modo){ sb.rascunho = null; sb.menu = c.id; sb.modo = modo; sb.erro = ''; sb.focar = true; renderSalvas(); }
+function itemSalva(c){
+  const el = document.createElement('div'); el.className = 'salvas__it'; el.setAttribute('role', 'listitem');
+  const aberto = sb.menu === c.id;
+  let foco = null;
+  if(aberto && sb.modo === 'renomear'){
+    const inp = document.createElement('input'); inp.type = 'text'; inp.value = sb.rascunho != null ? sb.rascunho : String(c.nome || ''); inp.maxLength = MAX_NOME_CONSULTA;
+    inp.spellcheck = false; inp.autocomplete = 'off'; inp.setAttribute('aria-label', 'Novo nome da consulta');
+    const menu = document.createElement('div'); menu.className = 'salvas__menu';
+    const ok = botaoSm('Salvar', 'primary'), nao = botaoSm('Cancelar');
+    ok.onclick = () => renomearSalva(c, inp.value);
+    nao.onclick = fecharMenuSalva;
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); renomearSalva(c, inp.value); } else if(e.key === 'Escape'){ e.preventDefault(); fecharMenuSalva(); } });
+    menu.appendChild(ok); menu.appendChild(nao); el.appendChild(inp); el.appendChild(menu); foco = inp;
+  }else{
+    const run = document.createElement('button'); run.type = 'button'; run.className = 'salvas__run'; run.disabled = st.busy;
+    run.innerHTML = '<b></b><span></span>';
+    run.querySelector('b').textContent = String(c.nome || '');
+    run.querySelector('span').textContent = (VISUAL_ROTULO[c.visual] || 'tabela') + (c.criada ? ' · salva ' + dataBr(c.criada).slice(0, 5) : '');
+    run.title = 'Rodar de novo, direto no banco';
+    run.onclick = () => clicarSalva(c);
+    const mais = document.createElement('button'); mais.type = 'button'; mais.className = 'salvas__mais'; mais.textContent = '⋯';
+    mais.setAttribute('aria-label', 'Opções da consulta ' + String(c.nome || '')); mais.setAttribute('aria-expanded', String(aberto));
+    mais.onclick = () => { if(aberto) fecharMenuSalva(); else abrirMenuSalva(c, 'menu'); };
+    el.appendChild(run); el.appendChild(mais);
+    if(sb.voltar === c.id) foco = mais;
+    if(aberto){
+      const menu = document.createElement('div'); menu.className = 'salvas__menu';
+      if(sb.modo === 'apagar'){
+        const t = document.createElement('span'); t.textContent = 'Apagar esta consulta?';
+        const sim = botaoSm('Apagar', 'primary'), nao = botaoSm('Cancelar');
+        sim.onclick = () => apagarSalva(c); nao.onclick = fecharMenuSalva;
+        menu.appendChild(t); menu.appendChild(sim); menu.appendChild(nao); foco = nao;
+      }else{
+        const ren = botaoSm('Renomear'), ap = botaoSm('Apagar');
+        ren.onclick = () => abrirMenuSalva(c, 'renomear'); ap.onclick = () => abrirMenuSalva(c, 'apagar');
+        menu.appendChild(ren); menu.appendChild(ap); foco = ren;
+      }
+      el.appendChild(menu);
+    }
+  }
+  if(aberto && sb.erro){ const p = document.createElement('p'); p.className = 'salvas__erro'; mostrarErro(p, sb.erro); el.appendChild(p); }
+  if(aberto) el.addEventListener('keydown', e => { if(e.key === 'Escape' && sb.modo !== 'renomear'){ e.preventDefault(); fecharMenuSalva(); } });
+  return { el, foco };
+}
+async function renomearSalva(c, valor){
+  sb.rascunho = String(valor || '');
+  const nome = String(valor || '').trim();
+  if(!nome){ sb.erro = 'Dê um nome à consulta.'; sb.focar = true; return renderSalvas(); }
+  if(consultasSalvas().some(x => x.id !== c.id && mesmoNome(x.nome, nome))){ sb.erro = 'Já existe uma consulta com esse nome.'; sb.focar = true; return renderSalvas(); }
+  const ok = await gravarConsultas(l => l.map(x => x.id === c.id ? Object.assign({}, x, { nome }) : x));
+  if(ok){ sb.voltar = c.id; sb.focar = true; sb.menu = null; sb.modo = ''; sb.erro = ''; } else sb.erro = 'Não deu para salvar: ' + st.notasErro;
+  renderSalvas();
+}
+async function apagarSalva(c){
+  const ok = await gravarConsultas(l => l.filter(x => x.id !== c.id));
+  if(ok){ sb.menu = null; sb.modo = ''; sb.erro = ''; } else sb.erro = 'Não deu para apagar: ' + st.notasErro;
+  renderSalvas();
+}
+// Clique na barra: sem parâmetros roda direto; com parâmetros, a janela com os valores da última vez.
+// Com uma resposta em andamento, espera (mesma regra do Enviar).
+function clicarSalva(c){
+  if(st.busy || !st.provider) return;
+  if(sb.menu) fecharMenuSalva();
+  const ps = Array.isArray(c.params) ? c.params : [];
+  if(ps.length) abrirRodar(c); else executarSalva(c, []);
+}
+
+/* janela de rodar com parâmetros */
+function abrirRodar(c){
+  rd.consulta = c;
+  $('#rTitulo').textContent = String(c.nome || '');
+  const box = $('#rCampos'); box.innerHTML = '';
+  c.params.forEach((p, i) => {
+    const d = document.createElement('div');
+    const lb = document.createElement('label'); lb.htmlFor = 'rP' + i; lb.textContent = nomeParam(p, i);
+    const inp = document.createElement('input'); inp.id = 'rP' + i; inp.autocomplete = 'off'; inp.spellcheck = false;
+    inp.type = p && p.tipo === 'data' ? 'date' : 'text';
+    if(p && p.tipo === 'numero') inp.inputMode = 'decimal';
+    inp.value = String(p && p.valor != null ? p.valor : '');
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); confirmarRodar(); } });
+    d.appendChild(lb); d.appendChild(inp); box.appendChild(d);
+  });
+  mostrarErro($('#rErro'), '');
+  $('#rodar').showModal();
+  const f = box.querySelector('input'); if(f) f.focus();
+}
+function confirmarRodar(){
+  const c = rd.consulta; if(!c) return;
+  const valores = c.params.map((p, i) => { const el = $('#rP' + i); return el ? el.value.trim() : ''; });
+  if(st.busy || !st.provider) return mostrarErro($('#rErro'), 'Espere a resposta atual terminar.');
+  const m = CD2Consultas.montarSql(c, valores);
+  if(!m.ok) return mostrarErro($('#rErro'), m.erro);
+  $('#rodar').close(); rd.consulta = null;
+  executarSalva(c, valores);
+}
+// Roda direto no banco, sem o modelo, e mostra o card na conversa. Rodou (os valores passaram),
+// os valores usados viram os da próxima vez.
+async function executarSalva(c, valores){
+  if(st.busy || !st.provider) return;
+  st.busy = true; st.ctl = new AbortController(); toggleBusy();
+  const hero = $('#hero'); if(hero) hero.remove();
+  addUser('Consulta salva: ' + String(c.nome || ''));
+  const el = addMsg('assistant'), body = document.createElement('div'); body.className = 'body';
+  body.innerHTML = '<span class="spin"></span> Rodando a consulta salva…'; el.appendChild(body); scrollDown();
+  try{
+    const s = st.dbStatus || {};
+    const r = await CD2Ask.rodarSalva({ consulta:c, valores, motor:s.engine || 'postgres',
+      runSql:CD2Ask.toolRunner(st.provider, { timeoutMs:15000 }), signal:st.ctl.signal });
+    renderAnswer(body, String(c.nome || ''), r, { consulta:c });
+    if(r.ok || r.motivo !== 'param') lembrarValores(c, valores);
+  }catch(e){
+    el.remove();
+    if(e.name !== 'AbortError') addNote('Erro: ' + (e.message || e), true); else addNote('Interrompido.');
+  }finally{
+    st.busy = false; st.ctl = null; toggleBusy();
+  }
+}
+function lembrarValores(c, valores){
+  const ps = Array.isArray(c.params) ? c.params : [];
+  if(!ps.length || ps.every((p, i) => String(p.valor) === String(valores[i]))) return;
+  gravarConsultas(l => l.map(x => (x.id === c.id && Array.isArray(x.params) && x.params.length === valores.length)
+    ? Object.assign({}, x, { params:x.params.map((p, i) => Object.assign({}, p, { valor:String(valores[i]) })) }) : x))
+    .then(ok => { if(!ok) addNote('Não deu para guardar os valores usados: ' + st.notasErro, true); });
+}
+
+/* janela Salvar consulta (o 👍 do card) */
+function abrirSalvar(r, botao, gen){
+  if(gen !== st.catalogGen || !podeSalvar()){
+    botao.disabled = true; botao.title = 'Esta resposta é de outra conexão com o banco.'; return;
+  }
+  sv.r = r; sv.botao = botao; sv.sel = null;
+  sv.linhas = CD2Consultas.acharLiterais(r.sqlBase).map(l => Object.assign({}, l, { nome:'', extra:false }));
+  // As datas já vêm marcadas; com nome sugerido, salvar é um clique no caso comum (período).
+  const datas = sv.linhas.filter(l => l.marcado);
+  datas.forEach((l, i) => { l.nome = datas.length === 2 ? (i ? 'Data final' : 'Data inicial') : datas.length === 1 ? 'Data' : 'Data ' + (i + 1); });
+  $('#svNome').value = String(r.titulo || '').slice(0, MAX_NOME_CONSULTA);
+  $('#svParams').hidden = !sv.linhas.length;
+  $('#svValor').value = ''; $('#svComo').value = '';
+  mostrarErro($('#svAddErro'), ''); mostrarErro($('#svErro'), '');
+  $('#svSalvar').disabled = false;
+  renderSalvarSql(); renderSalvarLinhas();
+  $('#salvar').showModal(); $('#svNome').focus();
+}
+function renderSalvarSql(){
+  const pre = $('#svSql'), sql = sv.r.sqlBase;
+  pre.textContent = '';
+  let pos = 0;
+  for(const l of sv.linhas){
+    if(l.inicio < pos) continue;
+    pre.appendChild(document.createTextNode(sql.slice(pos, l.inicio)));
+    const m = document.createElement('mark'); if(!l.marcado) m.className = 'off'; m.textContent = sql.slice(l.inicio, l.fim);
+    pre.appendChild(m); pos = l.fim;
+  }
+  pre.appendChild(document.createTextNode(sql.slice(pos)));
+}
+function renderSalvarLinhas(){
+  const tb = $('#svLinhas'); tb.innerHTML = '';
+  for(const l of sv.linhas){
+    const tr = document.createElement('tr'); if(l.extra) tr.className = 'extra';
+    tr.innerHTML = '<td><input type="checkbox"></td><td></td><td><input type="text" spellcheck="false" autocomplete="off"></td><td></td>';
+    const cb = tr.querySelector('input[type=checkbox]'), nome = tr.querySelector('input[type=text]');
+    tr.children[1].textContent = l.valor; tr.children[3].textContent = TIPO_ROTULO[l.tipo] || l.tipo;
+    cb.checked = l.marcado; cb.setAttribute('aria-label', 'Perguntar a cada vez o valor ' + l.valor);
+    nome.value = l.nome; nome.maxLength = MAX_NOME_PARAM; nome.setAttribute('aria-label', 'Perguntar como, para o valor ' + l.valor);
+    const ph = () => { nome.placeholder = l.marcado ? 'Perguntar como' : 'fica fixo'; };
+    ph();
+    cb.onchange = () => { l.marcado = cb.checked; ph(); renderSalvarSql(); };
+    // Escrever um nome já marca o valor para ser perguntado.
+    nome.addEventListener('input', () => { l.nome = nome.value; if(nome.value.trim() && !l.marcado){ l.marcado = cb.checked = true; ph(); renderSalvarSql(); } });
+    tb.appendChild(tr);
+  }
+}
+// Posição da seleção do mouse dentro do SQL mostrado (o texto do <pre> é o SQL, só com <mark> em volta).
+function selecaoNoSql(){
+  const pre = $('#svSql'), s = window.getSelection();
+  if(!s || !s.rangeCount || s.isCollapsed) return null;
+  const rg = s.getRangeAt(0);
+  if(!pre.contains(rg.startContainer) || !pre.contains(rg.endContainer)) return null;
+  const pos = (node, off) => { const r = document.createRange(); r.selectNodeContents(pre); r.setEnd(node, off); return r.toString().length; };
+  return { inicio:pos(rg.startContainer, rg.startOffset), fim:pos(rg.endContainer, rg.endOffset) };
+}
+function aoSelecionarSql(){
+  if(!$('#salvar').open || !sv.r) return;
+  const s = selecaoNoSql(); if(!s) return;
+  sv.sel = s; $('#svValor').value = sv.r.sqlBase.slice(s.inicio, s.fim); mostrarErro($('#svAddErro'), '');
+}
+function adicionarParam(){
+  const sql = sv.r.sqlBase, valor = $('#svValor').value, erro = $('#svAddErro');
+  mostrarErro(erro, '');
+  let res;
+  if(sv.sel && sql.slice(sv.sel.inicio, sv.sel.fim) === valor) res = CD2Consultas.paramDeTrecho(sql, sv.sel.inicio, sv.sel.fim);
+  else if(!valor.trim()) return mostrarErro(erro, 'Selecione um trecho da consulta ou digite o valor.');
+  else res = CD2Consultas.paramDeValor(sql, valor);
+  if(!res.ok) return mostrarErro(erro, res.erro);
+  const p = res.param, nome = $('#svComo').value.trim().slice(0, MAX_NOME_PARAM);
+  const igual = sv.linhas.find(l => l.inicio === p.inicio && l.fim === p.fim);
+  if(igual){ igual.marcado = true; if(nome) igual.nome = nome; }
+  else{
+    // Um pedaço de um valor da lista (ex.: só a cidade dentro de 'CURITIBA - PR') toma o lugar dele,
+    // desde que ele não esteja marcado: dois parâmetros no mesmo trecho não dá para montar.
+    const cruza = sv.linhas.filter(l => p.inicio < l.fim && l.inicio < p.fim);
+    if(cruza.some(l => l.marcado)) return mostrarErro(erro, 'Esse trecho cruza um valor já marcado. Desmarque o outro primeiro.');
+    sv.linhas = sv.linhas.filter(l => !cruza.includes(l)).concat([Object.assign({}, p, { marcado:true, nome, extra:true })]);
+    sv.linhas.sort((a, b) => a.inicio - b.inicio);
+  }
+  $('#svValor').value = ''; $('#svComo').value = ''; sv.sel = null;
+  renderSalvarSql(); renderSalvarLinhas();
+}
+async function confirmarSalvar(){
+  const err = $('#svErro'), r = sv.r; if(!r) return;
+  mostrarErro(err, '');
+  const nome = $('#svNome').value.trim();
+  if(!nome) return mostrarErro(err, 'Dê um nome à consulta.');
+  if(consultasSalvas().some(c => mesmoNome(c.nome, nome))) return mostrarErro(err, 'Já existe uma consulta com esse nome.');
+  const marcados = sv.linhas.filter(l => l.marcado);
+  if(marcados.some(l => !l.nome.trim())) return mostrarErro(err, 'Dê um nome a cada valor marcado.');
+  const c = { id:'c' + Date.now(), nome, sql:r.sqlBase, visual:r.visual, x:r.x, y:r.y,
+    params:marcados.map(l => ({ nome:l.nome.trim(), tipo:l.tipo, inicio:l.inicio, fim:l.fim, valor:l.valor })), criada:hojeIso() };
+  const m = CD2Consultas.montarSql(c, []);
+  if(!m.ok) return mostrarErro(err, m.erro);
+  const b = $('#svSalvar'); b.disabled = true;
+  const ok = await gravarConsultas(l => l.concat([c]));
+  b.disabled = false;
+  if(!ok) return mostrarErro(err, 'Não deu para salvar: ' + st.notasErro);
+  $('#salvar').close();
+  if(sv.botao){ sv.botao.textContent = '👍 Salva'; sv.botao.disabled = true; }
+  sv.r = null; sv.botao = null;
+}
 /* ---------- modo Demonstração: gráficos, roteiro e convite para conectar o banco ---------- */
 function demoCard(g, sobre, pergunta){
   const card = document.createElement('div'); card.className = 'answer demo';
@@ -1277,6 +1687,7 @@ function addNote(t, err){
 function calarAvatares(){ document.querySelectorAll('.msg.falando').forEach(m => m.classList.remove('falando')); }
 function toggleBusy(){
   $('#bSend').style.display = st.busy ? 'none' : ''; $('#bStop').style.display = st.busy ? '' : 'none'; $('#input').disabled = st.busy;
+  document.querySelectorAll('.salvas__run').forEach(b => { b.disabled = st.busy; });
   if(!st.busy){ $('#input').focus(); calarAvatares(); }
 }
 function send(text){
@@ -1725,6 +2136,17 @@ $('#bNew').onclick = newChat;
 $('#bNotas').onclick = abrirNotas;
 $('#nVoltar').onclick = () => fecharNotas(true);
 $('#nBusca').addEventListener('input', renderListaNotas);
+$('#sBusca').addEventListener('input', renderSalvas);
+$('#sMostrar').onclick = () => { const a = $('#salvas'), on = !a.classList.contains('aberta'); a.classList.toggle('aberta', on); $('#sMostrar').setAttribute('aria-expanded', String(on)); $('#sMostrar').textContent = on ? 'Esconder' : 'Mostrar'; };
+$('#svCancelar').onclick = () => $('#salvar').close();
+$('#svSalvar').onclick = confirmarSalvar;
+$('#svAdd').onclick = adicionarParam;
+$('#svValor').addEventListener('input', () => { sv.sel = null; });
+$('#svComo').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); adicionarParam(); } });
+$('#svValor').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); adicionarParam(); } });
+document.addEventListener('selectionchange', aoSelecionarSql);
+$('#rCancelar').onclick = () => $('#rodar').close();
+$('#rRodar').onclick = confirmarRodar;
 $('#bCfg').onclick = () => openCfg();
 $('#cfgClose').onclick = () => $('#dlg').close();
 $('#cfgSave').onclick = saveCfg;
