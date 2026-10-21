@@ -340,13 +340,13 @@ body.com-notas .palco,body.com-notas footer{display:none}
 .notas__acts .hint{margin:0}
 .notas__vazio{margin:auto;color:var(--ink-muted)}
 .notas__top .actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
-.notas__top [hidden],#importar [hidden]{display:none}
+.notas__top [hidden],#importar [hidden],#atualizar [hidden]{display:none}
 /* tabelas do banco que o entendimento guardado ainda não conhece */
 .notas__aviso{margin:0;padding:var(--space-2) var(--space-6);border-left:4px solid var(--status-atencao);background:#fff4e0;font:500 13px/20px var(--font-sans)}
 .notas__aviso[hidden]{display:none}
 /* janela Importar: resumo, aviso laranja e a tabela com o antes riscado e o depois */
-#importar{width:min(620px,92vw)}
-#importar h2{margin-top:0}
+#importar,#atualizar{width:min(620px,92vw)}
+#importar h2,#atualizar h2{margin-top:0}
 .imp__soma{display:flex;gap:var(--space-3);margin:var(--space-3) 0}
 .imp__soma > div{flex:1;padding:var(--space-2);border-radius:var(--radius-sm);background:var(--surface-100);text-align:center;font:500 12px/18px var(--font-sans)}
 .imp__soma > div.sobre{background:#fff4e0}
@@ -486,6 +486,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
     <span class="spacer"></span>
     <span class="resumo" id="nResumo"></span>
     <span class="actions" id="nAcoes">
+      <button class="sm" id="nAtualizar" title="Ler o banco de novo e trazer as tabelas e campos novos, sem perder as notas">↻ Atualizar com o banco</button>
       <button class="sm" id="nExportar">Exportar</button>
       <button class="sm" id="nImportar" hidden>Importar</button>
       <input type="file" id="nArquivo" accept=".json,application/json" hidden>
@@ -764,23 +765,52 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
   </div>
 </dialog>
 
+<dialog id="atualizar" aria-labelledby="atTitulo">
+  <h2 id="atTitulo">Atualizar com o banco</h2>
+  <p class="hint" id="atLendo">Lendo o banco de novo…</p>
+  <p class="imp__erro" id="atErro" hidden></p>
+  <p class="imp__erro" id="atIgual" hidden>O entendimento já está igual ao banco.</p>
+  <div id="atResumo" hidden>
+    <div class="hint">Li o banco de novo e comparei com o entendimento guardado.</div>
+    <div class="imp__soma">
+      <div><b id="atNovas"></b><span id="atNovasTxt"></span></div>
+      <div><b id="atCampos"></b><span id="atCamposTxt"></span></div>
+      <div><b id="atSumiram"></b>sumiram do banco</div>
+    </div>
+    <div id="atApagadas" hidden>
+      <div class="imp__alerta"><b>Atenção:</b> estas tabelas e campos não existem mais no banco. As notas deles vão ser <b>apagadas</b>. Não dá para desfazer.</div>
+      <table class="imp__tab">
+        <thead><tr><th scope="col">Sumiu</th><th scope="col">Nota que vai ser apagada</th></tr></thead>
+        <tbody id="atLinhas"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="atConsultas" hidden>Consultas salvas que usam o que sumiu (continuam salvas, mas podem dar erro): <b id="atConsultasNomes"></b></p>
+    <p class="hint" id="atFrase"></p>
+  </div>
+  <div class="row">
+    <span class="status hint" id="atMsg" role="alert"></span>
+    <button id="atCancelar">Cancelar</button>
+    <button class="primary" id="atOk">Atualizar</button>
+  </div>
+</dialog>
+
 <div id="printArea" aria-hidden="true"></div>
-<script src="mcp.js?v=0.17.0"></script>
-<script src="oauth.js?v=0.17.0"></script>
-<script src="toolbox.js?v=0.17.0"></script>
-<script src="chart.js?v=0.17.0"></script>
-<script src="catalog.js?v=0.17.0"></script>
-<script src="perfil.js?v=0.17.0"></script>
-<script src="descricao.js?v=0.17.0"></script>
-<script src="notas.js?v=0.17.0"></script>
-<script src="consultas.js?v=0.17.0"></script>
-<script src="entendimento.js?v=0.17.0"></script>
-<script src="ask.js?v=0.17.0"></script>
-<script src="report.js?v=0.17.0"></script>
-<script src="demo.js?v=0.17.0"></script>
-<script src="momento.js?v=0.17.0"></script>
-<script src="sono.js?v=0.17.0"></script>
-<script src="instalar.js?v=0.17.0"></script>
+<script src="mcp.js?v=0.18.0"></script>
+<script src="oauth.js?v=0.18.0"></script>
+<script src="toolbox.js?v=0.18.0"></script>
+<script src="chart.js?v=0.18.0"></script>
+<script src="catalog.js?v=0.18.0"></script>
+<script src="perfil.js?v=0.18.0"></script>
+<script src="descricao.js?v=0.18.0"></script>
+<script src="notas.js?v=0.18.0"></script>
+<script src="consultas.js?v=0.18.0"></script>
+<script src="entendimento.js?v=0.18.0"></script>
+<script src="ask.js?v=0.18.0"></script>
+<script src="report.js?v=0.18.0"></script>
+<script src="demo.js?v=0.18.0"></script>
+<script src="momento.js?v=0.18.0"></script>
+<script src="sono.js?v=0.18.0"></script>
+<script src="instalar.js?v=0.18.0"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -1090,17 +1120,18 @@ function esconderFaixa(){ clearTimeout(st.faixaTimer); $('#analise').hidden = tr
 // guardado: o documento que o GET /entendimento trouxe e não deu para aplicar (pode ser null); dele
 // só vale saber se o aviso de varejo já foi dado neste banco.
 const AVISO_BOTAO = ' O botão "Entendimento do banco" aparece quando terminar.';
+// Amostra de uma tabela pelo toolbox (null se falhar). O prazo de cada amostra fica dentro de CD2Perfil.amostrar.
+const amostrador = client => async nome => {
+  const r = await client.call('db_sample_table', { table_name:nome }).then(CD2Ask.parseRows, () => null);
+  return r && r.ok ? r.rows : null;
+};
+const modeloDescricao = () => CD2Ask.modelCaller({ fetch:(...a) => fetch(...a), url:'/v1/chat/completions', useSchema:USE_SCHEMA, schema:CD2Descricao.SCHEMA, schemaName:'tabela', maxTokens:200 });
 async function analisarBanco(client, gen, guardado){
   const cat = st.catalog, vivo = () => gen === st.catalogGen;
   if(!cat || !vivo()) return;
   const total = cat.tables.length;
   faixa('Lendo as tabelas…', 0, total, AVISO_BOTAO);
-  // O prazo de cada amostra fica dentro de CD2Perfil.amostrar.
-  const sample = async nome => {
-    const r = await client.call('db_sample_table', { table_name:nome }).then(CD2Ask.parseRows, () => null);
-    return r && r.ok ? r.rows : null;
-  };
-  const amostras = await CD2Perfil.amostrar(cat, sample, { vivo, onProgresso:(n, t) => { if(vivo()) faixa('Lendo as tabelas…', n, t, AVISO_BOTAO); } });
+  const amostras = await CD2Perfil.amostrar(cat, amostrador(client), { vivo, onProgresso:(n, t) => { if(vivo()) faixa('Lendo as tabelas…', n, t, AVISO_BOTAO); } });
   if(!vivo()) return;
   CD2Perfil.analisarCatalogo(cat, amostras);
   if(nt.aberta){ renderListaNotas(); atualizarIaNotas(); }
@@ -1108,7 +1139,7 @@ async function analisarBanco(client, gen, guardado){
   st.suggestions = CD2Catalog.suggest(cat);
   if($('#hero')) renderHero();
   const r = await CD2Descricao.executarFila({ catalog:cat, amostras, vivo, ocupado:() => st.busy,
-    callModel:CD2Ask.modelCaller({ fetch:(...a) => fetch(...a), url:'/v1/chat/completions', useSchema:USE_SCHEMA, schema:CD2Descricao.SCHEMA, schemaName:'tabela', maxTokens:200 }),
+    callModel:modeloDescricao(),
     onProgresso:(n, t) => { if(vivo()){ st.descricao = { feitos:n, total:t }; faixa('Entendendo as tabelas…', n, t, ' (dá para ir perguntando).' + AVISO_BOTAO); atualizarIaNotas(); } } });
   if(!vivo()) return;
   if(st.descricao) st.descricao.feitos = st.descricao.total;
@@ -1386,7 +1417,7 @@ function abrirNotas(){
 }
 // Voltar mantém o rascunho; trocar de banco (connectTools) descarta tudo.
 function fecharNotas(voltar){
-  if(!voltar){ nt.rascunho = null; nt.sel = null; nt.sujo = false; nt.msg = ''; $('#nBusca').value = ''; }
+  if(!voltar){ nt.rascunho = null; nt.sel = null; nt.sujo = false; nt.msg = ''; $('#nBusca').value = ''; if($('#atualizar').open) $('#atualizar').close(); }
   if(!nt.aberta) return;
   nt.aberta = false; document.body.classList.remove('com-notas'); $('#notas').hidden = true;
   if(voltar) $('#input').focus();
@@ -1394,17 +1425,23 @@ function fecharNotas(voltar){
 function resumoNotas(){
   const s = st.dbStatus || {}, b = st.notasBanco || {};
   const com = st.catalog.tables.filter(t => temNota(t.name, t)).length;
+  const quando = st.entendimento && st.entendimento.atualizado ? new Date(st.entendimento.atualizado) : null;
   return [CD2Toolbox.engineLabel(s.engine || b.motor), (s.database || b.base) ? 'base ' + (s.database || b.base) : '',
-    st.catalog.tables.length + ' tabelas, ' + com + ' com nota'].filter(Boolean).join(' · ');
+    st.catalog.tables.length + ' tabelas, ' + com + ' com nota', quando && !isNaN(quando) ? 'atualizado em ' + quando.toLocaleDateString('pt-BR') : ''].filter(Boolean).join(' · ');
 }
-function renderNotas(){
-  if(!nt.aberta) return;
-  syncImportar();
+// Topo da tela: resumo, botão de atualizar e o aviso das tabelas que o entendimento não conhece.
+function renderTopoNotas(){
   $('#nResumo').textContent = resumoNotas();
+  syncAtualizar();
   const n = st.entendimentoDesconhecidas.length, av = $('#nDesconhecidas');
   av.hidden = !n;
   av.textContent = !n ? '' : n === 1 ? 'O banco tem 1 tabela que o entendimento ainda não conhece. Clique em Atualizar com o banco.'
     : 'O banco tem ' + n + ' tabelas que o entendimento ainda não conhece. Clique em Atualizar com o banco.';
+}
+function renderNotas(){
+  if(!nt.aberta) return;
+  syncImportar();
+  renderTopoNotas();
   renderListaNotas(); renderDetalheNotas();
 }
 function renderListaNotas(){
@@ -1433,10 +1470,13 @@ function linhasTexto(t){
   return t.type === 'VIEW' ? (n ? 'view, ' + l : 'view') : l;
 }
 // Descrição do modelo: a fila só descreve movimento, itens, indefinida e cadastro (CD2Descricao).
+// Tabela sem perfil: a atualização em segundo plano está lendo, ou o entendimento ainda não a conhece.
 function textoIa(t){
   const p = t.perfil || {};
   if(p.descricao) return p.descricao;
-  const naFila = !p.papel || (['movimento', 'itens', 'indefinida', 'cadastro'].includes(p.papel) && (!st.descricao || st.descricao.feitos < st.descricao.total));
+  const lendoNova = !!(at.alvo && at.alvo.has(t.name));
+  if(!p.papel) return lendoNova ? 'A IA ainda está lendo esta tabela.' : 'A IA ainda não conhece esta tabela. Clique em Atualizar com o banco.';
+  const naFila = ['movimento', 'itens', 'indefinida', 'cadastro'].includes(p.papel) && (lendoNova || !st.descricao || st.descricao.feitos < st.descricao.total);
   return naFila ? 'A IA ainda está lendo esta tabela.' : 'A IA não descreveu esta tabela.';
 }
 // A descrição chega em segundo plano: atualiza o parágrafo e, se a caixa da nota ainda não foi mexida
@@ -1536,6 +1576,153 @@ async function salvarTelaNotas(){
     nt.erro = true; nt.msg = 'Não deu para salvar: ' + st.notasErro;
     const s = $('#nStatus'); if(s){ s.innerHTML = '<span class="tag tag--atencao">Atenção</span> '; s.appendChild(document.createTextNode(nt.msg)); }
     if(b) b.disabled = false;
+  }
+}
+/* ---------- "↻ Atualizar com o banco": tabelas e campos novos sem perder as notas ---------- */
+// Relê o catálogo, compara com o entendimento guardado e mostra a janela. Confirmar: apaga as notas do
+// que sumiu (pela fila das notas; falhou, para e nada muda), grava o entendimento mesclado, troca o
+// catálogo mantendo o perfil guardado e, em segundo plano, entende só as tabelas novas e as sem descrição.
+// at.alvo: nomes das tabelas que a atualização em segundo plano está lendo (null fora dela).
+const at = { diff:null, cat:null, gen:0, chaveNotas:'', leitura:0, confirmando:false, vez:0, alvo:null };
+function syncAtualizar(){
+  const b = $('#nAtualizar'); if(!b) return;
+  b.disabled = !!at.alvo;
+  b.title = at.alvo ? 'A IA ainda está entendendo as tabelas novas. Dá para atualizar de novo quando ela terminar.'
+    : 'Ler o banco de novo e trazer as tabelas e campos novos, sem perder as notas';
+}
+async function abrirAtualizar(){
+  if(!st.catalog || !st.notas || !st.entendimentoPronto || at.alvo) return;
+  const d = $('#atualizar'), leitura = ++at.leitura, gen = st.catalogGen, client = st.provider;
+  at.diff = null; at.cat = null; at.gen = gen; at.chaveNotas = st.notasChave || '';
+  etapaAtualizar('lendo');
+  if(!d.open) d.showModal();
+  let cat = null;
+  try{
+    if(client && client !== demo){
+      const r = CD2Ask.parseRows(await client.call('db_catalog', {}));
+      if(r.ok && r.rows.length) cat = CD2Catalog.buildCatalog(r.rows);
+    }
+  }catch(e){}
+  if(leitura !== at.leitura || gen !== st.catalogGen || !d.open) return;
+  if(!cat) return etapaAtualizar('erro', 'Não consegui ler o banco agora. Confira a conexão em Configurações e tente de novo. Nenhuma nota foi apagada.');
+  at.cat = cat; at.diff = CD2Entendimento.comparar(cat, st.entendimento, st.notas);
+  etapaAtualizar(at.diff.nadaMudou ? 'igual' : 'resumo');
+}
+// Uma janela, quatro etapas: 'lendo', 'erro', 'igual' (nada mudou) e 'resumo'.
+function etapaAtualizar(etapa, erro){
+  const ok = $('#atOk'), cancelar = $('#atCancelar');
+  $('#atLendo').hidden = etapa !== 'lendo'; $('#atErro').hidden = etapa !== 'erro';
+  $('#atIgual').hidden = etapa !== 'igual'; $('#atResumo').hidden = etapa !== 'resumo';
+  $('#atMsg').textContent = ''; ok.disabled = false; cancelar.disabled = false;
+  ok.hidden = etapa !== 'resumo';
+  cancelar.textContent = etapa === 'resumo' || etapa === 'lendo' ? 'Cancelar' : 'Fechar';
+  if(etapa === 'erro') $('#atErro').textContent = erro;
+  if(etapa === 'resumo') renderResumoAtualizar();
+  (etapa === 'resumo' ? ok : cancelar).focus();
+}
+const plural = (n, um, varios) => n === 1 ? um : varios;
+function renderResumoAtualizar(){
+  const d = at.diff, ok = $('#atOk');
+  const sumiram = d.sumiram.tabelas.length + d.sumiram.campos.length;
+  $('#atNovas').textContent = d.novasTabelas.length; $('#atNovasTxt').textContent = plural(d.novasTabelas.length, 'tabela nova', 'tabelas novas');
+  $('#atCampos').textContent = d.novosCampos.length; $('#atCamposTxt').textContent = plural(d.novosCampos.length, 'campo novo', 'campos novos');
+  $('#atSumiram').textContent = sumiram;
+  $('#atApagadas').hidden = !d.notasApagadas.length;
+  const tb = $('#atLinhas'); tb.textContent = '';
+  for(const n of d.notasApagadas){
+    const tr = document.createElement('tr'), onde = document.createElement('td'), nota = document.createElement('td');
+    onde.textContent = n.onde;
+    const sub = document.createElement('span'); sub.className = 'sub'; sub.textContent = n.tipo === 'tabela' ? 'tabela' : 'campo'; onde.appendChild(sub);
+    const velha = document.createElement('span'); velha.className = 'antes'; velha.textContent = n.nota; nota.appendChild(velha);
+    tr.appendChild(onde); tr.appendChild(nota); tb.appendChild(tr);
+  }
+  $('#atConsultas').hidden = !d.consultasAfetadas.length;
+  $('#atConsultasNomes').textContent = d.consultasAfetadas.join(', ');
+  const novas = d.novasTabelas.length, sem = d.semDescricao.length, partes = [];
+  if(novas) partes.push(novas === 1 ? 'a tabela nova' : 'as ' + novas + ' tabelas novas');
+  if(sem) partes.push(sem === 1 ? 'a tabela ainda sem descrição' : 'as ' + sem + ' tabelas ainda sem descrição');
+  const quem = partes.join(' e ');
+  $('#atFrase').textContent = (quem ? quem[0].toUpperCase() + quem.slice(1) + (novas + sem === 1 ? ' vai ser descrita' : ' vão ser descritas') + ' pela IA em segundo plano. ' : '')
+    + 'As notas e descrições que já existem não mudam.';
+  ok.textContent = d.notasApagadas.length ? 'Apagar notas e atualizar' : 'Atualizar';
+  ok.className = d.notasApagadas.length ? 'aviso' : 'primary';
+}
+async function confirmarAtualizar(){
+  const diff = at.diff, cat = at.cat, gen = at.gen, msg = $('#atMsg'), ok = $('#atOk'), cancelar = $('#atCancelar');
+  if(!diff || !cat || at.confirmando) return;
+  if(gen !== st.catalogGen || !st.notas) return mostrarErro(msg, 'O banco mudou. Feche e tente de novo. Nenhuma nota foi apagada.');
+  at.confirmando = true; ok.disabled = true; cancelar.disabled = true; msg.textContent = 'Atualizando…';
+  try{
+    const apaga = diff.notasApagadas.length > 0;
+    if(apaga){
+      const feito = await gravarNotas(atual => CD2Entendimento.limparNotas(atual, diff), undefined, at.chaveNotas);
+      if(!feito) return mostrarErro(msg, 'Não deu para atualizar, nenhuma nota foi apagada: ' + st.notasErro);
+    }
+    // O rascunho da tela também perde o que sumiu, senão o próximo "Salvar notas" traria as notas de volta.
+    if(nt.rascunho) nt.rascunho = CD2Entendimento.limparNotas({ tabelas:nt.rascunho }, diff).tabelas;
+    if(gen !== st.catalogGen) return mostrarErro(msg, 'O banco mudou. Feche e tente de novo.');
+    const base = st.entendimento || CD2Entendimento.capturar(st.catalog, new Date());
+    const doc = CD2Entendimento.mesclar(base, cat, diff, new Date());
+    if(!await gravarEntendimento(doc)){
+      return mostrarErro(msg, (apaga ? 'As notas do que sumiu foram apagadas, mas não' : 'Não')
+        + ' consegui guardar o entendimento atualizado (o controle do banco não respondeu ou o banco conectado mudou). Tente de novo.');
+    }
+    if(gen !== st.catalogGen) return;
+    $('#atualizar').close();
+    trocarCatalogo(cat, doc, diff, gen);
+  }finally{ at.confirmando = false; ok.disabled = false; cancelar.disabled = false; }
+}
+// Catálogo novo com o perfil guardado das tabelas que continuam e as notas reaplicadas.
+function trocarCatalogo(cat, doc, diff, gen){
+  CD2Entendimento.aplicar(cat, doc);
+  st.catalog = cat; st.descricao = { feitos:cat.tables.length, total:cat.tables.length };
+  if(st.notas) CD2Notas.aplicar(cat, st.notas);
+  st.suggestions = CD2Catalog.suggest(cat);
+  if($('#hero')) renderHero();
+  const nomes = new Set([...diff.novasTabelas, ...diff.semDescricao].map(n => n.toLowerCase()));
+  const alvo = cat.tables.filter(t => nomes.has(t.name.toLowerCase()));
+  st.entendimentoDesconhecidas = cat.tables.filter(t => !t.perfil && !nomes.has(t.name.toLowerCase())).map(t => t.name);
+  if(alvo.length) at.alvo = new Set(alvo.map(t => t.name));
+  if(nt.aberta){
+    if(!cat.tables.some(t => t.name === nt.sel)) nt.sel = cat.tables.length ? cat.tables[0].name : null;
+    renderNotas();
+  }
+  if(alvo.length) entenderNovas(cat, alvo, gen).catch(() => {
+    // Erro inesperado: nada é gravado; o documento já guardado tem as novas sem perfil e o aviso volta.
+    if(gen === st.catalogGen) esconderFaixa();
+  });
+}
+// Amostra, perfil e descrição só das tabelas do alvo (novas e sem descrição), com a faixa de progresso; tela e botões continuam.
+// No fim grava o entendimento inteiro de novo (as do alvo agora com perfil e descrição).
+async function entenderNovas(cat, alvo, gen){
+  const vez = ++at.vez, vivo = () => gen === st.catalogGen && vez === at.vez && st.catalog === cat;
+  const total = alvo.length, sub = { tables:alvo };
+  const fimTela = () => { if(nt.aberta){ renderTopoNotas(); renderListaNotas(); atualizarIaNotas(); } };
+  try{
+    faixa('Lendo as tabelas…', 0, total);
+    const amostras = await CD2Perfil.amostrar(sub, amostrador(st.provider), { vivo, onProgresso:(n, t) => { if(vivo()) faixa('Lendo as tabelas…', n, t); } });
+    if(!vivo()) return;
+    // Só as sem perfil ganham um; as sem descrição que já tinham papel guardado ficam com ele.
+    CD2Perfil.analisarCatalogo(cat, amostras, { so:new Set(alvo.filter(t => !t.perfil || typeof t.perfil.papel !== 'string').map(t => t.name)) });
+    st.suggestions = CD2Catalog.suggest(cat);
+    if($('#hero')) renderHero();
+    fimTela();
+    const r = await CD2Descricao.executarFila({ catalog:sub, amostras, vivo, ocupado:() => st.busy, callModel:modeloDescricao(),
+      onProgresso:(n, t) => { if(vivo()){ faixa('Entendendo as tabelas…', n, t, ' (dá para ir perguntando).'); atualizarIaNotas(); } } });
+    if(!vivo()) return;
+    faixa(r.parou === 'modelo' ? 'Tabelas lidas: ' + total + ' (o modelo não respondeu para descrevê-las)'
+      : 'Banco atualizado: ' + total + plural(total, ' tabela lida, ', ' tabelas lidas, ') + r.descritas + ' descrita' + (r.descritas === 1 ? '' : 's') + ' pelo modelo', total, total, '', true);
+    const doc = CD2Entendimento.capturar(cat, new Date());
+    if(st.entendimento && st.entendimento.varejo && typeof st.entendimento.varejo === 'object') doc.varejo = { ...st.entendimento.varejo };
+    const ok = await gravarEntendimento(doc);
+    if(!vivo()) return;
+    if(!ok){ st.entendimento = doc; if(st.ctlKey) addNote('Não consegui guardar o entendimento atualizado; na próxima abertura, clique de novo em Atualizar com o banco.'); }
+  }finally{
+    if(vez === at.vez){
+      at.alvo = null;
+      if(st.catalog === cat) st.entendimentoDesconhecidas = cat.tables.filter(t => !t.perfil || typeof t.perfil.papel !== 'string').map(t => t.name);
+      fimTela(); syncAtualizar();
+    }
   }
 }
 /* ---------- exportar e importar notas e consultas salvas ---------- */
@@ -2141,7 +2328,8 @@ async function disconnectDb(ev){
   let r = null;
   try{ r = await ctlRequest('DELETE', '/config'); }catch(e){ st.ctlUp = false; }
   st.ctlBusy = false;
-  if(r && r.status === 200){ st.ctlStatus = r.data; st.notas = null; st.notasBanco = null; st.notasChave = null; zerarEntendimento(); fecharNotas(); syncBotaoNotas(); }
+  // catalogGen++: varredura ou atualização em curso param caladas (era do banco que saiu), sem aviso de falha.
+  if(r && r.status === 200){ st.ctlStatus = r.data; st.catalogGen++; esconderFaixa(); st.notas = null; st.notasBanco = null; st.notasChave = null; zerarEntendimento(); fecharNotas(); syncBotaoNotas(); }
   st.dbStatus = null;
   if((store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode)) === 'toolbox'){ st.tools = []; st.provider = null; setPill('#pMcp', 'err', 'sem banco'); }
   fillDbForm(null); renderToolbox();
@@ -2417,6 +2605,12 @@ $('#bNotas').onclick = abrirNotas;
 $('#nVoltar').onclick = () => fecharNotas(true);
 $('#nBusca').addEventListener('input', renderListaNotas);
 $('#nExportar').onclick = exportarNotas;
+$('#nAtualizar').onclick = abrirAtualizar;
+$('#atCancelar').onclick = () => $('#atualizar').close();
+$('#atOk').onclick = confirmarAtualizar;
+// Enquanto apaga e grava, a janela não fecha: o resultado (ou o erro) aparece nela.
+$('#atualizar').addEventListener('cancel', e => { if(at.confirmando) e.preventDefault(); });
+$('#atualizar').addEventListener('close', () => { at.leitura++; at.diff = null; at.cat = null; });
 $('#nImportar').onclick = escolherArquivoNotas;
 $('#nArquivo').addEventListener('change', lerArquivoNotas);
 $('#impCancelar').onclick = () => $('#importar').close();

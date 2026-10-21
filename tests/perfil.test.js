@@ -253,3 +253,15 @@ test('perfil: unitário e data de atributo também colados no começo da palavra
   assert.notEqual(perfil(c, 'GE_PESSOA').papel, 'movimento');
   assert.equal(perfil(c, 'GE_PESSOA').colunas.data, undefined);
 });
+
+test('perfil: com o.so só as tabelas novas ganham perfil, e a de itens nova se liga ao movimento já guardado', () => {
+  const c = PT();
+  P.analisarCatalogo(c, AM_PT);
+  const guardado = { papel:'cadastro', colunas:{}, amostra:true, chave:null, descricao:'Lojas.' };
+  c.tables.find(t => t.name === 'loja').perfil = guardado;
+  const item = c.tables.find(t => t.name === 'mov_venda_item'); delete item.perfil;
+  P.analisarCatalogo(c, new Map([['mov_venda_item', AM_PT.get('mov_venda_item')]]), { so:new Set(['mov_venda_item']) });
+  assert.equal(perfil(c, 'mov_venda_item').papel, 'itens');
+  assert.equal(perfil(c, 'loja'), guardado);
+  assert.equal(perfil(c, 'mov_venda').papel, 'movimento');
+});
