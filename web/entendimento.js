@@ -32,6 +32,27 @@ function perfilParaDoc(p){
   return e;
 }
 
+// Tira do perfil (já em forma de documento) as colunas úteis e a chave que não estão mais entre os
+// campos atuais da tabela (sem caixa); as que ficam passam a ter a grafia atual. Sem isso o prompt
+// mandaria "data: DT_VENDA" numa tabela que não tem mais essa coluna. Devolve true se tirou alguma.
+function podar(p, campos){
+  const atual = new Map(campos.map(c => [baixo(c), c]));
+  let perdeu = false;
+  const colunas = {};
+  for(const k of Object.keys(p.colunas)){
+    const v = p.colunas[k];
+    const c = (typeof v === 'string') ? atual.get(baixo(v)) : undefined;
+    if(c === undefined){ perdeu = true; continue; }
+    pôr(colunas, k, c);
+  }
+  p.colunas = colunas;
+  if(p.chave != null){
+    const c = atual.get(baixo(p.chave));
+    if(c === undefined){ p.chave = null; perdeu = true; } else p.chave = c;
+  }
+  return perdeu;
+}
+
 function capturar(catalog, agora){
   const tabelas = {};
   for(const t of tabelasDe(catalog)){
@@ -55,20 +76,22 @@ function valido(doc){
 }
 
 // Repõe o perfil guardado. Tabela do banco fora do documento, ou no documento sem perfil (nova, vinda
-// de mesclar), vai em desconhecidas para ser entendida.
+// de mesclar), vai em desconhecidas para ser entendida. Coluna útil ou chave que não existe mais na
+// tabela sai do perfil, e a tabela vai em perderam.
 function aplicar(catalog, doc){
-  if(!valido(doc)) return { ok:false, desconhecidas:[] };
+  if(!valido(doc)) return { ok:false, desconhecidas:[], perderam:[] };
   const m = porNome(doc.tabelas);
-  const desconhecidas = [];
+  const desconhecidas = [], perderam = [];
   for(const t of tabelasDe(catalog)){
     const achou = m.get(baixo(t.name));
     const e = achou && achou[1];
     if(!e || typeof e.papel !== 'string'){ desconhecidas.push(t.name); continue; }
     const p = perfilParaDoc(e);
+    if(podar(p, camposDe(t))) perderam.push(t.name);
     if(p.descricao) p.descricaoTokens = Cat.tokens(p.descricao, true);
     t.perfil = p;
   }
-  return { ok:true, desconhecidas };
+  return { ok:true, desconhecidas, perderam };
 }
 
 // Lê a tabela como palavra inteira, sem caixa e fora de literais (mesma ideia de readsListedTable do ask.js).
@@ -83,7 +106,7 @@ const textoNota = v => (typeof v === 'string' ? v.trim() : '');
 function comparar(catalog, doc, notas){
   const docTabs = porNome(doc && objeto(doc.tabelas) ? doc.tabelas : {});
   const cat = new Map(tabelasDe(catalog).map(t => [baixo(t.name), t]));
-  const novasTabelas = [], novosCampos = [], semDescricao = [];
+  const novasTabelas = [], novosCampos = [], semDescricao = [], perfilPerdido = [];
   const sumiram = { tabelas:[], campos:[] };
   for(const t of tabelasDe(catalog)){
     const achou = docTabs.get(baixo(t.name));
@@ -96,6 +119,8 @@ function comparar(catalog, doc, notas){
     for(const c of antes) if(!setAgora.has(baixo(c))) sumiram.campos.push({ tabela:t.name, campo:c });
     // Entrada sem perfil (tabela nova de uma atualização interrompida) também precisa ser entendida.
     if((typeof e.papel !== 'string' || PEDEM_DESCRICAO.has(e.papel)) && !temDescricao(e)) semDescricao.push(t.name);
+    // Perfil guardado que aponta para coluna útil ou chave que sumiu: precisa ser refeito (sem o modelo).
+    if(typeof e.papel === 'string' && objeto(e.colunas) && podar(perfilParaDoc(e), agora)) perfilPerdido.push(t.name);
   }
   for(const [k, [nome]] of docTabs) if(!cat.has(k)) sumiram.tabelas.push(nome);
 
@@ -123,8 +148,8 @@ function comparar(catalog, doc, notas){
   const consultas = (notas && Array.isArray(notas.consultas)) ? notas.consultas : [];
   const consultasAfetadas = consultas.filter(q => q && sumiram.tabelas.some(n => leTabela(q.sql, n))).map(q => q.nome);
 
-  const nadaMudou = !novasTabelas.length && !novosCampos.length && !sumiram.tabelas.length && !sumiram.campos.length && !semDescricao.length;
-  return { novasTabelas, novosCampos, sumiram, notasApagadas, semDescricao, consultasAfetadas, nadaMudou };
+  const nadaMudou = !novasTabelas.length && !novosCampos.length && !sumiram.tabelas.length && !sumiram.campos.length && !semDescricao.length && !perfilPerdido.length;
+  return { novasTabelas, novosCampos, sumiram, notasApagadas, semDescricao, perfilPerdido, consultasAfetadas, nadaMudou };
 }
 
 // Cópia das notas sem as das tabelas e campos que sumiram. Consultas ficam todas.
@@ -156,6 +181,7 @@ function limparNotas(notas, diff){
 }
 
 // Documento novo: sem o que sumiu, com as tabelas novas sem perfil e os campos atuais de todas.
+// Colunas úteis e chave que não existem mais saem do perfil guardado.
 function mesclar(doc, catalog, diff, agora){
   const docTabs = porNome(doc && objeto(doc.tabelas) ? doc.tabelas : {});
   const sumidas = new Set(((diff && diff.sumiram && diff.sumiram.tabelas) || []).map(baixo));
@@ -165,6 +191,7 @@ function mesclar(doc, catalog, diff, agora){
     if(sumidas.has(k)) continue;
     const achou = docTabs.get(k);
     const e = (achou && objeto(achou[1]) && typeof achou[1].papel === 'string') ? perfilParaDoc(achou[1]) : {};
+    if(typeof e.papel === 'string') podar(e, camposDe(t));
     e.campos = camposDe(t);
     pôr(tabelas, t.name, e);
   }
@@ -214,10 +241,11 @@ function bate(tk, i){
 // Conservador de propósito: avisar um varejo de verdade que ele não é varejo é o pior erro.
 // Só diz que não parece com no máximo 1 grupo e nenhuma tabela de movimento (ou itens) com sinal de venda.
 // Sem descrição da IA em metade ou mais das tabelas que deviam ter, não há evidência (nomes em código
-// só se revelam pela descrição): não avisa.
+// só se revelam pela descrição): não avisa, e devolve semEvidencia:true para quem chamou não guardar
+// isso como veredito final (um Atualizar que descreva as tabelas verifica de novo).
 function pareceVarejo(catalog){
   const tabs = tabelasDe(catalog);
-  if(!tabs.length) return { parece:true, grupos:0 };
+  if(!tabs.length) return { parece:true, grupos:0, semEvidencia:true };
   const achados = new Set();
   let movVenda = false, pedem = 0, semDesc = 0;
   for(const t of tabs){
@@ -230,8 +258,8 @@ function pareceVarejo(catalog){
     if((p.papel === 'movimento' || p.papel === 'itens') && bate(tk, VENDA)) movVenda = true;
   }
   const grupos = achados.size;
-  if(pedem > 0 && semDesc * 2 >= pedem) return { parece:true, grupos };
-  return { parece:!(grupos <= 1 && !movVenda), grupos };
+  if(pedem > 0 && semDesc * 2 >= pedem) return { parece:true, grupos, semEvidencia:true };
+  return { parece:!(grupos <= 1 && !movVenda), grupos, semEvidencia:false };
 }
 
 const api = { TEXTO_VAREJO, capturar, aplicar, comparar, limparNotas, mesclar, pareceVarejo };

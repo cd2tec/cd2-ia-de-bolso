@@ -1153,11 +1153,7 @@ async function concluirEntendimento(cat, gen, guardado){
   const doc = CD2Entendimento.capturar(cat, new Date());
   const v = guardado && guardado.varejo;
   if(v && typeof v === 'object' && v.verificado) doc.varejo = { ...v };
-  else{
-    const parece = CD2Entendimento.pareceVarejo(cat).parece;
-    doc.varejo = { verificado:true, parece };
-    if(!parece) addNote(CD2Entendimento.TEXTO_VAREJO);
-  }
+  else verificarVarejo(cat, doc);
   const ok = await gravarEntendimento(doc);
   if(gen !== st.catalogGen) return;
   // Sem a chave da sessão do cd2-ctl não há onde guardar (nem notas): só fica na memória, sem aviso.
@@ -1165,6 +1161,14 @@ async function concluirEntendimento(cat, gen, guardado){
   st.entendimentoDesconhecidas = [];
   st.entendimentoPronto = true;
   syncBotaoNotas();
+}
+// Veredito de varejo no documento: sem evidência (faltam descrições) fica verificado:false, para um
+// Atualizar que descreva as tabelas verificar de novo; com evidência é final e o aviso sai uma vez.
+function verificarVarejo(cat, doc){
+  const r = CD2Entendimento.pareceVarejo(cat);
+  if(r.semEvidencia){ doc.varejo = { verificado:false }; return; }
+  doc.varejo = { verificado:true, parece:r.parece };
+  if(!r.parece) addNote(CD2Entendimento.TEXTO_VAREJO);
 }
 // Entendimento guardado pelo cd2-ctl (documento separado das notas). Devolve {chave, dados} ou null.
 async function lerEntendimento(){
@@ -1174,14 +1178,19 @@ async function lerEntendimento(){
   if(!r || r.status !== 200 || !r.data || !r.data.chave || !r.data.dados || typeof r.data.dados !== 'object') return null;
   return { chave:r.data.chave, dados:r.data.dados };
 }
-// Grava o entendimento com a chave do banco lida no GET (409: o banco mudou, nada gravado).
-// Devolve true|false; só em sucesso st.entendimento passa a ser o documento gravado.
+// Chave do banco para gravar o entendimento: a do GET /entendimento ou, se ele falhou (arquivo
+// corrompido, cd2-ctl lento), a das notas, que é a mesma (notas.Chave do banco conectado).
+const chaveEntendimento = () => st.entendimentoChave || st.notasChave || null;
+// Grava o entendimento com a chave do banco (409: o banco mudou, nada gravado). Arquivo corrompido no
+// disco não impede: o cd2-ctl troca o arquivo inteiro. Devolve true|false; só em sucesso
+// st.entendimento passa a ser o documento gravado.
 async function gravarEntendimento(doc){
-  const gen = st.catalogGen, chave = st.entendimentoChave;
+  const gen = st.catalogGen, chave = chaveEntendimento();
   if(!st.ctlKey || !chave || !doc) return false;
   let r;
   try{ r = await ctlRequest('POST', '/entendimento', { chave, dados:doc }, 30000); }catch(e){ return false; }
-  if(gen !== st.catalogGen || chave !== st.entendimentoChave || r.status !== 200) return false;
+  if(gen !== st.catalogGen || chave !== chaveEntendimento() || r.status !== 200) return false;
+  st.entendimentoChave = chave;
   st.entendimento = doc;
   return true;
 }
@@ -1590,6 +1599,7 @@ function syncAtualizar(){
   b.title = at.alvo ? 'A IA ainda está entendendo as tabelas novas. Dá para atualizar de novo quando ela terminar.'
     : 'Ler o banco de novo e trazer as tabelas e campos novos, sem perder as notas';
 }
+const SEM_CHAVE_ATUALIZAR = 'Não consigo guardar o entendimento deste banco agora (o controle do banco não respondeu). Feche e abra a IA de Bolso pelo atalho INICIAR e tente de novo. Nenhuma nota foi apagada.';
 async function abrirAtualizar(){
   if(!st.catalog || !st.notas || !st.entendimentoPronto || at.alvo) return;
   const d = $('#atualizar'), leitura = ++at.leitura, gen = st.catalogGen, client = st.provider;
@@ -1605,6 +1615,8 @@ async function abrirAtualizar(){
   }catch(e){}
   if(leitura !== at.leitura || gen !== st.catalogGen || !d.open) return;
   if(!cat) return etapaAtualizar('erro', 'Não consegui ler o banco agora. Confira a conexão em Configurações e tente de novo. Nenhuma nota foi apagada.');
+  // Sem chave não dá para guardar o entendimento novo: nem chega no resumo, para nada ser apagado.
+  if(!chaveEntendimento()) return etapaAtualizar('erro', SEM_CHAVE_ATUALIZAR);
   at.cat = cat; at.diff = CD2Entendimento.comparar(cat, st.entendimento, st.notas);
   etapaAtualizar(at.diff.nadaMudou ? 'igual' : 'resumo');
 }
@@ -1651,6 +1663,7 @@ async function confirmarAtualizar(){
   const diff = at.diff, cat = at.cat, gen = at.gen, msg = $('#atMsg'), ok = $('#atOk'), cancelar = $('#atCancelar');
   if(!diff || !cat || at.confirmando) return;
   if(gen !== st.catalogGen || !st.notas) return mostrarErro(msg, 'O banco mudou. Feche e tente de novo. Nenhuma nota foi apagada.');
+  if(!chaveEntendimento()) return mostrarErro(msg, SEM_CHAVE_ATUALIZAR);
   at.confirmando = true; ok.disabled = true; cancelar.disabled = true; msg.textContent = 'Atualizando…';
   try{
     const apaga = diff.notasApagadas.length > 0;
@@ -1681,39 +1694,51 @@ function trocarCatalogo(cat, doc, diff, gen){
   if($('#hero')) renderHero();
   const nomes = new Set([...diff.novasTabelas, ...diff.semDescricao].map(n => n.toLowerCase()));
   const alvo = cat.tables.filter(t => nomes.has(t.name.toLowerCase()));
-  st.entendimentoDesconhecidas = cat.tables.filter(t => !t.perfil && !nomes.has(t.name.toLowerCase())).map(t => t.name);
-  if(alvo.length) at.alvo = new Set(alvo.map(t => t.name));
+  // Perderam coluna útil ou chave: perfil refeito pela amostra, descrição mantida, sem o modelo.
+  const perdidos = new Set((diff.perfilPerdido || []).map(n => n.toLowerCase()));
+  const refazer = cat.tables.filter(t => perdidos.has(t.name.toLowerCase()));
+  const todos = new Set([...alvo, ...refazer]);
+  st.entendimentoDesconhecidas = cat.tables.filter(t => !t.perfil && !todos.has(t)).map(t => t.name);
+  if(todos.size) at.alvo = new Set([...todos].map(t => t.name));
   if(nt.aberta){
     if(!cat.tables.some(t => t.name === nt.sel)) nt.sel = cat.tables.length ? cat.tables[0].name : null;
     renderNotas();
   }
-  if(alvo.length) entenderNovas(cat, alvo, gen).catch(() => {
+  if(todos.size) entenderNovas(cat, alvo, refazer, gen).catch(() => {
     // Erro inesperado: nada é gravado; o documento já guardado tem as novas sem perfil e o aviso volta.
     if(gen === st.catalogGen) esconderFaixa();
   });
 }
 // Amostra, perfil e descrição só das tabelas do alvo (novas e sem descrição), com a faixa de progresso; tela e botões continuam.
-// No fim grava o entendimento inteiro de novo (as do alvo agora com perfil e descrição).
-async function entenderNovas(cat, alvo, gen){
+// refazer: as que perderam coluna útil ou chave; ganham perfil novo pela amostra e mantêm a descrição
+// (o modelo não é chamado para elas). No fim grava o entendimento inteiro de novo e, se o veredito de
+// varejo ainda não tinha evidência, verifica de novo com as descrições novas.
+async function entenderNovas(cat, alvo, refazer, gen){
   const vez = ++at.vez, vivo = () => gen === st.catalogGen && vez === at.vez && st.catalog === cat;
-  const total = alvo.length, sub = { tables:alvo };
+  const todas = [...new Set([...alvo, ...refazer])];
+  const total = todas.length, sub = { tables:alvo };
   const fimTela = () => { if(nt.aberta){ renderTopoNotas(); renderListaNotas(); atualizarIaNotas(); } };
   try{
     faixa('Lendo as tabelas…', 0, total);
-    const amostras = await CD2Perfil.amostrar(sub, amostrador(st.provider), { vivo, onProgresso:(n, t) => { if(vivo()) faixa('Lendo as tabelas…', n, t); } });
+    const amostras = await CD2Perfil.amostrar({ tables:todas }, amostrador(st.provider), { vivo, onProgresso:(n, t) => { if(vivo()) faixa('Lendo as tabelas…', n, t); } });
     if(!vivo()) return;
-    // Só as sem perfil ganham um; as sem descrição que já tinham papel guardado ficam com ele.
-    CD2Perfil.analisarCatalogo(cat, amostras, { so:new Set(alvo.filter(t => !t.perfil || typeof t.perfil.papel !== 'string').map(t => t.name)) });
+    // Só as sem perfil e as que perderam coluna ganham um; as sem descrição que já tinham papel guardado ficam com ele.
+    const so = new Set([...alvo.filter(t => !t.perfil || typeof t.perfil.papel !== 'string'), ...refazer].map(t => t.name));
+    const descricoes = new Map(refazer.filter(t => t.perfil && t.perfil.descricao).map(t => [t, { descricao:t.perfil.descricao, descricaoTokens:t.perfil.descricaoTokens }]));
+    CD2Perfil.analisarCatalogo(cat, amostras, { so });
+    for(const [t, d] of descricoes) Object.assign(t.perfil, d);
     st.suggestions = CD2Catalog.suggest(cat);
     if($('#hero')) renderHero();
     fimTela();
-    const r = await CD2Descricao.executarFila({ catalog:sub, amostras, vivo, ocupado:() => st.busy, callModel:modeloDescricao(),
+    const r = !alvo.length ? { descritas:0, parou:null } : await CD2Descricao.executarFila({ catalog:sub, amostras, vivo, ocupado:() => st.busy, callModel:modeloDescricao(),
       onProgresso:(n, t) => { if(vivo()){ faixa('Entendendo as tabelas…', n, t, ' (dá para ir perguntando).'); atualizarIaNotas(); } } });
     if(!vivo()) return;
     faixa(r.parou === 'modelo' ? 'Tabelas lidas: ' + total + ' (o modelo não respondeu para descrevê-las)'
       : 'Banco atualizado: ' + total + plural(total, ' tabela lida, ', ' tabelas lidas, ') + r.descritas + ' descrita' + (r.descritas === 1 ? '' : 's') + ' pelo modelo', total, total, '', true);
     const doc = CD2Entendimento.capturar(cat, new Date());
-    if(st.entendimento && st.entendimento.varejo && typeof st.entendimento.varejo === 'object') doc.varejo = { ...st.entendimento.varejo };
+    const v = st.entendimento && st.entendimento.varejo;
+    if(v && typeof v === 'object' && v.verificado) doc.varejo = { ...v };
+    else verificarVarejo(cat, doc);
     const ok = await gravarEntendimento(doc);
     if(!vivo()) return;
     if(!ok){ st.entendimento = doc; if(st.ctlKey) addNote('Não consegui guardar o entendimento atualizado; na próxima abertura, clique de novo em Atualizar com o banco.'); }

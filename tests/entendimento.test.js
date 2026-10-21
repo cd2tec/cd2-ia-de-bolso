@@ -45,7 +45,7 @@ test('capturar e aplicar devolvem o mesmo perfil sem amostras e repõem os token
   const novo = varejoCompleto();
   for(const t of novo.tables) delete t.perfil;
   const r = E.aplicar(novo, JSON.parse(json));
-  assert.deepEqual(r, { ok:true, desconhecidas:[] });
+  assert.deepEqual(r, { ok:true, desconhecidas:[], perderam:[] });
   const orig = varejoCompleto();
   for(let i = 0; i < orig.tables.length; i++) assert.deepEqual(novo.tables[i].perfil, orig.tables[i].perfil);
   assert.deepEqual(novo.tables[0].perfil.descricaoTokens, Cat.tokens('cupons de venda por loja', true));
@@ -89,7 +89,7 @@ test('comparar ignora caixa: VENDAS no documento e vendas no banco não mudou', 
   const cat = { tables:[tab('vendas', ['nr_cupom', 'dt_venda'])] };
   const d = E.comparar(cat, doc, { versao:1, tabelas:{}, consultas:[] });
   assert.deepEqual(d, { novasTabelas:[], novosCampos:[], sumiram:{ tabelas:[], campos:[] }, notasApagadas:[],
-    semDescricao:[], consultasAfetadas:[], nadaMudou:true });
+    semDescricao:[], perfilPerdido:[], consultasAfetadas:[], nadaMudou:true });
 });
 
 function docAntigo(){
@@ -211,13 +211,13 @@ test('pareceVarejo: nomes em código ZAN_M45/ZAN_M43 com descrições de cupom e
   // Sem as descrições, os nomes em código não dizem nada.
   const semDesc = { tables:cat.tables.map(t => tab(t.name, t.columns.map(c => c.name), { papel:t.perfil.papel, colunas:{}, chave:null, amostra:true })) };
   // Sem as descrições não há evidência nenhuma: não avisa.
-  assert.deepEqual(E.pareceVarejo(semDesc), { parece:true, grupos:0 });
+  assert.deepEqual(E.pareceVarejo(semDesc), { parece:true, grupos:0, semEvidencia:true });
   const r = E.pareceVarejo(cat);
   assert.equal(r.parece, true);
   assert.ok(r.grupos >= 3, String(r.grupos));
   // Só um grupo, mas um movimento com sinal de venda já basta para não avisar.
   const um = { tables:[tab('ZAN_M45', ['M45AA'], p('movimento', 'cupons de venda do dia'))] };
-  assert.deepEqual(E.pareceVarejo(um), { parece:true, grupos:1 });
+  assert.deepEqual(E.pareceVarejo(um), { parece:true, grupos:1, semEvidencia:false });
 });
 
 test('pareceVarejo: sistema de clínica (pacientes, consultas, prontuarios, medicos) não parece', () => {
@@ -227,7 +227,7 @@ test('pareceVarejo: sistema de clínica (pacientes, consultas, prontuarios, medi
     tab('prontuarios', ['id_prontuario', 'id_paciente', 'ds_anamnese'], { papel:'cadastro', colunas:{}, chave:'id_prontuario', amostra:true, descricao:'anotações clínicas de cada paciente' }),
     tab('medicos', ['id_medico', 'nm_medico', 'nr_crm', 'ds_especialidade'], { papel:'cadastro', colunas:{}, chave:'id_medico', amostra:true, descricao:'médicos e especialidades' })
   ] };
-  assert.deepEqual(E.pareceVarejo(cat), { parece:false, grupos:0 });
+  assert.deepEqual(E.pareceVarejo(cat), { parece:false, grupos:0, semEvidencia:false });
 });
 
 test('pareceVarejo: sistema de RH (funcionarios, folha, ferias, cargos) não parece', () => {
@@ -238,17 +238,17 @@ test('pareceVarejo: sistema de RH (funcionarios, folha, ferias, cargos) não par
     tab('cargos', ['id_cargo', 'ds_cargo', 'vlr_salario_base'], { papel:'cadastro', colunas:{}, chave:'id_cargo', amostra:true, descricao:'cargos e salário base' })
   ] };
   // "pagamento" da folha é um grupo só, e a folha não tem sinal de venda: avisa.
-  assert.deepEqual(E.pareceVarejo(cat), { parece:false, grupos:1 });
+  assert.deepEqual(E.pareceVarejo(cat), { parece:false, grupos:1, semEvidencia:false });
 });
 
 test('pareceVarejo: catálogo vazio ou sem sinal nenhum mas com poucas tabelas não quebra', () => {
   // Sem tabela nenhuma não há o que julgar: na dúvida, não avisa.
-  assert.deepEqual(E.pareceVarejo({ tables:[] }), { parece:true, grupos:0 });
-  assert.deepEqual(E.pareceVarejo(null), { parece:true, grupos:0 });
-  assert.deepEqual(E.pareceVarejo(undefined), { parece:true, grupos:0 });
+  assert.deepEqual(E.pareceVarejo({ tables:[] }), { parece:true, grupos:0, semEvidencia:true });
+  assert.deepEqual(E.pareceVarejo(null), { parece:true, grupos:0, semEvidencia:true });
+  assert.deepEqual(E.pareceVarejo(undefined), { parece:true, grupos:0, semEvidencia:true });
   // Poucas tabelas sem sinal e sem perfil: não quebra e segue a regra (nenhum grupo, nenhum movimento de venda).
   const r = E.pareceVarejo({ tables:[tab('t1', ['a', 'b']), { name:'t2' }] });
-  assert.deepEqual(r, { parece:false, grupos:0 });
+  assert.deepEqual(r, { parece:false, grupos:0, semEvidencia:false });
 });
 
 test('pareceVarejo: nomes colados em maiúsculas (TBPRODUTO, PRECOVENDA, CODCLI) parece', () => {
@@ -281,11 +281,11 @@ test('pareceVarejo: sem descrição em metade ou mais das tabelas não avisa (no
     tab('x1', ['a'], p('cadastro', 'pacientes')), tab('x2', ['a'], p('cadastro')),
     tab('x3', ['a'], p('parametro')), tab('x4', ['a'], p('vazia'))
   ] };
-  assert.deepEqual(E.pareceVarejo(metade), { parece:true, grupos:0 });
+  assert.deepEqual(E.pareceVarejo(metade), { parece:true, grupos:0, semEvidencia:true });
   const menos = { tables:[
     tab('x1', ['a'], p('cadastro', 'pacientes')), tab('x2', ['a'], p('cadastro', 'médicos')), tab('x3', ['a'], p('indefinida'))
   ] };
-  assert.deepEqual(E.pareceVarejo(menos), { parece:false, grupos:0 });
+  assert.deepEqual(E.pareceVarejo(menos), { parece:false, grupos:0, semEvidencia:false });
 });
 
 test('pareceVarejo: pedidos (orders e order_lines) contam como venda', () => {
@@ -295,7 +295,7 @@ test('pareceVarejo: pedidos (orders e order_lines) contam como venda', () => {
   ] };
   assert.equal(E.pareceVarejo(cat).parece, true);
   // Só a tabela de movimento de pedidos, sem sku: um grupo, mas movimento com sinal de venda.
-  assert.deepEqual(E.pareceVarejo({ tables:[cat.tables[0]] }), { parece:true, grupos:1 });
+  assert.deepEqual(E.pareceVarejo({ tables:[cat.tables[0]] }), { parece:true, grupos:1, semEvidencia:false });
 });
 
 test('comparar: entrada do documento sem perfil (atualização interrompida) entra em semDescricao', () => {
@@ -310,4 +310,64 @@ test('comparar: entrada do documento sem perfil (atualização interrompida) ent
 
 test('TEXTO_VAREJO é o texto combinado', () => {
   assert.equal(E.TEXTO_VAREJO, 'Este banco não parece ser de um ERP de varejo. A IA de Bolso foi feita para funcionar melhor com ERPs de varejo: ela vai tentar ajudar mesmo assim, mas pode errar mais.');
+});
+
+// VENDAS{ID,DT_VENDA,VALOR} virou {ID,VALOR,DATA}: o perfil guardado não pode continuar apontando para DT_VENDA.
+const docColunaSumiu = () => E.capturar({ tables:[
+  tab('VENDAS', ['ID', 'DT_VENDA', 'VALOR'], { papel:'movimento', colunas:{ data:'DT_VENDA', valor:'VALOR' }, chave:'ID', amostra:true, descricao:'vendas do dia' }),
+  tab('CAIXAS', ['NR_CAIXA', 'DS_CAIXA'], { papel:'cadastro', colunas:{}, chave:'NR_CAIXA', amostra:true, descricao:'caixas da loja' }),
+  tab('PRODUTOS', ['CD', 'DS'], { papel:'cadastro', colunas:{}, chave:'CD', amostra:true, descricao:'produtos' })
+] }, AGORA);
+const catColunaSumiu = () => ({ tables:[tab('vendas', ['id', 'valor', 'data']), tab('CAIXAS', ['DS_CAIXA']), tab('PRODUTOS', ['CD', 'DS'])] });
+
+test('aplicar tira coluna útil e chave que não existem mais e lista a tabela em perderam', () => {
+  const cat = catColunaSumiu();
+  const r = E.aplicar(cat, docColunaSumiu());
+  assert.deepEqual(r, { ok:true, desconhecidas:[], perderam:['vendas', 'CAIXAS'] });
+  // Sem caixa: VALOR e ID ficam, com a grafia atual; DT_VENDA sai.
+  assert.deepEqual(cat.tables[0].perfil.colunas, { valor:'valor' });
+  assert.equal(cat.tables[0].perfil.chave, 'id');
+  assert.equal(cat.tables[0].perfil.descricao, 'vendas do dia', 'a descrição fica');
+  assert.equal(cat.tables[1].perfil.chave, null, 'chave que sumiu sai');
+  assert.equal(cat.tables[2].perfil.chave, 'CD');
+  // Nada de DT_VENDA no que vai para o prompt.
+  assert.ok(!JSON.stringify(cat.tables.map(t => t.perfil)).includes('DT_VENDA'));
+});
+
+test('mesclar tira coluna útil e chave que sumiram; comparar marca a tabela em perfilPerdido', () => {
+  const doc = docColunaSumiu(), cat = catColunaSumiu();
+  const diff = E.comparar(cat, doc, null);
+  assert.deepEqual(diff.perfilPerdido, ['vendas', 'CAIXAS']);
+  assert.deepEqual(diff.sumiram.campos, [{ tabela:'vendas', campo:'DT_VENDA' }, { tabela:'CAIXAS', campo:'NR_CAIXA' }]);
+  const novo = E.mesclar(doc, cat, diff, AGORA);
+  assert.deepEqual(novo.tabelas.vendas, { papel:'movimento', colunas:{ valor:'valor' }, chave:'id', amostra:true,
+    descricao:'vendas do dia', campos:['id', 'valor', 'data'] });
+  assert.equal(novo.tabelas.CAIXAS.chave, null);
+  assert.equal(novo.tabelas.CAIXAS.descricao, 'caixas da loja');
+  assert.equal(novo.tabelas.PRODUTOS.chave, 'CD');
+  assert.ok(!JSON.stringify(novo).includes('DT_VENDA'));
+  assert.equal(doc.tabelas.VENDAS.colunas.data, 'DT_VENDA', 'não muta o documento antigo');
+  // Aplicado de volta, já não perde nada.
+  assert.deepEqual(E.aplicar(catColunaSumiu(), novo).perderam, []);
+  // Coluna útil só com outra caixa não é perda.
+  const so = E.comparar({ tables:[tab('vendas', ['id', 'dt_venda', 'valor']), tab('caixas', ['nr_caixa', 'ds_caixa']), tab('produtos', ['cd', 'ds'])] }, doc, null);
+  assert.deepEqual(so.perfilPerdido, []);
+  assert.equal(so.nadaMudou, true);
+});
+
+test('pareceVarejo: semEvidencia só quando falta descrição (veredito não é final)', () => {
+  const semDesc = { tables:[
+    tab('SB1010', ['B1_COD', 'B1_DESC'], { papel:'cadastro', colunas:{}, chave:null, amostra:true }),
+    tab('SC5010', ['C5_NUM', 'C5_EMISSAO'], { papel:'movimento', colunas:{}, chave:null, amostra:true })
+  ] };
+  const r = E.pareceVarejo(semDesc);
+  assert.equal(r.parece, true);
+  assert.equal(r.semEvidencia, true);
+  // Depois de descritas, há evidência e o veredito vale.
+  const desc = s => ({ descricao:s, descricaoTokens:Cat.tokens(s, true) });
+  Object.assign(semDesc.tables[0].perfil, desc('cadastro de pacientes da clínica'));
+  Object.assign(semDesc.tables[1].perfil, desc('consultas médicas agendadas'));
+  const r2 = E.pareceVarejo(semDesc);
+  assert.equal(r2.semEvidencia, false);
+  assert.equal(r2.parece, false);
 });
