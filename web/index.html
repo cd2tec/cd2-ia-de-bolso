@@ -341,6 +341,9 @@ body.com-notas .palco,body.com-notas footer{display:none}
 .notas__vazio{margin:auto;color:var(--ink-muted)}
 .notas__top .actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
 .notas__top [hidden],#importar [hidden]{display:none}
+/* tabelas do banco que o entendimento guardado ainda não conhece */
+.notas__aviso{margin:0;padding:var(--space-2) var(--space-6);border-left:4px solid var(--status-atencao);background:#fff4e0;font:500 13px/20px var(--font-sans)}
+.notas__aviso[hidden]{display:none}
 /* janela Importar: resumo, aviso laranja e a tabela com o antes riscado e o depois */
 #importar{width:min(620px,92vw)}
 #importar h2{margin-top:0}
@@ -488,6 +491,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
       <input type="file" id="nArquivo" accept=".json,application/json" hidden>
     </span>
   </div>
+  <p class="notas__aviso" id="nDesconhecidas" role="status" hidden></p>
   <div class="notas__corpo">
     <div class="notas__lista">
       <input type="text" id="nBusca" placeholder="🔎 Buscar tabela ou campo…" aria-label="Buscar tabela ou campo" spellcheck="false" autocomplete="off">
@@ -786,7 +790,8 @@ const USE_SCHEMA = true;
 const st = { cfg:{}, messages:[], provider:null, tools:[], busy:false, ctl:null, dbStatus:null,
   catalog:null, catalogPromise:null, catalogGen:0, suggestions:null,
   ctlKey:null, ctlUp:false, ctlStale:false, ctlStatus:null, ctlBusy:false, dbSenhaSalva:false,
-  notas:null, notasBanco:null, notasChave:null, notasErro:'' };
+  notas:null, notasBanco:null, notasChave:null, notasErro:'',
+  entendimento:null, entendimentoChave:null, entendimentoPronto:false, entendimentoDesconhecidas:[] };
 
 /* ---------- storage (best effort) ---------- */
 const store = {
@@ -839,7 +844,7 @@ async function connectTools(){
   const url = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
   const tok = store.get('cd2.tok', true) || '';
   st.catalog = null; st.suggestions = null; st.catalogPromise = null; st.descricao = null; st.catalogGen++;
-  st.notas = null; st.notasBanco = null; st.notasChave = null; fecharNotas(); syncBotaoNotas();
+  st.notas = null; st.notasBanco = null; st.notasChave = null; zerarEntendimento(); fecharNotas(); syncBotaoNotas();
   esconderFaixa();
   setPill('#pMcp', '', 'ferramentas…');
   try{
@@ -1082,17 +1087,20 @@ function esconderFaixa(){ clearTimeout(st.faixaTimer); $('#analise').hidden = tr
 // Ao conectar: amostra de cada tabela e papel (segundos), depois a descrição pelo modelo, uma
 // tabela por vez, pausando enquanto uma pergunta roda (st.busy). Tudo na memória da página; trocou
 // de banco (catalogGen mudou), o resultado antigo é descartado.
-async function analisarBanco(client, gen){
+// guardado: o documento que o GET /entendimento trouxe e não deu para aplicar (pode ser null); dele
+// só vale saber se o aviso de varejo já foi dado neste banco.
+const AVISO_BOTAO = ' O botão "Entendimento do banco" aparece quando terminar.';
+async function analisarBanco(client, gen, guardado){
   const cat = st.catalog, vivo = () => gen === st.catalogGen;
   if(!cat || !vivo()) return;
   const total = cat.tables.length;
-  faixa('Lendo as tabelas…', 0, total);
+  faixa('Lendo as tabelas…', 0, total, AVISO_BOTAO);
   // O prazo de cada amostra fica dentro de CD2Perfil.amostrar.
   const sample = async nome => {
     const r = await client.call('db_sample_table', { table_name:nome }).then(CD2Ask.parseRows, () => null);
     return r && r.ok ? r.rows : null;
   };
-  const amostras = await CD2Perfil.amostrar(cat, sample, { vivo, onProgresso:(n, t) => { if(vivo()) faixa('Lendo as tabelas…', n, t); } });
+  const amostras = await CD2Perfil.amostrar(cat, sample, { vivo, onProgresso:(n, t) => { if(vivo()) faixa('Lendo as tabelas…', n, t, AVISO_BOTAO); } });
   if(!vivo()) return;
   CD2Perfil.analisarCatalogo(cat, amostras);
   if(nt.aberta){ renderListaNotas(); atualizarIaNotas(); }
@@ -1101,11 +1109,53 @@ async function analisarBanco(client, gen){
   if($('#hero')) renderHero();
   const r = await CD2Descricao.executarFila({ catalog:cat, amostras, vivo, ocupado:() => st.busy,
     callModel:CD2Ask.modelCaller({ fetch:(...a) => fetch(...a), url:'/v1/chat/completions', useSchema:USE_SCHEMA, schema:CD2Descricao.SCHEMA, schemaName:'tabela', maxTokens:200 }),
-    onProgresso:(n, t) => { if(vivo()){ st.descricao = { feitos:n, total:t }; faixa('Entendendo as tabelas…', n, t, ' (dá para ir perguntando)'); atualizarIaNotas(); } } });
+    onProgresso:(n, t) => { if(vivo()){ st.descricao = { feitos:n, total:t }; faixa('Entendendo as tabelas…', n, t, ' (dá para ir perguntando).' + AVISO_BOTAO); atualizarIaNotas(); } } });
   if(!vivo()) return;
   if(st.descricao) st.descricao.feitos = st.descricao.total;
   atualizarIaNotas();
   faixa(r.parou === 'modelo' ? 'Tabelas lidas: ' + total + ' (o modelo não respondeu para descrevê-las)' : 'Banco entendido: ' + total + ' tabelas, ' + r.descritas + ' descritas pelo modelo', total, total, '', true);
+  await concluirEntendimento(cat, gen, guardado);
+}
+// Fim da primeira varredura (o modelo ter falhado também conta como completo): captura o entendimento,
+// verifica uma vez por banco se parece varejo, grava e libera o botão, mesmo que a gravação falhe.
+async function concluirEntendimento(cat, gen, guardado){
+  const doc = CD2Entendimento.capturar(cat, new Date());
+  const v = guardado && guardado.varejo;
+  if(v && typeof v === 'object' && v.verificado) doc.varejo = { ...v };
+  else{
+    const parece = CD2Entendimento.pareceVarejo(cat).parece;
+    doc.varejo = { verificado:true, parece };
+    if(!parece) addNote(CD2Entendimento.TEXTO_VAREJO);
+  }
+  const ok = await gravarEntendimento(doc);
+  if(gen !== st.catalogGen) return;
+  // Sem a chave da sessão do cd2-ctl não há onde guardar (nem notas): só fica na memória, sem aviso.
+  if(!ok){ st.entendimento = doc; if(st.ctlKey) addNote('Não consegui guardar o entendimento; ele vai ser refeito na próxima abertura.'); }
+  st.entendimentoDesconhecidas = [];
+  st.entendimentoPronto = true;
+  syncBotaoNotas();
+}
+// Entendimento guardado pelo cd2-ctl (documento separado das notas). Devolve {chave, dados} ou null.
+async function lerEntendimento(){
+  if(!st.ctlKey) return null;
+  let r = null;
+  try{ r = await ctlRequest('GET', '/entendimento', null, 5000); }catch(e){}
+  if(!r || r.status !== 200 || !r.data || !r.data.chave || !r.data.dados || typeof r.data.dados !== 'object') return null;
+  return { chave:r.data.chave, dados:r.data.dados };
+}
+// Grava o entendimento com a chave do banco lida no GET (409: o banco mudou, nada gravado).
+// Devolve true|false; só em sucesso st.entendimento passa a ser o documento gravado.
+async function gravarEntendimento(doc){
+  const gen = st.catalogGen, chave = st.entendimentoChave;
+  if(!st.ctlKey || !chave || !doc) return false;
+  let r;
+  try{ r = await ctlRequest('POST', '/entendimento', { chave, dados:doc }, 30000); }catch(e){ return false; }
+  if(gen !== st.catalogGen || chave !== st.entendimentoChave || r.status !== 200) return false;
+  st.entendimento = doc;
+  return true;
+}
+function zerarEntendimento(){
+  st.entendimento = null; st.entendimentoChave = null; st.entendimentoPronto = false; st.entendimentoDesconhecidas = [];
 }
 async function loadCatalog(client, gen){
   let cat = null, sug = null;
@@ -1117,8 +1167,25 @@ async function loadCatalog(client, gen){
   st.catalog = cat; st.suggestions = sug;
   if($('#hero')) renderHero();
   if(cat){
-    analisarBanco(client, gen).catch(() => { if(gen === st.catalogGen) esconderFaixa(); });
+    // Entendimento guardado: aplicado, não refaz a varredura e o botão já pode aparecer.
+    const lido = await lerEntendimento();
+    if(gen !== st.catalogGen) return;
+    if(lido) st.entendimentoChave = lido.chave;
+    const a = lido ? CD2Entendimento.aplicar(cat, lido.dados) : { ok:false, desconhecidas:[] };
+    if(a.ok){
+      st.entendimento = lido.dados; st.entendimentoDesconhecidas = a.desconhecidas;
+      st.descricao = { feitos:cat.tables.length, total:cat.tables.length };
+      st.suggestions = CD2Catalog.suggest(cat);
+      if($('#hero')) renderHero();
+      st.entendimentoPronto = true;
+    }else{
+      analisarBanco(client, gen, lido && lido.dados).catch(() => {
+        // Erro inesperado no meio da varredura: nada é gravado, mas o botão não fica preso escondido.
+        if(gen === st.catalogGen){ esconderFaixa(); st.entendimentoPronto = true; syncBotaoNotas(); }
+      });
+    }
     await carregarNotas();
+    if(gen === st.catalogGen) syncBotaoNotas();
   }
 }
 async function runAsk(pergunta){
@@ -1289,7 +1356,8 @@ const modoAtual = () => store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode)
 const podeSalvar = () => modoAtual() === 'toolbox' && st.provider !== demo && !!st.catalog && !!st.notas;
 function syncBotaoNotas(){
   const b = $('#bNotas'); if(!b) return;
-  b.hidden = !podeSalvar();
+  // O botão espera o entendimento completo; a barra das consultas salvas, não.
+  b.hidden = !(podeSalvar() && st.entendimentoPronto);
   syncSalvas();
 }
 // Estado da tela: tabela aberta, busca e o rascunho de todas as notas (copiado de st.notas ao abrir;
@@ -1308,7 +1376,7 @@ const notaTi = (texto, t) => { const x = CD2Notas.limpar(texto, CD2Notas.LIMITE.
 const temNota = (nome, t) => { const n = notaDe(nome); return !!(n && (notaTi(n.nota, t === undefined ? tabelaDe(nome) : t) || Object.values(n.campos || {}).some(v => String(v).trim()))); };
 const rotuloLista = t => temNota(t.name, t) ? '📝 nota da TI' : (iaDe(t) ? 'texto da IA' : 'sem descrição');
 function abrirNotas(){
-  if(!st.catalog || !st.notas) return;
+  if(!st.catalog || !st.notas || !st.entendimentoPronto) return;
   // Rascunho de outro banco (as notas foram relidas depois de um 409, já avisado na tela): começa de novo.
   if(nt.rascunho && nt.chave !== st.notasChave) nt.rascunho = null;
   if(!nt.rascunho){ nt.rascunho = copiaTabelas(st.notas); nt.chave = st.notasChave || ''; nt.sujo = false; nt.msg = ''; nt.erro = false; }
@@ -1333,6 +1401,10 @@ function renderNotas(){
   if(!nt.aberta) return;
   syncImportar();
   $('#nResumo').textContent = resumoNotas();
+  const n = st.entendimentoDesconhecidas.length, av = $('#nDesconhecidas');
+  av.hidden = !n;
+  av.textContent = !n ? '' : n === 1 ? 'O banco tem 1 tabela que o entendimento ainda não conhece. Clique em Atualizar com o banco.'
+    : 'O banco tem ' + n + ' tabelas que o entendimento ainda não conhece. Clique em Atualizar com o banco.';
   renderListaNotas(); renderDetalheNotas();
 }
 function renderListaNotas(){
@@ -2069,7 +2141,7 @@ async function disconnectDb(ev){
   let r = null;
   try{ r = await ctlRequest('DELETE', '/config'); }catch(e){ st.ctlUp = false; }
   st.ctlBusy = false;
-  if(r && r.status === 200){ st.ctlStatus = r.data; st.notas = null; st.notasBanco = null; st.notasChave = null; fecharNotas(); syncBotaoNotas(); }
+  if(r && r.status === 200){ st.ctlStatus = r.data; st.notas = null; st.notasBanco = null; st.notasChave = null; zerarEntendimento(); fecharNotas(); syncBotaoNotas(); }
   st.dbStatus = null;
   if((store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode)) === 'toolbox'){ st.tools = []; st.provider = null; setPill('#pMcp', 'err', 'sem banco'); }
   fillDbForm(null); renderToolbox();
