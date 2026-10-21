@@ -90,3 +90,14 @@ test('perfilHtml e printHtml: nome IA de Bolso, singular de linha, colunas útei
   assert.doesNotMatch(h, /DTANASCFUND|VLRALUGUEL/); assert.match(h, /data: DTAEMISSAO/);
   assert.match(R.printHtml({ pergunta:'p', titulo:'t', frase:'f', sql:'s', quando:'q', motor:'m' }), /Relatório gerado pela IA de Bolso/);
 });
+
+test('perfilHtml mostra a nota da TI da tabela e dos campos', () => {
+  const tabs = [{ name:'pedido', type:'TABLE', rows:10, nota:'Tabela oficial <de vendas>',
+    columns:[{ name:'status', nota:'S = cancelado & estornado' }, { name:'id' }],
+    perfil:{ papel:'movimento', colunas:{}, descricao:'Pedidos.' } }];
+  const h = R.perfilHtml(Object.assign({ tabelas:tabs }, BASE));
+  assert.ok(h.includes('Tabela oficial &lt;de vendas&gt;'));
+  assert.ok(h.includes('status') && h.includes('S = cancelado &amp; estornado'));
+  assert.ok(!h.includes('<de vendas>'));
+  assert.ok(!/\bid:/.test(h));
+});
