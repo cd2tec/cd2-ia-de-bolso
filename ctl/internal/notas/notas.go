@@ -20,6 +20,9 @@ const MaxDados = 1 << 20
 // ErrDados é o erro de Gravar quando o conteúdo não tem o formato esperado.
 var ErrDados = errors.New("notas: conteúdo inválido")
 
+// ErrCorrompido é o erro de Ler quando o arquivo gravado não tem o formato esperado.
+var ErrCorrompido = errors.New("notas: arquivo corrompido")
+
 // vazio é o que Ler devolve quando ainda não há arquivo.
 const vazio = `{"versao":1,"tabelas":{},"consultas":[]}`
 
@@ -78,7 +81,8 @@ func (s *Store) caminho(b Banco) string {
 	return filepath.Join(s.dir, "notas", Chave(b)+".json")
 }
 
-// Ler devolve o JSON gravado, ou o documento vazio se o banco ainda não tem notas.
+// Ler devolve o JSON gravado, ou o documento vazio se o banco ainda não tem notas. Um arquivo
+// que não passa na validação devolve ErrCorrompido (e fica onde está, para a TI recuperar).
 func (s *Store) Ler(b Banco) (json.RawMessage, error) {
 	raw, err := os.ReadFile(s.caminho(b))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -87,10 +91,13 @@ func (s *Store) Ler(b Banco) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
+	if validar(raw) != nil {
+		return nil, ErrCorrompido
+	}
 	return json.RawMessage(raw), nil
 }
 
-// Gravar valida o documento e troca o arquivo inteiro (tmp + rename).
+// Gravar valida o documento e troca o arquivo inteiro: temporário na mesma pasta, Sync e rename.
 func (s *Store) Gravar(b Banco, dados json.RawMessage) error {
 	if err := validar(dados); err != nil {
 		return err
@@ -99,11 +106,22 @@ func (s *Store) Gravar(b Banco, dados json.RawMessage) error {
 	if err := os.MkdirAll(filepath.Dir(arq), 0o700); err != nil {
 		return err
 	}
-	tmp := arq + ".tmp"
-	if err := os.WriteFile(tmp, dados, 0o600); err != nil {
+	f, err := os.CreateTemp(filepath.Dir(arq), Chave(b)+"-*.tmp")
+	if err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, arq); err != nil {
+	tmp := f.Name()
+	_, err = f.Write(dados)
+	if err == nil {
+		err = f.Sync()
+	}
+	if errFechar := f.Close(); err == nil {
+		err = errFechar
+	}
+	if err == nil {
+		err = os.Rename(tmp, arq)
+	}
+	if err != nil {
 		os.Remove(tmp)
 		return err
 	}

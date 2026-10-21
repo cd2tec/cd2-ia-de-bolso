@@ -43,14 +43,19 @@ func (s *server) notasLer(w http.ResponseWriter) {
 		return
 	}
 	dados, err := s.notas.Ler(b)
+	if errors.Is(err, notas.ErrCorrompido) {
+		fail(w, http.StatusInternalServerError, "O arquivo de notas deste banco está corrompido; nada foi apagado.")
+		return
+	}
 	if err != nil {
 		fail(w, http.StatusInternalServerError, "Não consegui ler as notas.")
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
 		Banco notas.Banco     `json:"banco"`
+		Chave string          `json:"chave"`
 		Dados json.RawMessage `json:"dados"`
-	}{b, dados})
+	}{b, notas.Chave(b), dados})
 }
 
 func (s *server) notasGravar(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +63,9 @@ func (s *server) notasGravar(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// a chave vem do GET /notas: garante que a gravação é para o banco que a tela leu
 	var in struct {
+		Chave string          `json:"chave"`
 		Dados json.RawMessage `json:"dados"`
 	}
 	// folga de 4 KB para o envelope {"dados": ...}
@@ -67,6 +74,14 @@ func (s *server) notasGravar(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(in.Dados) > notas.MaxDados {
 		fail(w, http.StatusRequestEntityTooLarge, "corpo: acima de 1 MB")
+		return
+	}
+	if in.Chave == "" {
+		fail(w, http.StatusBadRequest, "chave: obrigatória")
+		return
+	}
+	if in.Chave != notas.Chave(b) {
+		fail(w, http.StatusConflict, "O banco conectado mudou. Abra a tela de novo.")
 		return
 	}
 	err := s.notas.Gravar(b, in.Dados)

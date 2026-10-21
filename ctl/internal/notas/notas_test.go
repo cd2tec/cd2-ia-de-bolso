@@ -126,3 +126,47 @@ func TestGravarNaoTemSenha(t *testing.T) {
 		t.Error("usuário vazou para o arquivo")
 	}
 }
+
+func TestLerArquivoCorrompido(t *testing.T) {
+	dir := t.TempDir()
+	s := New(dir)
+	b := Banco{Motor: "postgres", Base: "erp"}
+	arq := filepath.Join(dir, "notas", Chave(b)+".json")
+	if err := os.MkdirAll(filepath.Dir(arq), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, ruim := range []string{`{"versao":1,"tabelas":{`, ``, `{"versao":1,"tabelas":[],"consultas":[]}`} {
+		if err := os.WriteFile(arq, []byte(ruim), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.Ler(b); !errors.Is(err, ErrCorrompido) {
+			t.Errorf("Ler(%q) err = %v, quero ErrCorrompido", ruim, err)
+		}
+	}
+	// o arquivo corrompido fica onde está
+	if raw, _ := os.ReadFile(arq); string(raw) != `{"versao":1,"tabelas":[],"consultas":[]}` {
+		t.Errorf("arquivo mexido: %s", raw)
+	}
+}
+
+func TestGravarNaoDeixaTemporario(t *testing.T) {
+	dir := t.TempDir()
+	s := New(dir)
+	b := Banco{Motor: "postgres", Base: "erp"}
+	for i := 0; i < 2; i++ {
+		if err := s.Gravar(b, []byte(vazio)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	itens, err := os.ReadDir(filepath.Join(dir, "notas"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(itens) != 1 || itens[0].Name() != Chave(b)+".json" {
+		var nomes []string
+		for _, it := range itens {
+			nomes = append(nomes, it.Name())
+		}
+		t.Errorf("pasta = %v, quero só o .json", nomes)
+	}
+}

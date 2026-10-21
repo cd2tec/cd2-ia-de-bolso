@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -29,7 +31,9 @@ func newNotas(t *testing.T, st control.Status, importar bool) http.Handler {
 
 var comBanco = control.Status{Estado: control.Rodando, Motor: "postgres", Host: "h", Porta: 5432, Base: "d", Usuario: "u"}
 
-const docOk = `{"dados":{"versao":1,"tabelas":{"vendas":{"nota":"oficial"}},"consultas":[]}}`
+var chaveOk = notas.Chave(notas.Banco{Motor: "postgres", Host: "h", Porta: 5432, Base: "d", Usuario: "u"})
+
+var docOk = `{"chave":"` + chaveOk + `","dados":{"versao":1,"tabelas":{"vendas":{"nota":"oficial"}},"consultas":[]}}`
 
 func TestNotasSemBanco(t *testing.T) {
 	h := newNotas(t, control.Status{}, false)
@@ -45,17 +49,17 @@ func TestNotasGravarELer(t *testing.T) {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 	w := do(h, "GET", "/notas", "", nil)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), `"motor":"postgres"`) || !strings.Contains(w.Body.String(), `"nota":"oficial"`) {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"motor":"postgres"`) || !strings.Contains(w.Body.String(), `"chave":"`+chaveOk+`"`) || !strings.Contains(w.Body.String(), `"nota":"oficial"`) {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 }
 
 func TestNotasInvalido(t *testing.T) {
 	h := newNotas(t, comBanco, false)
-	if w := do(h, "POST", "/notas", `{"dados":[]}`, nil); w.Code != 400 {
+	if w := do(h, "POST", "/notas", `{"chave":"`+chaveOk+`","dados":[]}`, nil); w.Code != 400 {
 		t.Errorf("dados inválidos: %d %s", w.Code, w.Body)
 	}
-	grande := `{"dados":{"versao":1,"tabelas":{},"consultas":[],"x":"` + strings.Repeat("a", notas.MaxDados) + `"}}`
+	grande := `{"chave":"` + chaveOk + `","dados":{"versao":1,"tabelas":{},"consultas":[],"x":"` + strings.Repeat("a", notas.MaxDados) + `"}}`
 	if w := do(h, "POST", "/notas", grande, nil); w.Code != 413 {
 		t.Errorf("grande: %d %s", w.Code, w.Body)
 	}
@@ -88,6 +92,47 @@ func TestImportarInstalada(t *testing.T) {
 func TestNotasDesligadas(t *testing.T) {
 	h, _ := newH()
 	if w := do(h, "GET", "/notas", "", nil); w.Code != 404 {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+}
+
+func TestNotasChave(t *testing.T) {
+	outro := notas.Chave(notas.Banco{Motor: "postgres", Host: "outro", Porta: 5432, Base: "d"})
+	semChave := `{"dados":{"versao":1,"tabelas":{"vendas":{"nota":"oficial"}},"consultas":[]}}`
+	deOutro := `{"chave":"` + outro + `","dados":{"versao":1,"tabelas":{"vendas":{"nota":"oficial"}},"consultas":[]}}`
+	for _, rota := range []string{"/notas", "/notas/importar"} {
+		h := newNotas(t, comBanco, true)
+		if w := do(h, "POST", rota, deOutro, nil); w.Code != 409 || erro(w) != "O banco conectado mudou. Abra a tela de novo." {
+			t.Errorf("%s chave de outro banco: %d %s", rota, w.Code, w.Body)
+		}
+		if w := do(h, "POST", rota, semChave, nil); w.Code != 400 {
+			t.Errorf("%s sem chave: %d %s", rota, w.Code, w.Body)
+		}
+		if g := do(h, "GET", "/notas", "", nil); strings.Contains(g.Body.String(), "oficial") {
+			t.Errorf("%s gravou sem a chave certa: %s", rota, g.Body)
+		}
+		if w := do(h, "POST", rota, docOk, nil); w.Code != 200 {
+			t.Errorf("%s chave certa: %d %s", rota, w.Code, w.Body)
+		}
+		if g := do(h, "GET", "/notas", "", nil); !strings.Contains(g.Body.String(), "oficial") {
+			t.Errorf("%s não gravou com a chave certa: %s", rota, g.Body)
+		}
+	}
+}
+
+func TestNotasArquivoCorrompido(t *testing.T) {
+	dir := t.TempDir()
+	b := &backendNotas{st: comBanco}
+	h := Handler(Options{Key: key, HarnessPort: 8080, CtlPort: 11080, Notas: notas.New(dir)}, b)
+	arq := filepath.Join(dir, "notas", chaveOk+".json")
+	if err := os.MkdirAll(filepath.Dir(arq), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(arq, []byte(`{"versao":1,`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	w := do(h, "GET", "/notas", "", nil)
+	if w.Code != 500 || erro(w) != "O arquivo de notas deste banco está corrompido; nada foi apagado." {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 }
