@@ -194,3 +194,44 @@ func TestEntendimentoDesligado(t *testing.T) {
 		t.Errorf("%d", w.Code)
 	}
 }
+
+// Arquivo do entendimento corrompido: o GET avisa (500) e a gravação seguinte sobrescreve com o documento novo.
+func TestEntendimentoArquivoCorrompido(t *testing.T) {
+	dir := t.TempDir()
+	h := Handler(Options{Key: key, HarnessPort: 8080, CtlPort: 11080, Entendimento: notas.NewEntendimento(dir)}, &backendNotas{st: comBanco})
+	arq := filepath.Join(dir, "entendimento", chaveOk+".json")
+	if err := os.MkdirAll(filepath.Dir(arq), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(arq, []byte(`{"versao":1,`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	w := do(h, "GET", "/entendimento", "", nil)
+	if w.Code != 500 || erro(w) != "O arquivo do entendimento deste banco está corrompido; nada foi apagado." {
+		t.Fatalf("GET corrompido: %d %s", w.Code, w.Body)
+	}
+	novo := `{"chave":"` + chaveOk + `","dados":{"versao":1,"completo":true,"tabelas":{"vendas":{"papel":"movimento","campos":[]}}}}`
+	if w := do(h, "POST", "/entendimento", novo, nil); w.Code != 200 {
+		t.Fatalf("POST por cima do corrompido: %d %s", w.Code, w.Body)
+	}
+	if g := do(h, "GET", "/entendimento", "", nil); g.Code != 200 || !strings.Contains(g.Body.String(), `"papel":"movimento"`) {
+		t.Errorf("GET depois de sobrescrever: %d %s", g.Code, g.Body)
+	}
+}
+
+// Falha de leitura que não é corrupção (o caminho do arquivo é uma pasta): frase inteira, sem emenda.
+func TestLerDocErroDeLeitura(t *testing.T) {
+	dir := t.TempDir()
+	h := Handler(Options{Key: key, HarnessPort: 8080, CtlPort: 11080, Notas: notas.New(dir), Entendimento: notas.NewEntendimento(dir)}, &backendNotas{st: comBanco})
+	for _, c := range []struct{ sub, rota, msg string }{
+		{"notas", "/notas", "Não consegui ler as notas."},
+		{"entendimento", "/entendimento", "Não consegui ler o entendimento."},
+	} {
+		if err := os.MkdirAll(filepath.Join(dir, c.sub, chaveOk+".json"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if w := do(h, "GET", c.rota, "", nil); w.Code != 500 || erro(w) != c.msg {
+			t.Errorf("%s: %d %s", c.rota, w.Code, w.Body)
+		}
+	}
+}

@@ -38,22 +38,23 @@ func (s *server) bancoAtual(w http.ResponseWriter) (notas.Banco, bool) {
 }
 
 func (s *server) notasLer(w http.ResponseWriter) {
-	s.lerDoc(w, s.notas, "notas")
+	s.lerDoc(w, s.notas, "O arquivo de notas deste banco está corrompido; nada foi apagado.", "Não consegui ler as notas.")
 }
 
-// lerDoc devolve {banco, chave, dados} do Store dado; "o que" entra nas mensagens de erro.
-func (s *server) lerDoc(w http.ResponseWriter, st *notas.Store, oQue string) {
+// lerDoc devolve {banco, chave, dados} do Store dado. As duas mensagens de erro vêm prontas de quem
+// chama (frases inteiras, para a gramática não depender de emenda).
+func (s *server) lerDoc(w http.ResponseWriter, st *notas.Store, msgCorrompido, msgErro string) {
 	b, ok := s.bancoAtual(w)
 	if !ok {
 		return
 	}
 	dados, err := st.Ler(b)
 	if errors.Is(err, notas.ErrCorrompido) {
-		fail(w, http.StatusInternalServerError, "O arquivo de "+oQue+" deste banco está corrompido; nada foi apagado.")
+		fail(w, http.StatusInternalServerError, msgCorrompido)
 		return
 	}
 	if err != nil {
-		fail(w, http.StatusInternalServerError, "Não consegui ler "+oQue+".")
+		fail(w, http.StatusInternalServerError, msgErro)
 		return
 	}
 	writeJSON(w, http.StatusOK, struct {
@@ -71,7 +72,7 @@ func (s *server) notasGravar(w http.ResponseWriter, r *http.Request) {
 func (s *server) entendimentoRota(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		s.lerDoc(w, s.entend, "o entendimento")
+		s.lerDoc(w, s.entend, "O arquivo do entendimento deste banco está corrompido; nada foi apagado.", "Não consegui ler o entendimento.")
 	case http.MethodPost:
 		s.gravarDoc(w, r, s.entend, "o entendimento", "16 MB")
 	default:
