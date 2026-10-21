@@ -50,10 +50,11 @@ function tamanho(ts){
   }
   return s;
 }
+// O chamador passa as tabelas ordenadas por pontuação, a maior primeiro (saída de rankTables).
 // Corte, da tabela menos relevante para a mais: 1) notas de campo (da última coluna para a primeira),
 // 2) descrição da IA de tabela com nota. A nota da tabela nunca sai. Não muta a entrada.
 function cortar(tabelas, max){
-  const out = tabelas.map(t => ({ ...t, columns:(t.columns || []).map(c => ({ ...c })), perfil:t.perfil ? { ...t.perfil } : t.perfil }));
+  const out = tabelas.map(t => { const o = { ...t, columns:(t.columns || []).map(c => ({ ...c })) }; if(t.perfil) o.perfil = { ...t.perfil }; return o; });
   let soma = tamanho(out);
   for(let i = out.length - 1; i >= 0 && soma > max; i--){
     const cols = out[i].columns;
@@ -68,15 +69,29 @@ function cortar(tabelas, max){
   return out;
 }
 
+const tem = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+// Atribui sem passar pelo setter de __proto__ (nome de tabela vindo de arquivo).
+function pôr(o, k, v){ Object.defineProperty(o, k, { value:v, enumerable:true, writable:true, configurable:true }); }
+const objeto = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+// Forma canônica e limpa: textos passam por limpar (teto e sem controle), entradas malformadas caem.
 function enxuto(dados){
   const tabelas = {};
   for(const [nome, n] of Object.entries(tabelasDe(dados))){
-    if(!n) continue;
-    const nota = txt(n.nota), campos = {};
-    for(const [c, v] of Object.entries(n.campos || {})) if(txt(v)) campos[c] = txt(v);
-    if(nota || Object.keys(campos).length) tabelas[nome] = { nota, campos };
+    if(!objeto(n)) continue;
+    const nota = limpar(typeof n.nota === 'string' ? n.nota : '', LIMITE.tabela), campos = {};
+    if(objeto(n.campos)) for(const [c, v] of Object.entries(n.campos)){
+      const t = limpar(typeof v === 'string' ? v : '', LIMITE.campo);
+      if(t) pôr(campos, c, t);
+    }
+    if(nota || Object.keys(campos).length) pôr(tabelas, nome, { nota, campos });
   }
-  return { versao:1, tabelas, consultas:consultasDe(dados).slice() };
+  const consultas = [];
+  for(const c of consultasDe(dados)){
+    if(!objeto(c) || typeof c.nome !== 'string' || typeof c.sql !== 'string') continue;
+    consultas.push({ ...c, params:Array.isArray(c.params) ? c.params.slice() : [] });
+  }
+  return { versao:1, tabelas, consultas };
 }
 
 function exportar(dados, banco, agora){
@@ -100,25 +115,27 @@ function mesmoBanco(a, b){
   return s(a.motor) === s(b.motor) && h(a) === h(b) && s(a.porta) === s(b.porta) && s(a.base) === s(b.base) && s(a.schema) === s(b.schema);
 }
 
-const chaveConsulta = c => String(c.nome == null ? '' : c.nome).trim().toLowerCase();
+const chaveConsulta = c => String(c.nome).trim().toLowerCase();
+const igualConsulta = (a, b) => ['sql', 'visual', 'x', 'y'].every(k => a[k] === b[k]) && JSON.stringify(a.params) === JSON.stringify(b.params);
 
 // Junta o que chega com o que existe. Só há conflito quando os dois lados têm texto e ele difere;
 // nesse caso o resultado fica com o que chega. Não muta as entradas.
 function planoImportacao(atual, chegando){
   const res = enxuto(atual);
   const tabelas = {};
-  for(const [k, v] of Object.entries(res.tabelas)) tabelas[k] = { nota:v.nota, campos:{ ...v.campos } };
+  for(const [k, v] of Object.entries(res.tabelas)) pôr(tabelas, k, { nota:v.nota, campos:{ ...v.campos } });
   const conflitos = [];
   const novas = { notas:0, consultas:0 };
   const cheg = enxuto(chegando);
   for(const [nome, n] of Object.entries(cheg.tabelas)){
-    const cur = tabelas[nome] || (tabelas[nome] = { nota:'', campos:{} });
+    if(!tem(tabelas, nome)) pôr(tabelas, nome, { nota:'', campos:{} });
+    const cur = tabelas[nome];
     if(n.nota){
       if(!cur.nota) { cur.nota = n.nota; novas.notas++; }
       else if(cur.nota !== n.nota){ conflitos.push({ tipo:'tabela', onde:nome, antes:cur.nota, depois:n.nota }); cur.nota = n.nota; }
     }
     for(const [c, v] of Object.entries(n.campos)){
-      if(!cur.campos[c]){ cur.campos[c] = v; novas.notas++; }
+      if(!tem(cur.campos, c)){ pôr(cur.campos, c, v); novas.notas++; }
       else if(cur.campos[c] !== v){ conflitos.push({ tipo:'campo', onde:`${nome}.${c}`, antes:cur.campos[c], depois:v }); cur.campos[c] = v; }
     }
   }
@@ -130,8 +147,9 @@ function planoImportacao(atual, chegando){
       if(id == null || consultas.some(x => x.id === id)) id = `${id == null ? 'q' : id}-${consultas.length + 1}`;
       consultas.push({ ...c, id });
       novas.consultas++;
-    } else if(consultas[i].sql !== c.sql){
-      conflitos.push({ tipo:'consulta', onde:String(consultas[i].nome), antes:consultas[i].sql, depois:c.sql });
+    } else if(!igualConsulta(consultas[i], c)){
+      const mesmoSql = consultas[i].sql === c.sql;
+      conflitos.push({ tipo:'consulta', onde:consultas[i].nome, antes:mesmoSql ? JSON.stringify(consultas[i].params) : consultas[i].sql, depois:mesmoSql ? JSON.stringify(c.params) : c.sql });
       consultas[i] = { ...c, id:consultas[i].id };
     }
   }

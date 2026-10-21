@@ -156,3 +156,47 @@ test('mesmoBanco ignora caixa do host', () => {
   assert.equal(N.mesmoBanco(a, { ...a, porta:1522 }), false);
   assert.equal(N.mesmoBanco(a, null), false);
 });
+
+test('lerArquivo limpa o texto importado: teto e sem quebra de linha', () => {
+  const j = { formato:'ia-de-bolso-notas', versao:1, banco:{}, dados:{ versao:1, consultas:[], tabelas:{ v:{ nota:'a'.repeat(50000), campos:{ c:('x\n').repeat(250) } } } } };
+  const r = N.lerArquivo(JSON.stringify(j));
+  assert.equal(r.dados.tabelas.v.nota.length, 300);
+  assert.equal(r.dados.tabelas.v.campos.c.length, 120);
+  assert.ok(!/[\n\r]/.test(r.dados.tabelas.v.campos.c));
+});
+
+test('arquivo malformado não estoura e perde só as entradas ruins', () => {
+  const j = { formato:'ia-de-bolso-notas', versao:1, banco:{}, dados:{ versao:1,
+    consultas:[null, 5, { nome:'ok', sql:'s', params:'x' }, { nome:1, sql:'s' }, { nome:'sem sql' }],
+    tabelas:{ a:null, b:'texto', c:{ nota:'n', campos:'abc' }, d:{ nota:7, campos:{ k:3 } } } } };
+  const r = N.lerArquivo(JSON.stringify(j));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.dados.consultas, [{ nome:'ok', sql:'s', params:[] }]);
+  assert.deepEqual(Object.keys(r.dados.tabelas), ['c']);
+  assert.deepEqual(r.dados.tabelas.c.campos, {});
+  assert.doesNotThrow(() => N.planoImportacao(r.dados, r.dados));
+  assert.doesNotThrow(() => N.planoImportacao(vazioDados(), { tabelas:{ x:null }, consultas:[null] }));
+});
+const vazioDados = () => N.vazio();
+
+test('planoImportacao: tabela com nome de propriedade herdada', () => {
+  const p = N.planoImportacao(N.vazio(), dd({ constructor:{ nota:'C', campos:{ toString:'T' } } }));
+  assert.equal(p.resultado.tabelas.constructor.nota, 'C');
+  assert.equal(p.resultado.tabelas.constructor.campos.toString, 'T');
+  assert.equal(p.novas.notas, 2);
+  const p2 = N.planoImportacao(p.resultado, dd({ constructor:{ nota:'D', campos:{} } }));
+  assert.equal(p2.conflitos.length, 1);
+});
+
+test('planoImportacao: mesma consulta com params diferentes é conflito', () => {
+  const a = q('1', 'Top', 'sql'), b = { ...q('2', 'Top', 'sql'), params:[{ nome:'d', tipo:'data', valor:'1' }] };
+  const p = N.planoImportacao(dd({}, [a]), dd({}, [b]));
+  assert.equal(p.conflitos.length, 1);
+  assert.equal(p.conflitos[0].tipo, 'consulta');
+  assert.deepEqual(p.resultado.consultas[0].params, b.params);
+});
+
+test('cortar não cria perfil em tabela sem perfil', () => {
+  const r = N.cortar([{ name:'a', nota:'x', columns:[{ name:'c', nota:'y' }] }], 1);
+  assert.ok(!('perfil' in r[0]));
+});
