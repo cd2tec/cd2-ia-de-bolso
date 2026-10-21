@@ -210,7 +210,8 @@ test('pareceVarejo: nomes em código ZAN_M45/ZAN_M43 com descrições de cupom e
   ] };
   // Sem as descrições, os nomes em código não dizem nada.
   const semDesc = { tables:cat.tables.map(t => tab(t.name, t.columns.map(c => c.name), { papel:t.perfil.papel, colunas:{}, chave:null, amostra:true })) };
-  assert.equal(E.pareceVarejo(semDesc).grupos, 0);
+  // Sem as descrições não há evidência nenhuma: não avisa.
+  assert.deepEqual(E.pareceVarejo(semDesc), { parece:true, grupos:0 });
   const r = E.pareceVarejo(cat);
   assert.equal(r.parece, true);
   assert.ok(r.grupos >= 3, String(r.grupos));
@@ -248,6 +249,63 @@ test('pareceVarejo: catálogo vazio ou sem sinal nenhum mas com poucas tabelas n
   // Poucas tabelas sem sinal e sem perfil: não quebra e segue a regra (nenhum grupo, nenhum movimento de venda).
   const r = E.pareceVarejo({ tables:[tab('t1', ['a', 'b']), { name:'t2' }] });
   assert.deepEqual(r, { parece:false, grupos:0 });
+});
+
+test('pareceVarejo: nomes colados em maiúsculas (TBPRODUTO, PRECOVENDA, CODCLI) parece', () => {
+  const p = (papel, descricao) => descricao ? { papel, colunas:{}, chave:null, amostra:true, descricao } : { papel, colunas:{}, chave:null, amostra:true };
+  // Com descrição em 3 de 4 (a regra de "sem evidência" não entra): quem decide são os pedaços dentro dos nomes.
+  const cat = { tables:[
+    tab('TBPRODUTO', ['CODPROD', 'DESCRICAO', 'PRECOVENDA'], p('cadastro', 'cadastro geral')),
+    tab('TBVENDA', ['NUMVENDA', 'DATA', 'TOTAL', 'CODCLI'], p('movimento', 'registro diário')),
+    tab('TBVENDAITEM', ['NUMVENDA', 'CODPROD', 'QTD', 'VALOR'], p('itens', 'linhas do registro')),
+    tab('TBCLIENTE', ['CODCLI', 'NOME'], p('cadastro'))
+  ] };
+  const r = E.pareceVarejo(cat);
+  assert.equal(r.parece, true);
+  assert.ok(r.grupos >= 3, String(r.grupos));
+  // Mesmo sem nenhuma descrição (caso do revisor), parece.
+  const sem = { tables:cat.tables.map(t => tab(t.name, t.columns.map(c => c.name), p(t.perfil.papel))) };
+  assert.equal(E.pareceVarejo(sem).parece, true);
+});
+
+test('pareceVarejo: sem descrição em metade ou mais das tabelas não avisa (nomes em código estilo SB1010)', () => {
+  const p = (papel, descricao) => descricao ? { papel, colunas:{}, chave:null, amostra:true, descricao } : { papel, colunas:{}, chave:null, amostra:true };
+  const cat = { tables:[
+    tab('SB1010', ['B1_FILIAL', 'B1_COD', 'B1_DESC', 'B1_TIPO'], p('cadastro')),
+    tab('SD2010', ['D2_DOC', 'D2_COD', 'D2_QUANT', 'D2_TOTAL', 'D2_EMISSAO'], p('itens')),
+    tab('SF2010', ['F2_DOC', 'F2_SERIE', 'F2_EMISSAO', 'F2_VALBRUT'], p('movimento'))
+  ] };
+  assert.equal(E.pareceVarejo(cat).parece, true);
+  // Metade exata também não avisa; menos da metade sem descrição volta à regra normal.
+  const metade = { tables:[
+    tab('x1', ['a'], p('cadastro', 'pacientes')), tab('x2', ['a'], p('cadastro')),
+    tab('x3', ['a'], p('parametro')), tab('x4', ['a'], p('vazia'))
+  ] };
+  assert.deepEqual(E.pareceVarejo(metade), { parece:true, grupos:0 });
+  const menos = { tables:[
+    tab('x1', ['a'], p('cadastro', 'pacientes')), tab('x2', ['a'], p('cadastro', 'médicos')), tab('x3', ['a'], p('indefinida'))
+  ] };
+  assert.deepEqual(E.pareceVarejo(menos), { parece:false, grupos:0 });
+});
+
+test('pareceVarejo: pedidos (orders e order_lines) contam como venda', () => {
+  const cat = { tables:[
+    tab('orders', ['order_id', 'order_date', 'amount'], { papel:'movimento', colunas:{}, chave:'order_id', amostra:true, descricao:'one row per order' }),
+    tab('order_lines', ['order_id', 'sku', 'qty'], { papel:'itens', colunas:{}, chave:null, amostra:true, descricao:'lines of each order' })
+  ] };
+  assert.equal(E.pareceVarejo(cat).parece, true);
+  // Só a tabela de movimento de pedidos, sem sku: um grupo, mas movimento com sinal de venda.
+  assert.deepEqual(E.pareceVarejo({ tables:[cat.tables[0]] }), { parece:true, grupos:1 });
+});
+
+test('comparar: entrada do documento sem perfil (atualização interrompida) entra em semDescricao', () => {
+  const doc = E.capturar({ tables:[tab('vendas', ['nr_cupom'], { papel:'movimento', colunas:{}, chave:null, amostra:true, descricao:'cupons' })] }, AGORA);
+  doc.tabelas.lojas = { campos:['cd_loja'] };
+  const cat = { tables:[tab('vendas', ['nr_cupom']), tab('lojas', ['cd_loja'])] };
+  const d = E.comparar(cat, doc, null);
+  assert.deepEqual(d.semDescricao, ['lojas']);
+  assert.deepEqual(d.novasTabelas, []);
+  assert.equal(d.nadaMudou, false);
 });
 
 test('TEXTO_VAREJO é o texto combinado', () => {

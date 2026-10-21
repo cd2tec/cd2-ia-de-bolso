@@ -77,6 +77,7 @@ function leTabela(sql, nome){
   const esc = String(nome).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp('(^|[^A-Za-z0-9_$#])' + esc + '([^A-Za-z0-9_$#]|$)', 'i').test(s);
 }
+const temDescricao = p => typeof p.descricao === 'string' && !!p.descricao.trim();
 const textoNota = v => (typeof v === 'string' ? v.trim() : '');
 
 function comparar(catalog, doc, notas){
@@ -93,7 +94,8 @@ function comparar(catalog, doc, notas){
     const setAntes = new Set(antes.map(baixo)), setAgora = new Set(agora.map(baixo));
     for(const c of agora) if(!setAntes.has(baixo(c))) novosCampos.push({ tabela:t.name, campo:c });
     for(const c of antes) if(!setAgora.has(baixo(c))) sumiram.campos.push({ tabela:t.name, campo:c });
-    if(PEDEM_DESCRICAO.has(e.papel) && !(typeof e.descricao === 'string' && e.descricao.trim())) semDescricao.push(t.name);
+    // Entrada sem perfil (tabela nova de uma atualização interrompida) também precisa ser entendida.
+    if((typeof e.papel !== 'string' || PEDEM_DESCRICAO.has(e.papel)) && !temDescricao(e)) semDescricao.push(t.name);
   }
   for(const [k, [nome]] of docTabs) if(!cat.has(k)) sumiram.tabelas.push(nome);
 
@@ -175,7 +177,7 @@ function mesclar(doc, catalog, diff, agora){
 // 'fornecedores' vira 'fornecedore' e 'operadores' vira 'operadore').
 const GRUPOS = [
   ['produto', 'product', 'item', 'ean', 'gtin', 'sku', 'mercadoria', 'prod', 'plu'],
-  ['venda', 'vendido', 'vendida', 'sale', 'cupom', 'coupon', 'pdv', 'nfc', 'nfce', 'receipt'],
+  ['venda', 'vendido', 'vendida', 'sale', 'cupom', 'coupon', 'pdv', 'nfc', 'nfce', 'receipt', 'pedido', 'order'],
   ['estoque', 'stock', 'inventory', 'inventario'],
   ['loja', 'filial', 'store', 'branch', 'shop'],
   ['cliente', 'customer', 'client', 'consumidor', 'fornecedor', 'fornecedore', 'supplier', 'vendor'],
@@ -183,30 +185,52 @@ const GRUPOS = [
   ['caixa', 'operador', 'operadore', 'finalizadora', 'pagamento', 'payment', 'cashier', 'tender', 'checkout']
 ].map(g => new Set(g));
 const VENDA = 1;
+// Pedaços de 4+ letras procurados DENTRO do token, para nomes colados (TBVENDAITEM, PRECOVENDA, CODPROD
+// vira cod+prod, que já bate inteiro). Só aumenta os grupos achados, ou seja, só empurra para "parece". Nada genérico demais aqui: 'prod' pegaria produção e
+// produtividade, 'finaliz' pegaria qualquer status finalizado.
+const PEDACOS = [
+  ['produt'],
+  ['vend', 'cupom', 'pedid', 'order'],
+  ['estoq'],
+  ['loja', 'filial'],
+  ['client', 'fornec'],
+  ['preco'],
+  ['caixa', 'pagament']
+];
 // "nota fiscal" só vale junto, no mesmo texto: "nota" sozinha é ambígua.
 function sinaisDe(texto){
   const tk = new Set(Cat.tokens(texto, true));
   if(tk.has('nota') && tk.has('fiscal')) tk.add('nfc');
   return tk;
 }
-const bate = (tk, g) => { for(const x of tk) if(g.has(x)) return true; return false; };
+function bate(tk, i){
+  for(const x of tk){
+    if(GRUPOS[i].has(x)) return true;
+    if(PEDACOS[i].some(p => x.includes(p))) return true;
+  }
+  return false;
+}
 
 // Conservador de propósito: avisar um varejo de verdade que ele não é varejo é o pior erro.
 // Só diz que não parece com no máximo 1 grupo e nenhuma tabela de movimento (ou itens) com sinal de venda.
+// Sem descrição da IA em metade ou mais das tabelas que deviam ter, não há evidência (nomes em código
+// só se revelam pela descrição): não avisa.
 function pareceVarejo(catalog){
   const tabs = tabelasDe(catalog);
   if(!tabs.length) return { parece:true, grupos:0 };
   const achados = new Set();
-  let movVenda = false;
+  let movVenda = false, pedem = 0, semDesc = 0;
   for(const t of tabs){
     const p = t.perfil || {};
+    if(PEDEM_DESCRICAO.has(p.papel)){ pedem++; if(!temDescricao(p)) semDesc++; }
     const textos = [t.name, ...camposDe(t), typeof p.descricao === 'string' ? p.descricao : ''];
     const tk = new Set();
     for(const s of textos) for(const x of sinaisDe(s)) tk.add(x);
-    GRUPOS.forEach((g, i) => { if(bate(tk, g)) achados.add(i); });
-    if((p.papel === 'movimento' || p.papel === 'itens') && bate(tk, GRUPOS[VENDA])) movVenda = true;
+    GRUPOS.forEach((g, i) => { if(bate(tk, i)) achados.add(i); });
+    if((p.papel === 'movimento' || p.papel === 'itens') && bate(tk, VENDA)) movVenda = true;
   }
   const grupos = achados.size;
+  if(pedem > 0 && semDesc * 2 >= pedem) return { parece:true, grupos };
   return { parece:!(grupos <= 1 && !movVenda), grupos };
 }
 
