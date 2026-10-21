@@ -25,6 +25,7 @@ import (
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/api"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/control"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/inst"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/notas"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/toolbox"
 )
 
@@ -107,7 +108,10 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	ctl.BootAsync()
 	instalacao := inst.New(*root, *cache)
 	srv := &http.Server{
-		Handler:           api.Handler(api.Options{Key: key, HarnessPort: *hport, CtlPort: ctlPort, Instalacao: instalacao}, ctl),
+		Handler: api.Handler(api.Options{Key: key, HarnessPort: *hport, CtlPort: ctlPort, Instalacao: instalacao,
+			Notas:        notas.New(*cache),
+			PodeImportar: func() bool { return instalacao.Info().Origem == "instalada" },
+		}, ctl),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	go func() { _ = srv.Serve(ln) }()
