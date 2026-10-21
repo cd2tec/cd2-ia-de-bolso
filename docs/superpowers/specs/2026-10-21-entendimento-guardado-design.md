@@ -93,6 +93,17 @@ Ao abrir, o catálogo vem do banco ao vivo, como hoje, e o entendimento guardado
 - **Bancos que já têm notas e nenhum entendimento** passam pelo fluxo de primeira vez, sem mexer nas notas.
 - **Versão:** sobe para 0.18.0 em todos os lugares que andam juntos.
 
+## Aviso de banco que não parece ERP de varejo (pedido dele)
+
+A IA de Bolso foi pensada para ERP de varejo. No fim do **primeiro** entendimento de um banco, a IA tenta reconhecer se é um ERP de varejo. Se não parecer, mostra **uma única vez** uma mensagem na conversa avisando que o banco não parece um ERP de varejo e que a IA de Bolso foi feita para funcionar melhor com ERP de varejo.
+
+Decisões minhas:
+
+- **Texto:** "Este banco não parece ser de um ERP de varejo. A IA de Bolso foi feita para funcionar melhor com ERPs de varejo: ela vai tentar ajudar mesmo assim, mas pode errar mais." Aparece como aviso na conversa, sem bloquear nada.
+- **Uma vez por banco:** o documento de entendimento guarda que a verificação já foi feita (com o resultado). Ela não roda de novo nas aberturas seguintes nem no "Atualizar com o banco". Se o entendimento não puder ser gravado e for refeito na próxima abertura, o aviso pode aparecer de novo; isso é aceito.
+- **Como reconhecer:** lógica determinística, sem chamada extra ao modelo, sobre nomes de tabelas, nomes de campos e **as descrições que o modelo já fez**. As descrições contam porque há ERPs de varejo com nomes de tabela em código (ex.: `XYZ_M45`), em que só a descrição revela "itens vendidos no cupom". A lógica procura grupos de sinais do varejo (produto/item/EAN/SKU; venda/cupom/PDV/NFC-e; estoque; loja/filial; cliente/fornecedor; preço/custo; caixa/operador/finalizadora/forma de pagamento), em português e inglês, e conta também se há tabela de papel `movimento`. Sem nome de ERP específico, como em [web/perfil.js](../../../web/perfil.js).
+- **Na dúvida, não avisa.** O aviso só aparece quando quase nenhum grupo de sinais aparece. Um aviso errado para um cliente que usa ERP de varejo é pior que deixar de avisar quem não usa. O limite exato fica com o construtor, com testes de catálogos de varejo (com nomes claros e com nomes em código mais descrições) que **não** podem gerar aviso, e de catálogos claramente de outro ramo (por exemplo um sistema de clínica ou de RH) que geram.
+
 ## O que fica com o construtor
 
 - Formato exato do documento e das rotas; reaproveitar o pacote `ctl/internal/notas` (Store por pasta) se fizer sentido.
