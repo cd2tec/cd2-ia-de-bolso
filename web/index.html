@@ -1299,7 +1299,14 @@ const MAX_ITENS_NOTAS = 300;
 const PAPEL_ROTULO = { movimento:'movimento', itens:'itens', cadastro:'cadastro', parametro:'parâmetro', vazia:'vazia', indefinida:'indefinida' };
 const copiaTabelas = d => JSON.parse(JSON.stringify((d && d.tabelas) || {}));
 const notaDe = (nome) => (Object.prototype.hasOwnProperty.call(nt.rascunho, nome) && nt.rascunho[nome]) || null;
-const temNota = nome => { const n = notaDe(nome); return !!(n && ((n.nota || '').trim() || Object.values(n.campos || {}).some(v => String(v).trim()))); };
+// Texto da IA como a caixa da nota mostra (cabe no limite da nota); é com ele que se compara "igual ao da IA".
+// (O trim final: o corte em 300 pode cair num espaço, e limpar do texto da caixa o tiraria.)
+const iaDe = t => CD2Notas.limpar(t && t.perfil && t.perfil.descricao, CD2Notas.LIMITE.tabela).trim();
+const tabelaDe = nome => st.catalog && st.catalog.tables.find(x => x.name === nome);
+// Nota da tabela que conta como da TI: não vazia e diferente do texto da IA.
+const notaTi = (texto, t) => { const x = CD2Notas.limpar(texto, CD2Notas.LIMITE.tabela); return x && x !== iaDe(t) ? x : ''; };
+const temNota = (nome, t) => { const n = notaDe(nome); return !!(n && (notaTi(n.nota, t === undefined ? tabelaDe(nome) : t) || Object.values(n.campos || {}).some(v => String(v).trim()))); };
+const rotuloLista = t => temNota(t.name, t) ? '📝 nota da TI' : (iaDe(t) ? 'texto da IA' : 'sem descrição');
 function abrirNotas(){
   if(!st.catalog || !st.notas) return;
   // Rascunho de outro banco (as notas foram relidas depois de um 409, já avisado na tela): começa de novo.
@@ -1318,7 +1325,7 @@ function fecharNotas(voltar){
 }
 function resumoNotas(){
   const s = st.dbStatus || {}, b = st.notasBanco || {};
-  const com = st.catalog.tables.filter(t => temNota(t.name)).length;
+  const com = st.catalog.tables.filter(t => temNota(t.name, t)).length;
   return [CD2Toolbox.engineLabel(s.engine || b.motor), (s.database || b.base) ? 'base ' + (s.database || b.base) : '',
     st.catalog.tables.length + ' tabelas, ' + com + ' com nota'].filter(Boolean).join(' · ');
 }
@@ -1340,7 +1347,7 @@ function renderListaNotas(){
     b.innerHTML = (papel ? '<span class="papel"></span>' : '') + '<b></b><span class="tem"></span>';
     if(papel) b.querySelector('.papel').textContent = papel;
     b.querySelector('b').textContent = t.name;
-    b.querySelector('.tem').textContent = temNota(t.name) ? '📝 tem nota' : 'sem nota';
+    b.querySelector('.tem').textContent = rotuloLista(t);
     b.onclick = () => { nt.sel = t.name; renderListaNotas(); renderDetalheNotas(); };
     box.appendChild(b);
   }
@@ -1360,15 +1367,25 @@ function textoIa(t){
   const naFila = !p.papel || (['movimento', 'itens', 'indefinida', 'cadastro'].includes(p.papel) && (!st.descricao || st.descricao.feitos < st.descricao.total));
   return naFila ? 'A IA ainda está lendo esta tabela.' : 'A IA não descreveu esta tabela.';
 }
-// A descrição chega em segundo plano: atualiza só o parágrafo, sem mexer nas caixas sendo editadas.
+// A descrição chega em segundo plano: atualiza o parágrafo e, se a caixa da nota ainda não foi mexida
+// e só tem nada ou o texto antigo da IA, troca pelo novo. O que a pessoa digitou nunca é sobrescrito.
 function atualizarIaNotas(){
   const p = nt.aberta && $('#nIa'), t = p && st.catalog && st.catalog.tables.find(x => x.name === nt.sel);
-  if(t) p.lastChild.textContent = textoIa(t);
+  if(!t) return;
+  p.lastChild.textContent = textoIa(t);
+  const ta = $('#nNotaTab'); if(!ta || ta.dataset.mexeu) return;
+  const novo = iaDe(t), atual = CD2Notas.limpar(ta.value, CD2Notas.LIMITE.tabela);
+  if(atual && atual !== ta.dataset.ia) return;
+  ta.dataset.ia = novo;
+  // Rascunho igual ao texto antigo da IA não era nota da TI; não deixa ele virar nota agora.
+  const r = notaDe(t.name); if(r && r.nota) r.nota = '';
+  if(atual !== novo){ ta.value = novo; ta.dispatchEvent(new Event('cd2:ia')); }
+  const it = document.querySelector('.notas__it[aria-current=true] .tem'); if(it) it.textContent = rotuloLista(t);
 }
 function marcarSujo(){
   nt.sujo = true; nt.msg = ''; nt.erro = false;
   const s = $('#nStatus'); if(s){ s.textContent = 'Alterações não salvas.'; }
-  const it = document.querySelector('.notas__it[aria-current=true] .tem'); if(it) it.textContent = temNota(nt.sel) ? '📝 tem nota' : 'sem nota';
+  const t = tabelaDe(nt.sel), it = document.querySelector('.notas__it[aria-current=true] .tem'); if(it && t) it.textContent = rotuloLista(t);
   $('#nResumo').textContent = resumoNotas();
 }
 function rascunhoDe(nome){
@@ -1390,12 +1407,17 @@ function renderDetalheNotas(){
   const ia = document.createElement('p'); ia.className = 'notas__ia'; ia.innerHTML = '<b>O que a IA entendeu:</b> ';
   ia.appendChild(document.createTextNode(textoIa(t))); ia.id = 'nIa'; det.appendChild(ia);
   const bloco = document.createElement('div');
-  bloco.innerHTML = '<label for="nNotaTab">Nota da TI sobre a tabela</label><textarea id="nNotaTab" rows="3" placeholder="O que a IA precisa saber sobre esta tabela? Ex.: esta é a tabela oficial de vendas."></textarea><div class="notas__conta" id="nConta" aria-live="polite"></div>';
-  const ta = bloco.querySelector('textarea'), conta = bloco.querySelector('#nConta');
-  ta.maxLength = L.tabela; ta.value = n.nota || '';
-  const contar = () => { conta.textContent = ta.value.length + '/' + L.tabela; };
+  bloco.innerHTML = '<label for="nNotaTab">Nota da TI sobre a tabela <span class="hint" id="nVeioIa">(veio da IA, corrija se precisar)</span></label><textarea id="nNotaTab" rows="3" placeholder="O que a IA precisa saber sobre esta tabela? Ex.: esta é a tabela oficial de vendas."></textarea><div class="notas__conta" id="nConta" aria-live="polite"></div>';
+  const ta = bloco.querySelector('textarea'), conta = bloco.querySelector('#nConta'), veio = bloco.querySelector('#nVeioIa');
+  // Sem nota da TI no rascunho, a caixa vem com o texto da IA (que só vira nota se for mudado).
+  ta.maxLength = L.tabela; ta.dataset.ia = iaDe(t); ta.value = notaTi(n.nota, t) ? n.nota : ta.dataset.ia;
+  const contar = () => {
+    conta.textContent = ta.value.length + '/' + L.tabela;
+    const x = CD2Notas.limpar(ta.value, L.tabela); veio.hidden = !(x && x === ta.dataset.ia);
+  };
   contar();
-  ta.addEventListener('input', () => { rascunhoDe(t.name).nota = ta.value; contar(); marcarSujo(); });
+  ta.addEventListener('input', () => { ta.dataset.mexeu = '1'; rascunhoDe(t.name).nota = ta.value; contar(); marcarSujo(); });
+  ta.addEventListener('cd2:ia', contar);
   det.appendChild(bloco);
   const tab = document.createElement('table'); tab.className = 'notas__campos';
   tab.innerHTML = '<thead><tr><th scope="col">Campo</th><th scope="col">Tipo</th><th scope="col">Nota da TI</th></tr></thead><tbody></tbody>';
@@ -1426,10 +1448,11 @@ function renderDetalheNotas(){
 // Erro: mensagem na tela e o texto digitado continua nas caixas.
 async function salvarTelaNotas(){
   const b = $('#nSalvar'); if(b) b.disabled = true;
-  const L = CD2Notas.LIMITE, tabelas = {};
+  const L = CD2Notas.LIMITE, tabelas = {}, porNome = new Map((st.catalog ? st.catalog.tables : []).map(t => [t.name, t]));
   for(const [nome, n] of Object.entries(nt.rascunho || {})){
     if(!n || typeof n !== 'object') continue;
-    const nota = CD2Notas.limpar(n.nota, L.tabela), campos = {};
+    // Vazio ou igual ao texto da IA: a tabela fica sem nota (as notas de campo continuam).
+    const nota = notaTi(n.nota, porNome.get(nome)), campos = {};
     for(const [c, v] of Object.entries(n.campos || {})){ const x = CD2Notas.limpar(v, L.campo); if(x) Object.defineProperty(campos, c, { value:x, enumerable:true, writable:true, configurable:true }); }
     if(nota || Object.keys(campos).length) Object.defineProperty(tabelas, nome, { value:{ nota, campos }, enumerable:true, writable:true, configurable:true });
   }
