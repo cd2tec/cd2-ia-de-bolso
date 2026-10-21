@@ -339,6 +339,26 @@ body.com-notas .palco,body.com-notas footer{display:none}
 .notas__acts{position:sticky;bottom:calc(-1 * var(--space-4));display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3);padding:var(--space-3) 0;background:var(--surface-raised)}
 .notas__acts .hint{margin:0}
 .notas__vazio{margin:auto;color:var(--ink-muted)}
+.notas__top .actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.notas__top [hidden],#importar [hidden]{display:none}
+/* janela Importar: resumo, aviso laranja e a tabela com o antes riscado e o depois */
+#importar{width:min(620px,92vw)}
+#importar h2{margin-top:0}
+.imp__soma{display:flex;gap:var(--space-3);margin:var(--space-3) 0}
+.imp__soma > div{flex:1;padding:var(--space-2);border-radius:var(--radius-sm);background:var(--surface-100);text-align:center;font:500 12px/18px var(--font-sans)}
+.imp__soma > div.sobre{background:#fff4e0}
+.imp__soma b{display:block;font:700 18px/24px var(--font-sans)}
+.imp__alerta{margin:var(--space-3) 0;padding:var(--space-3);border-left:4px solid var(--status-atencao);border-radius:var(--radius-sm);background:#fff4e0;font:400 13px/20px var(--font-sans)}
+.imp__erro{margin:var(--space-3) 0;font:500 14px/22px var(--font-sans)}
+.imp__tab{border-collapse:collapse;width:100%;font-size:13px}
+.imp__tab th{text-align:left;font:700 11px/16px var(--font-sans);text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted)}
+.imp__tab th,.imp__tab td{padding:var(--space-2) var(--space-1);border-bottom:1px solid rgba(13,18,51,.08);vertical-align:top;overflow-wrap:anywhere}
+.imp__tab td:first-child{width:38%}
+.imp__tab .sub{display:block;color:var(--ink-muted);font-size:12px}
+.imp__tab .antes{display:block;color:var(--ink-muted);text-decoration:line-through}
+.imp__tab .sql{white-space:pre-wrap;font:400 12px/18px var(--font-mono)}
+button.aviso{background:var(--status-atencao);border-color:var(--status-atencao);color:var(--status-ink-escuro)}
+button.aviso:hover{background:#e68a00;border-color:#e68a00}
 @media (max-width:640px){
   .notas__top{padding:var(--space-3) var(--space-4)}
   .notas__corpo{flex-direction:column}
@@ -462,7 +482,11 @@ body.com-notas .palco,body.com-notas footer{display:none}
     <h2 id="nTitulo" tabindex="-1">Entendimento do banco</h2>
     <span class="spacer"></span>
     <span class="resumo" id="nResumo"></span>
-    <span class="actions" id="nAcoes"></span>
+    <span class="actions" id="nAcoes">
+      <button class="sm" id="nExportar">Exportar</button>
+      <button class="sm" id="nImportar" hidden>Importar</button>
+      <input type="file" id="nArquivo" accept=".json,application/json" hidden>
+    </span>
   </div>
   <div class="notas__corpo">
     <div class="notas__lista">
@@ -709,22 +733,49 @@ body.com-notas .palco,body.com-notas footer{display:none}
   </div>
 </dialog>
 
+<dialog id="importar" aria-labelledby="impTitulo">
+  <h2 id="impTitulo">Importar notas e consultas</h2>
+  <div class="imp__alerta" id="impBanco" hidden></div>
+  <p class="imp__erro" id="impErro" hidden></p>
+  <div id="impResumo" hidden>
+    <div class="hint" id="impOrigem"></div>
+    <div class="imp__soma">
+      <div><b id="impNotas"></b>notas novas</div>
+      <div><b id="impConsultas"></b>consultas novas</div>
+      <div class="sobre"><b id="impSobre"></b>vão ser sobrescritas</div>
+    </div>
+    <div id="impConflitos">
+      <div class="imp__alerta"><b>Atenção:</b> estes itens já existem aqui e vão ser <b>apagados e substituídos</b> pelo que vem no arquivo. Não dá para desfazer.</div>
+      <table class="imp__tab">
+        <thead><tr><th scope="col">Onde</th><th scope="col">Fica assim</th></tr></thead>
+        <tbody id="impLinhas"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="impSujo" hidden>As alterações não salvas nesta tela vão ser descartadas.</p>
+  </div>
+  <div class="row">
+    <span class="status hint" id="impMsg" role="alert"></span>
+    <button id="impCancelar">Cancelar</button>
+    <button class="primary" id="impOk">Importar</button>
+  </div>
+</dialog>
+
 <div id="printArea" aria-hidden="true"></div>
-<script src="mcp.js?v=0.16.0"></script>
-<script src="oauth.js?v=0.16.0"></script>
-<script src="toolbox.js?v=0.16.0"></script>
-<script src="chart.js?v=0.16.0"></script>
-<script src="catalog.js?v=0.16.0"></script>
-<script src="perfil.js?v=0.16.0"></script>
-<script src="descricao.js?v=0.16.0"></script>
-<script src="notas.js?v=0.16.0"></script>
-<script src="consultas.js?v=0.16.0"></script>
-<script src="ask.js?v=0.16.0"></script>
-<script src="report.js?v=0.16.0"></script>
-<script src="demo.js?v=0.16.0"></script>
-<script src="momento.js?v=0.16.0"></script>
-<script src="sono.js?v=0.16.0"></script>
-<script src="instalar.js?v=0.16.0"></script>
+<script src="mcp.js?v=0.17.0"></script>
+<script src="oauth.js?v=0.17.0"></script>
+<script src="toolbox.js?v=0.17.0"></script>
+<script src="chart.js?v=0.17.0"></script>
+<script src="catalog.js?v=0.17.0"></script>
+<script src="perfil.js?v=0.17.0"></script>
+<script src="descricao.js?v=0.17.0"></script>
+<script src="notas.js?v=0.17.0"></script>
+<script src="consultas.js?v=0.17.0"></script>
+<script src="ask.js?v=0.17.0"></script>
+<script src="report.js?v=0.17.0"></script>
+<script src="demo.js?v=0.17.0"></script>
+<script src="momento.js?v=0.17.0"></script>
+<script src="sono.js?v=0.17.0"></script>
+<script src="instalar.js?v=0.17.0"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -1140,9 +1191,10 @@ function renderAnswer(body, pergunta, r, o){
   acts.appendChild(bCsv); acts.appendChild(bPdf); card.appendChild(acts);
   body.appendChild(card); scrollDown();
 }
-function downloadCsv(r){
-  const url = URL.createObjectURL(new Blob([CD2Report.toCsv(r.colunas, r.todas)], { type:'text/csv;charset=utf-8' }));
-  const a = document.createElement('a'); a.href = url; a.download = CD2Report.fileName(new Date());
+function downloadCsv(r){ baixarArquivo(CD2Report.fileName(new Date()), CD2Report.toCsv(r.colunas, r.todas), 'text/csv;charset=utf-8'); }
+function baixarArquivo(nome, conteudo, tipo){
+  const url = URL.createObjectURL(new Blob([conteudo], { type:tipo }));
+  const a = document.createElement('a'); a.href = url; a.download = nome;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -1178,19 +1230,36 @@ async function carregarNotas(){
 }
 // Grava as notas (padrão: st.notas) e reaplica no catálogo. Devolve true|false; o motivo da falha
 // fica em st.notasErro para a tela que chamou mostrar. Em falha st.notas não muda.
-async function salvarNotas(dados){
+// rota: '/notas' (padrão) ou '/notas/importar', que o cd2-ctl só aceita na versão instalada.
+// Não chame direto: passe pela fila (gravarNotas), senão uma gravação pode apagar a outra.
+async function salvarNotas(dados, rota){
   dados = dados || st.notas;
   const gen = st.catalogGen;
   st.notasErro = '';
   if(!dados){ st.notasErro = 'As notas deste banco não foram carregadas.'; return false; }
   let r;
-  try{ r = await ctlRequest('POST', '/notas', { dados }); }
+  try{ r = await ctlRequest('POST', rota || '/notas', { dados }); }
   catch(e){ st.notasErro = 'O controle do banco não respondeu. Feche e abra a IA de Bolso pelo atalho INICIAR.'; return false; }
   if(r.status !== 200){ st.notasErro = (r.data && r.data.erro) || ('O controle do banco respondeu HTTP ' + r.status + '.'); return false; }
   if(gen !== st.catalogGen){ st.notasErro = 'O banco mudou enquanto salvava.'; return false; }
   st.notas = dados;
   if(st.catalog) CD2Notas.aplicar(st.catalog, st.notas);
   return true;
+}
+// Fila única do documento de notas: a tela de notas, as consultas salvas e a importação gravam o
+// mesmo documento. Cada alteração parte do st.notas da vez dela (mudar(atual) devolve o documento
+// novo), então duas seguidas não se atropelam. Trocou de banco no meio, não grava (era do anterior).
+function gravarNotas(mudar, rota){
+  const gen = st.catalogGen;
+  const vez = (st.filaNotas || Promise.resolve()).then(async () => {
+    if(gen !== st.catalogGen){ st.notasErro = 'O banco mudou.'; return false; }
+    if(!st.notas){ st.notasErro = 'As notas deste banco não foram carregadas.'; return false; }
+    const ok = await salvarNotas(mudar(st.notas), rota);
+    renderSalvas();
+    return ok;
+  });
+  st.filaNotas = vez.catch(() => false);
+  return vez;
 }
 const modoAtual = () => store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
 // Botão (e a barra das consultas salvas) só com banco conectado, catálogo pronto, notas lidas e fora da Demonstração.
@@ -1230,6 +1299,7 @@ function resumoNotas(){
 }
 function renderNotas(){
   if(!nt.aberta) return;
+  syncImportar();
   $('#nResumo').textContent = resumoNotas();
   renderListaNotas(); renderDetalheNotas();
 }
@@ -1338,8 +1408,7 @@ async function salvarTelaNotas(){
     for(const [c, v] of Object.entries(n.campos || {})){ const x = CD2Notas.limpar(v, L.campo); if(x) Object.defineProperty(campos, c, { value:x, enumerable:true, writable:true, configurable:true }); }
     if(nota || Object.keys(campos).length) Object.defineProperty(tabelas, nome, { value:{ nota, campos }, enumerable:true, writable:true, configurable:true });
   }
-  const dados = Object.assign({}, st.notas, { versao:1, tabelas });
-  const ok = await salvarNotas(dados);
+  const ok = await gravarNotas(atual => Object.assign({}, atual, { versao:1, tabelas }));
   if(ok && nt.rascunho){ nt.rascunho = copiaTabelas(st.notas); nt.sujo = false; nt.erro = false; nt.msg = 'Salvo neste computador'; }
   if(!nt.aberta) return;
   if(ok) renderNotas();
@@ -1348,6 +1417,95 @@ async function salvarTelaNotas(){
     const s = $('#nStatus'); if(s){ s.innerHTML = '<span class="tag tag--atencao">Atenção</span> '; s.appendChild(document.createTextNode(nt.msg)); }
     if(b) b.disabled = false;
   }
+}
+/* ---------- exportar e importar notas e consultas salvas ---------- */
+// Exportar existe sempre (no pen drive é o jeito de não perder o trabalho); importar, só na versão
+// instalada: levar o trabalho para outro computador pede a versão instalada (o cd2-ctl também barra).
+const MAX_ARQUIVO_NOTAS = 5 * 1024 * 1024;
+const imp = { dados:null, banco:null, exportado:'', gen:0, etapa:'' };
+const CONFLITO_ROTULO = { tabela:'nota da tabela', campo:'nota do campo', consulta:'consulta salva' };
+function syncImportar(){
+  const b = $('#nImportar'); if(b) b.hidden = !(inst.status && inst.status.origem === 'instalada');
+}
+function exportarNotas(){
+  if(!st.notas) return;
+  const a = CD2Notas.exportar(st.notas, st.notasBanco, new Date());
+  baixarArquivo(a.nome, a.conteudo, 'application/json');
+}
+function bancoTexto(b){
+  return b ? [b.motor ? CD2Toolbox.engineLabel(b.motor) : '', b.base || ''].filter(Boolean).join(' ') : '';
+}
+function escolherArquivoNotas(){
+  if(!(inst.status && inst.status.origem === 'instalada') || !st.notas) return;
+  const f = $('#nArquivo'); f.value = ''; f.click();
+}
+async function lerArquivoNotas(){
+  const f = $('#nArquivo').files[0];
+  if(!f) return;
+  imp.dados = null; imp.exportado = ''; imp.gen = st.catalogGen;
+  let r;
+  if(f.size > MAX_ARQUIVO_NOTAS) r = CD2Notas.lerArquivo('');
+  else{
+    let texto = '';
+    try{ texto = await f.text(); }catch(e){}
+    r = CD2Notas.lerArquivo(texto);
+    if(r.ok){ try{ const d = new Date(JSON.parse(texto).exportado); imp.exportado = isNaN(d) ? '' : d.toLocaleDateString('pt-BR'); }catch(e){ imp.exportado = ''; } }
+  }
+  if(imp.gen !== st.catalogGen || !st.notas) return;
+  if(!r.ok) return etapaImportar('erro', r.erro);
+  imp.dados = r.dados; imp.banco = r.banco;
+  etapaImportar(CD2Notas.mesmoBanco(r.banco, st.notasBanco) ? 'resumo' : 'banco');
+}
+// Uma janela, três etapas: 'erro' (arquivo estragado), 'banco' (é de outro banco) e 'resumo'.
+function etapaImportar(etapa, erro){
+  imp.etapa = etapa;
+  const ok = $('#impOk');
+  $('#impErro').hidden = etapa !== 'erro'; $('#impBanco').hidden = etapa !== 'banco'; $('#impResumo').hidden = etapa !== 'resumo';
+  $('#impMsg').textContent = ''; ok.disabled = false; ok.hidden = etapa === 'erro';
+  $('#impCancelar').textContent = etapa === 'erro' ? 'Fechar' : 'Cancelar';
+  if(etapa === 'erro') $('#impErro').textContent = erro;
+  else if(etapa === 'banco'){
+    $('#impBanco').textContent = 'Este arquivo é de outro banco (' + (bancoTexto(imp.banco) || 'banco não informado') + '). As tabelas podem não bater.';
+    ok.textContent = 'Continuar'; ok.className = 'primary';
+  } else renderResumoImportar();
+  const d = $('#importar'); if(!d.open) d.showModal();
+  (etapa === 'erro' ? $('#impCancelar') : ok).focus();
+}
+function renderResumoImportar(){
+  const p = CD2Notas.planoImportacao(st.notas, imp.dados), n = p.conflitos.length, ok = $('#impOk');
+  $('#impOrigem').textContent = [imp.exportado ? 'Arquivo exportado em ' + imp.exportado : 'Arquivo exportado pela IA de Bolso',
+    bancoTexto(imp.banco) ? 'banco ' + bancoTexto(imp.banco) : ''].filter(Boolean).join(' · ');
+  $('#impNotas').textContent = p.novas.notas; $('#impConsultas').textContent = p.novas.consultas; $('#impSobre').textContent = n;
+  $('#impConflitos').hidden = !n;
+  const tb = $('#impLinhas'); tb.textContent = '';
+  for(const c of p.conflitos){
+    const tr = document.createElement('tr'), onde = document.createElement('td'), fica = document.createElement('td');
+    onde.textContent = c.onde;
+    const sub = document.createElement('span'); sub.className = 'sub'; sub.textContent = CONFLITO_ROTULO[c.tipo] || ''; onde.appendChild(sub);
+    const antes = document.createElement('span'), depois = document.createElement('span');
+    antes.className = 'antes'; antes.textContent = c.antes; depois.textContent = c.depois;
+    if(c.tipo === 'consulta'){ antes.classList.add('sql'); depois.className = 'sql'; }
+    fica.appendChild(antes); fica.appendChild(depois);
+    tr.appendChild(onde); tr.appendChild(fica); tb.appendChild(tr);
+  }
+  $('#impSujo').hidden = !nt.sujo;
+  ok.textContent = n ? 'Sobrescrever e importar' : 'Importar'; ok.className = n ? 'aviso' : 'primary';
+}
+// Junta pela fila no st.notas da vez (o plano é refeito lá) e manda para /notas/importar.
+// Deu certo: o rascunho da tela é refeito do que foi gravado, para não regravar as notas antigas.
+async function confirmarImportar(){
+  if(imp.etapa === 'banco') return etapaImportar('resumo');
+  if(imp.etapa !== 'resumo' || !imp.dados) return;
+  const ok = $('#impOk'), msg = $('#impMsg');
+  if(imp.gen !== st.catalogGen) return mostrarErro(msg, 'O banco mudou. Feche e importe de novo.');
+  const dados = imp.dados;
+  ok.disabled = true;
+  const feito = await gravarNotas(atual => CD2Notas.planoImportacao(atual, dados).resultado, '/notas/importar');
+  ok.disabled = false;
+  if(!feito) return mostrarErro(msg, 'Não deu para importar: ' + st.notasErro);
+  $('#importar').close(); imp.dados = null;
+  nt.rascunho = nt.rascunho ? copiaTabelas(st.notas) : null; nt.sujo = false; nt.erro = false; nt.msg = 'Importado neste computador';
+  syncBotaoNotas(); renderNotas();
 }
 /* ---------- consultas salvas (web/consultas.js): 👍, barra lateral e rodar de novo sem o modelo ---------- */
 // Ficam em st.notas.consultas, gravadas pelo cd2-ctl junto com as notas do banco conectado.
@@ -1366,20 +1524,8 @@ function mostrarErro(el, texto){
   el.textContent = ''; if(!texto) return;
   el.innerHTML = '<span class="tag tag--atencao">Atenção</span> '; el.appendChild(document.createTextNode(texto));
 }
-// Grava em fila: cada alteração parte do st.notas da vez dela, então duas seguidas não se atropelam.
-// Trocou de banco no meio, não grava (a alteração era do banco anterior).
-function gravarConsultas(mudar){
-  const gen = st.catalogGen;
-  const vez = (st.filaConsultas || Promise.resolve()).then(async () => {
-    if(gen !== st.catalogGen){ st.notasErro = 'O banco mudou.'; return false; }
-    if(!st.notas){ st.notasErro = 'As notas deste banco não foram carregadas.'; return false; }
-    const ok = await salvarNotas(Object.assign({}, st.notas, { consultas:mudar(consultasSalvas().slice()) }));
-    renderSalvas();
-    return ok;
-  });
-  st.filaConsultas = vez.catch(() => false);
-  return vez;
-}
+// Mexe só na lista de consultas, pela mesma fila das notas (gravarNotas).
+const gravarConsultas = mudar => gravarNotas(atual => Object.assign({}, atual, { consultas:mudar(consultasSalvas().slice()) }));
 
 /* barra lateral */
 function syncSalvas(){
@@ -1946,7 +2092,7 @@ function instPerguntas(){ $('#iPago').hidden = !inst.pago; instTela('perguntas')
 async function abrirInstalar(){
   const r = await instPedir('GET', '/instalacao');
   if(!r || r.status !== 200) return instErro(instMsg(r));
-  inst.status = r.data;
+  inst.status = r.data; syncImportar();
   const p = await instPedir('GET', '/instalacao/progresso');
   if(p && p.status === 200 && p.data.fase === 'copiando'){ inst.medidor = null; instMostrarProgresso(p.data); instTela('instalando'); return instAcompanhar(); }
   if(p && p.status === 200 && p.data.fase === 'pronta') return instPronto(p.data);
@@ -2051,7 +2197,7 @@ async function iniciarInstalacao(){
   }
   const r = await instPedir('GET', '/instalacao');
   if(r && r.status === 200){
-    inst.status = r.data;
+    inst.status = r.data; syncImportar();
     const mostra = !!CD2Instalar.telaInicial(r.data);
     $('#pPendrive').hidden = !mostra; $('#bInstalar').hidden = !mostra;
     // Só a IA do pen drive escuta a chave que volta do pagamento noutra aba.
@@ -2136,6 +2282,12 @@ $('#bNew').onclick = newChat;
 $('#bNotas').onclick = abrirNotas;
 $('#nVoltar').onclick = () => fecharNotas(true);
 $('#nBusca').addEventListener('input', renderListaNotas);
+$('#nExportar').onclick = exportarNotas;
+$('#nImportar').onclick = escolherArquivoNotas;
+$('#nArquivo').addEventListener('change', lerArquivoNotas);
+$('#impCancelar').onclick = () => $('#importar').close();
+$('#impOk').onclick = confirmarImportar;
+$('#importar').addEventListener('close', () => { imp.dados = null; imp.etapa = ''; });
 $('#sBusca').addEventListener('input', renderSalvas);
 $('#sMostrar').onclick = () => { const a = $('#salvas'), on = !a.classList.contains('aberta'); a.classList.toggle('aberta', on); $('#sMostrar').setAttribute('aria-expanded', String(on)); $('#sMostrar').textContent = on ? 'Esconder' : 'Mostrar'; };
 $('#svCancelar').onclick = () => $('#salvar').close();
