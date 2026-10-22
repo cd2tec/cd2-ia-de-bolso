@@ -251,8 +251,8 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
       <p class="hero__nota">Grátis. Você só precisa de um pen drive de 16 GB.</p>
     </div>
     <figure class="hero__shot">
-      <img class="tema-claro" src="assets/telas/conversa-claro.webp" width="2560" height="2048" alt="Tela da IA de Bolso no tema claro: à esquerda a barra Consultas salvas; no meio, a consulta salva &quot;Valor total por cliente&quot; vira um gráfico de barras com o total de cada cliente, tirado de um banco Oracle, com a consulta usada e os botões Salva, CSV e Imprimir/PDF. Na faixa das guias, à direita, o botão Reiniciar conversa.">
-      <img class="tema-escuro" src="assets/telas/conversa-escuro.webp" width="2560" height="2048" alt="A mesma tela da IA de Bolso no tema escuro: barra Consultas salvas à esquerda e o gráfico de barras do total por cliente, em azul claro sobre fundo cinza escuro.">
+      <img class="tema-claro" src="assets/telas/conversa-claro.webp" width="2560" height="2048" alt="Tela da IA de Bolso no tema claro: à esquerda a barra Consultas salvas; no meio, a pergunta &quot;Total por mês em fi titulo&quot; vira um gráfico de linha com o total de cada mês, tirado de um banco Oracle, com a consulta usada e os botões Salvar consulta, CSV e Imprimir/PDF. Na faixa das guias, à direita, o botão Reiniciar conversa.">
+      <img class="tema-escuro" src="assets/telas/conversa-escuro.webp" width="2560" height="2048" alt="A mesma tela da IA de Bolso no tema escuro: barra Consultas salvas à esquerda e o gráfico de linha do total por mês, em azul claro sobre fundo cinza escuro.">
       <figcaption class="hero__tema">
         <span class="so" role="group" aria-label="Tema da tela">
           <input type="radio" name="tema" id="tema-claro" checked><label for="tema-claro">Claro</label>
@@ -328,7 +328,7 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
       <h2>Conecta no sistema <em>que você já usa.</em></h2>
       <p class="lead">A conexão fica guardada só no computador. Nada vai para a nuvem.</p>
       <figure class="tela">
-        <img src="assets/telas/configuracoes.webp" width="2560" height="1900" loading="lazy" alt="Guia Configurações da IA de Bolso: as opções MCP Nativo para Banco de dados, Demonstração (offline) e Archeo MCP; o formulário com motor Oracle, host, porta, service name, usuário, senha e schema; abaixo, a conexão ativa com versão do banco, base, usuário, schema e 10 tabelas visíveis, os links para exportar o PDF e desconectar, e o botão Salvar e conectar.">
+        <img src="assets/telas/configuracoes.webp" width="2560" height="1900" loading="lazy" alt="Guia Configurações da IA de Bolso: as opções MCP Nativo para Banco de dados, Demonstração (offline) e Archeo MCP; o formulário com motor Oracle, host 192.168.0.10, porta 1521, service name ERP, usuário leitura, senha e schema ERP; abaixo, a conexão ativa com versão do banco, base, usuário, schema e 10 tabelas visíveis, os links para exportar o PDF e desconectar, e o botão Salvar e conectar.">
         <figcaption>A guia <strong>Configurações</strong> é uma tela só: escolha entre banco de dados, Demonstração ou Archeo, preencha a conexão e clique em <strong>Salvar e conectar</strong>. Ela mostra o que está conectado agora e tem o botão para desconectar. A senha fica só neste computador e nunca volta para a tela.</figcaption>
       </figure>
       <div class="grid2">
@@ -346,7 +346,7 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
       <h2>Ela aprende o seu banco. <em>Você corrige o que ela entendeu.</em></h2>
       <p class="lead">Nome de tabela de sistema de gestão raramente explica o que tem dentro. Ao conectar, a IA de Bolso olha cada tabela, entende o papel dela e escreve uma frase sobre cada uma. Na guia <strong>Conhecimento</strong> você vê tudo isso e ajusta com uma palavra sua.</p>
       <figure class="tela">
-        <img src="assets/telas/conhecimento.webp" width="2560" height="2048" loading="lazy" alt="Guia Conhecimento da IA de Bolso: no topo, &quot;Banco de dados · Oracle · 10 tabelas, 3 com nota&quot; e os botões Atualizar com o banco, Exportar e Importar. À esquerda, a lista de tabelas com o papel de cada uma (movimento, cadastro, parâmetro, itens). À direita, a tabela FI_TITULO com o texto &quot;O que a IA entendeu&quot;, o campo Comentário sobre a tabela e a lista de campos com tipo e uma caixa de comentário por campo, como &quot;SEQPESSOA é um cliente&quot;.">
+        <img src="assets/telas/conhecimento.webp" width="2560" height="2048" loading="lazy" alt="Guia Conhecimento da IA de Bolso: no topo, &quot;Banco de dados · Oracle · base ERP · 10 tabelas, 3 com nota&quot; e os botões Atualizar com o banco, Exportar e Importar. À esquerda, a lista de tabelas com o papel de cada uma (movimento, cadastro, parâmetro, itens). À direita, a tabela FI_TITULO com o texto &quot;O que a IA entendeu&quot;, o campo Comentário sobre a tabela e a lista de campos com tipo e uma caixa de comentário por campo, como &quot;SEQPESSOA é um cliente&quot;.">
         <figcaption>À esquerda, as tabelas do banco com o papel que a IA deu a cada uma. À direita, o que ela entendeu da tabela escolhida, o comentário dela já preenchido para você corrigir, e uma caixa de comentário por campo.</figcaption>
       </figure>
       <div class="grid2">
