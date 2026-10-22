@@ -492,7 +492,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 <!-- Guias: setas (esquerda/direita, Home/End) andam entre elas; Enter ou Espaço abre. A aberta não é lembrada. -->
 <div class="guias" id="guias" role="tablist" aria-label="Seções da IA de Bolso">
   <button type="button" class="guia" role="tab" id="gConversa" aria-controls="pConversa" aria-selected="true">💬 Conversa</button>
-  <button type="button" class="guia" role="tab" id="gConhecimento" aria-controls="notas" aria-selected="false" aria-disabled="true" aria-describedby="gConhecimentoMotivo" tabindex="-1" title="Ver o que a IA entendeu do banco e escrever as notas da TI">📚 Conhecimento <small id="gConhecimentoMotivo">conecte um banco</small></button>
+  <button type="button" class="guia" role="tab" id="gConhecimento" aria-controls="notas" aria-selected="false" aria-disabled="true" aria-describedby="gConhecimentoMotivo" tabindex="-1" title="Ver o que a IA entendeu do banco e escrever comentários">📚 Conhecimento <small id="gConhecimentoMotivo">conecte um banco</small></button>
   <button type="button" class="guia" role="tab" id="gCfg" aria-controls="pCfg" aria-selected="false" tabindex="-1" title="Configurar o banco de dados e as ferramentas">⚙️ Configurações</button>
 </div>
 <div class="sono" id="sono" role="status" aria-live="polite" hidden></div>
@@ -529,7 +529,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 </div>
 <section class="notas painel" id="notas" role="tabpanel" aria-labelledby="gConhecimento" hidden>
   <div class="notas__top">
-    <h2 id="nTitulo">Entendimento do banco</h2>
+    <h2 id="nTitulo">Banco de dados</h2>
     <span class="spacer"></span>
     <span class="resumo" id="nResumo"></span>
     <span class="actions" id="nAcoes">
@@ -834,22 +834,22 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 </dialog>
 
 <div id="printArea" aria-hidden="true"></div>
-<script src="mcp.js?v=0.19.0"></script>
-<script src="oauth.js?v=0.19.0"></script>
-<script src="toolbox.js?v=0.19.0"></script>
-<script src="chart.js?v=0.19.0"></script>
-<script src="catalog.js?v=0.19.0"></script>
-<script src="perfil.js?v=0.19.0"></script>
-<script src="descricao.js?v=0.19.0"></script>
-<script src="notas.js?v=0.19.0"></script>
-<script src="consultas.js?v=0.19.0"></script>
-<script src="entendimento.js?v=0.19.0"></script>
-<script src="ask.js?v=0.19.0"></script>
-<script src="report.js?v=0.19.0"></script>
-<script src="demo.js?v=0.19.0"></script>
-<script src="momento.js?v=0.19.0"></script>
-<script src="sono.js?v=0.19.0"></script>
-<script src="instalar.js?v=0.19.0"></script>
+<script src="mcp.js?v=0.19.1"></script>
+<script src="oauth.js?v=0.19.1"></script>
+<script src="toolbox.js?v=0.19.1"></script>
+<script src="chart.js?v=0.19.1"></script>
+<script src="catalog.js?v=0.19.1"></script>
+<script src="perfil.js?v=0.19.1"></script>
+<script src="descricao.js?v=0.19.1"></script>
+<script src="notas.js?v=0.19.1"></script>
+<script src="consultas.js?v=0.19.1"></script>
+<script src="entendimento.js?v=0.19.1"></script>
+<script src="ask.js?v=0.19.1"></script>
+<script src="report.js?v=0.19.1"></script>
+<script src="demo.js?v=0.19.1"></script>
+<script src="momento.js?v=0.19.1"></script>
+<script src="sono.js?v=0.19.1"></script>
+<script src="instalar.js?v=0.19.1"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -1220,7 +1220,7 @@ function esconderFaixa(){ clearTimeout(st.faixaTimer); $('#analise').hidden = tr
 // de banco (catalogGen mudou), o resultado antigo é descartado.
 // guardado: o documento que o GET /entendimento trouxe e não deu para aplicar (pode ser null); dele
 // só vale saber se o aviso de varejo já foi dado neste banco.
-const AVISO_BOTAO = ' O botão "Entendimento do banco" aparece quando terminar.';
+const AVISO_BOTAO = ' A guia "Conhecimento" fica disponível quando terminar.';
 // Amostra de uma tabela pelo toolbox (null se falhar). O prazo de cada amostra fica dentro de CD2Perfil.amostrar.
 const amostrador = client => async nome => {
   const r = await client.call('db_sample_table', { table_name:nome }).then(CD2Ask.parseRows, () => null);
@@ -1442,7 +1442,7 @@ async function carregarNotas(){
   try{ r = await ctlRequest('GET', '/notas', null, 5000); }catch(e){}
   if(gen !== st.catalogGen || !st.catalog) return false;
   if(!r || r.status !== 200 || !r.data.dados || typeof r.data.dados !== 'object' || !r.data.chave){
-    addNote('Não consegui ler as notas da TI deste banco; a tela de notas e as consultas salvas ficam escondidas.');
+    addNote('Não consegui ler os comentários deste banco; a guia Conhecimento e as consultas salvas ficam escondidas.');
     return false;
   }
   st.notas = r.data.dados; st.notasBanco = r.data.banco || null; st.notasChave = r.data.chave;
@@ -1530,7 +1530,7 @@ const tabelaDe = nome => st.catalog && st.catalog.tables.find(x => x.name === no
 // Nota da tabela que conta como da TI: não vazia e diferente do texto da IA.
 const notaTi = (texto, t) => { const x = CD2Notas.limpar(texto, CD2Notas.LIMITE.tabela); return x && x !== iaDe(t) ? x : ''; };
 const temNota = (nome, t) => { const n = notaDe(nome); return !!(n && (notaTi(n.nota, t === undefined ? tabelaDe(nome) : t) || Object.values(n.campos || {}).some(v => String(v).trim()))); };
-const rotuloLista = t => temNota(t.name, t) ? '📝 nota da TI' : (iaDe(t) ? 'texto da IA' : 'sem descrição');
+const rotuloLista = t => temNota(t.name, t) ? '📝 comentário' : (iaDe(t) ? 'texto da IA' : 'sem descrição');
 function abrirNotas(){
   if(!st.catalog || !st.notas || !st.entendimentoPronto) return;
   // Rascunho de outro banco (as notas foram relidas depois de um 409, já avisado na tela): começa de novo.
@@ -1681,7 +1681,7 @@ function renderDetalheNotas(){
   const ia = document.createElement('p'); ia.className = 'notas__ia'; ia.innerHTML = '<b>O que a IA entendeu:</b> ';
   ia.appendChild(document.createTextNode(textoIa(t))); ia.id = 'nIa'; det.appendChild(ia);
   const bloco = document.createElement('div');
-  bloco.innerHTML = '<label for="nNotaTab">Nota da TI sobre a tabela <span class="hint" id="nVeioIa">(veio da IA, corrija se precisar)</span></label><textarea id="nNotaTab" rows="3" placeholder="O que a IA precisa saber sobre esta tabela? Ex.: esta é a tabela oficial de vendas."></textarea><div class="notas__conta" id="nConta" aria-live="polite"></div>';
+  bloco.innerHTML = '<label for="nNotaTab">Comentário sobre a tabela <span class="hint" id="nVeioIa">(veio da IA, corrija se precisar)</span></label><textarea id="nNotaTab" rows="3" placeholder="O que a IA precisa saber sobre esta tabela? Ex.: esta é a tabela oficial de vendas."></textarea><div class="notas__conta" id="nConta" aria-live="polite"></div>';
   const ta = bloco.querySelector('textarea'), conta = bloco.querySelector('#nConta'), veio = bloco.querySelector('#nVeioIa');
   // Sem nota da TI no rascunho, a caixa vem com o texto da IA (que só vira nota se for mudado).
   ta.maxLength = L.tabela; ta.dataset.ia = iaDe(t); ta.value = notaTi(n.nota, t) ? n.nota : ta.dataset.ia;
@@ -1694,12 +1694,12 @@ function renderDetalheNotas(){
   ta.addEventListener('cd2:ia', contar);
   det.appendChild(bloco);
   const tab = document.createElement('table'); tab.className = 'notas__campos';
-  tab.innerHTML = '<thead><tr><th scope="col">Campo</th><th scope="col">Tipo</th><th scope="col">Nota da TI</th></tr></thead><tbody></tbody>';
+  tab.innerHTML = '<thead><tr><th scope="col">Campo</th><th scope="col">Tipo</th><th scope="col">Comentário</th></tr></thead><tbody></tbody>';
   const tb = tab.querySelector('tbody'), campos = n.campos || {};
   for(const c of t.columns){
     const tr = document.createElement('tr'); tr.innerHTML = '<td></td><td></td><td><input type="text" spellcheck="false" autocomplete="off" placeholder="Escreva uma nota…"></td>';
     tr.children[0].textContent = c.name; tr.children[1].textContent = c.type || '';
-    const inp = tr.querySelector('input'); inp.maxLength = L.campo; inp.setAttribute('aria-label', 'Nota da TI sobre o campo ' + c.name);
+    const inp = tr.querySelector('input'); inp.maxLength = L.campo; inp.setAttribute('aria-label', 'Comentário sobre o campo ' + c.name);
     inp.value = Object.prototype.hasOwnProperty.call(campos, c.name) ? String(campos[c.name]) : '';
     inp.addEventListener('input', () => {
       const r = rascunhoDe(t.name);

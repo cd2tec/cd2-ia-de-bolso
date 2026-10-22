@@ -51,7 +51,7 @@ function linhaTabela(t){
   return '<li><b>' + esc(t.name) + '</b> <span class="pr-meta">(' + esc(tam) + ')</span>'
     + (uteis ? '<br><span class="pr-meta">' + esc(uteis) + '</span>' : '')
     + (p.descricao ? '<br>' + esc(p.descricao) : '')
-    + (t.nota ? '<br><span class="pr-nota">Nota da TI: ' + esc(t.nota) + '</span>' : '')
+    + (t.nota ? '<br><span class="pr-nota">Comentário: ' + esc(t.nota) + '</span>' : '')
     + (campos ? '<br><span class="pr-meta">Notas dos campos: ' + campos + '</span>' : '') + '</li>';
 }
 function perfilHtml(o){
