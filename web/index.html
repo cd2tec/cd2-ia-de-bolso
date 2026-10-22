@@ -913,27 +913,26 @@ const demo = { async init(){ return CD2Demo.TOOLS; }, async call(name, a){ retur
 const modoGuardado = () => store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
 const modoAtual = () => st.modo || modoGuardado();
 const AVISO_DEMO = 'Não consegui conectar ao banco configurado; abri a Demonstração. Veja em Configurações.';
-// Lê o /status do cd2-ctl; enquanto ele ainda sobe o toolbox, espera um pouco (até ~30 s).
+// Lê o /status do cd2-ctl (5 s no máximo cada leitura: ctl travado conta como fora do ar);
+// enquanto ele ainda sobe o toolbox, espera um pouco (até ~30 s).
 async function esperarCtl(){
-  await refreshCtl();
+  await refreshCtl(5000);
   for(let i = 0; i < 30 && st.ctlStatus && st.ctlStatus.estado === 'subindo'; i++){
     await new Promise(ok => setTimeout(ok, 1000));
-    await refreshCtl();
+    await refreshCtl(5000);
   }
 }
-// Ao abrir: o que tentar, em ordem, decidido pela conexão real. Banco rodando no cd2-ctl entra
-// mesmo sem modo guardado (o localStorage some quando a porta muda). configurado: havia banco ou
-// Archeo guardado, e cair na Demonstração merece aviso.
-async function planoDoArranque(){
-  const salvo = store.get('cd2.mode');
-  if(salvo === 'demo') return { tentar:[], configurado:false };
+// Ao abrir, depois do Archeo (se guardado e não conectou): tenta o toolbox? Decide pela conexão real.
+// Banco rodando no cd2-ctl entra mesmo sem modo guardado ou com a Demonstração guardada (o localStorage
+// some quando a porta muda). configurado: havia banco de verdade, e cair na Demonstração merece aviso.
+async function planoToolbox(salvo){
   await esperarCtl();
-  const cs = st.ctlStatus, rodando = !!(cs && cs.estado === 'rodando');
-  const tentar = [];
-  if(salvo === 'mcp') tentar.push('mcp');
+  const cs = st.ctlStatus;
+  // Com o cd2-ctl de pé, ele manda: só há banco se ele tiver um (desconectar apaga o db.env e
+  // deixa o cd2.mode como estava, então o modo guardado sozinho não diz nada).
+  if(st.ctlUp) return { tentar: !!(cs && cs.estado === 'rodando'), configurado: salvo !== 'demo' && !!(cs && cs.motor) };
   // Sem cd2-ctl (aberto à mão, janela antiga), o toolbox ainda pode responder sozinho.
-  if(rodando || (!st.ctlUp && salvo !== 'mcp')) tentar.push('toolbox');
-  return { tentar, configurado: salvo === 'toolbox' || salvo === 'mcp' || !!(cs && cs.motor) };
+  return { tentar: salvo !== 'mcp' && salvo !== 'demo', configurado: salvo === 'toolbox' };
 }
 // Conecta num modo; lança se não der.
 async function conectarModo(mode){
@@ -971,16 +970,22 @@ async function connectTools(arranque){
   setPill('#pMcp', '', 'ferramentas…');
   const limpar = () => { st.tools = []; st.provider = null; st.dbStatus = null; st.catalogPromise = null; };
   if(arranque === true){
-    const plano = await planoDoArranque();
-    for(const m of plano.tentar){
+    const salvo = store.get('cd2.mode');
+    let configurado = false;
+    const tentar = async m => {
       st.modo = m;
-      try{ await conectarModo(m); if($('#hero')) renderHero(true); return { ok:true }; }
-      catch(e){ limpar(); }
-    }
+      try{ await conectarModo(m); if($('#hero')) renderHero(true); return true; }
+      catch(e){ limpar(); return false; }
+    };
+    // Archeo guardado vem primeiro e não espera o cd2-ctl.
+    if(salvo === 'mcp'){ configurado = true; if(await tentar('mcp')) return { ok:true }; }
+    const tb = await planoToolbox(salvo);
+    configurado = configurado || tb.configurado;
+    if(tb.tentar && await tentar('toolbox')) return { ok:true };
     st.modo = 'demo';
     await conectarModo('demo');
     if($('#hero')) renderHero(true);
-    if(plano.configurado) addNote(AVISO_DEMO);
+    if(configurado) addNote(AVISO_DEMO);
     return { ok:true };
   }
   const mode = modoGuardado();
@@ -2411,11 +2416,12 @@ async function ctlRequest(method, path, body, timeoutMs){
   try{ data = (await r.json()) || {}; }catch(e){}
   return { status:r.status, data };
 }
-async function refreshCtl(){
+// timeoutMs (opcional): passado esse tempo sem resposta, o cd2-ctl conta como fora do ar.
+async function refreshCtl(timeoutMs){
   st.ctlUp = false; st.ctlStale = false; st.ctlStatus = null;
   if(!st.ctlKey) return;
   try{
-    const r = await ctlRequest('GET', '/status');
+    const r = await ctlRequest('GET', '/status', null, timeoutMs);
     if(r.status === 200){ st.ctlUp = true; st.ctlStatus = r.data; }
     else if(r.status === 401) st.ctlStale = true;
   }catch(e){}
