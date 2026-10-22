@@ -94,6 +94,14 @@ header.top{position:sticky;top:0;z-index:10;background:var(--surface-raised);bor
 .hero__grid h1{font-size:54px;line-height:60px}
 .hero__shot{margin:0;padding:var(--space-16) 0 96px}
 .hero__shot img{display:block;width:100%;height:auto;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,.4);box-shadow:0 28px 64px rgba(1,30,128,.45),0 4px 12px rgba(1,30,128,.25)}
+/* o seletor Claro/Escuro troca o print da tela, sem JavaScript; o azul do hero tira os tokens do .t-blue */
+.hero__tema{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:var(--space-2) var(--space-4);margin-top:var(--space-4);font:500 13px/20px var(--font-sans);color:var(--ink-muted)}
+.hero__tema .so{margin:0}
+.hero:has(#tema-escuro:checked) .tema-claro,.hero:has(#tema-claro:checked) .tema-escuro{display:none}
+/* print de uma tela inteira dentro de uma seção, com legenda */
+.tela{margin:0 0 var(--space-8)}
+.tela img{display:block;width:100%;height:auto;border-radius:var(--radius-md);border:1px solid var(--border);box-shadow:0 20px 48px rgba(13,18,51,.16),0 2px 8px rgba(13,18,51,.08)}
+.tela figcaption{margin-top:var(--space-3);font:500 13px/20px var(--font-sans);color:var(--ink-muted);max-width:72ch}
 @media (max-width:1060px){.hero__grid h1{font-size:46px;line-height:52px}}
 .arcs{position:absolute;right:-180px;top:40px;width:720px;height:auto;z-index:0;pointer-events:none}
 .arcs path{fill:none;stroke:#ffffff;stroke-width:2;vector-effect:non-scaling-stroke;opacity:.55}
@@ -219,6 +227,7 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
       <a class="link" href="#pra-que-serve">Pra que serve</a>
       <a class="link" href="#pendrive">Criar o pen drive</a>
       <a class="link" href="#seus-dados">Seus dados</a>
+      <a class="link" href="#conhecimento">Conhecimento</a>
       <a class="link" href="#cuidados">Antes de usar</a>
       <a class="btn btn--primary btn--sm" href="#pendrive">
         Baixar<span class="top__gratis"> grátis</span>
@@ -242,7 +251,15 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
       <p class="hero__nota">Grátis. Você só precisa de um pen drive de 16 GB.</p>
     </div>
     <figure class="hero__shot">
-      <img src="assets/tela-vendas-por-mes.webp" width="1722" height="1536" alt="Tela da IA de Bolso: a pergunta &quot;vendas por mes&quot; vira um gráfico de linha com as vendas de cada mês, tirado de um banco SQL Server, com a consulta usada e os botões CSV e Imprimir/PDF.">
+      <img class="tema-claro" src="assets/telas/conversa-claro.webp" width="2560" height="2048" alt="Tela da IA de Bolso no tema claro: à esquerda a barra Consultas salvas; no meio, a consulta salva &quot;Valor total por cliente&quot; vira um gráfico de barras com o total de cada cliente, tirado de um banco Oracle, com a consulta usada e os botões Salva, CSV e Imprimir/PDF. Na faixa das guias, à direita, o botão Reiniciar conversa.">
+      <img class="tema-escuro" src="assets/telas/conversa-escuro.webp" width="2560" height="2048" alt="A mesma tela da IA de Bolso no tema escuro: barra Consultas salvas à esquerda e o gráfico de barras do total por cliente, em azul claro sobre fundo cinza escuro.">
+      <figcaption class="hero__tema">
+        <span class="so" role="group" aria-label="Tema da tela">
+          <input type="radio" name="tema" id="tema-claro" checked><label for="tema-claro">Claro</label>
+          <input type="radio" name="tema" id="tema-escuro"><label for="tema-escuro">Escuro</label>
+        </span>
+        <span>Tema claro, escuro ou o do sistema. As consultas que você salvou ficam na barra da esquerda.</span>
+      </figcaption>
     </figure>
   </div>
 </div>
@@ -310,16 +327,38 @@ footer.t-blue{padding:var(--space-16) 0 var(--space-8)}
       <span class="eyebrow">Seus dados</span>
       <h2>Conecta no sistema <em>que você já usa.</em></h2>
       <p class="lead">A conexão fica guardada só no computador. Nada vai para a nuvem.</p>
+      <figure class="tela">
+        <img src="assets/telas/configuracoes.webp" width="2560" height="1900" loading="lazy" alt="Guia Configurações da IA de Bolso: as opções MCP Nativo para Banco de dados, Demonstração (offline) e Archeo MCP; o formulário com motor Oracle, host, porta, service name, usuário, senha e schema; abaixo, a conexão ativa com versão do banco, base, usuário, schema e 10 tabelas visíveis, os links para exportar o PDF e desconectar, e o botão Salvar e conectar.">
+        <figcaption>A guia <strong>Configurações</strong> é uma tela só: escolha entre banco de dados, Demonstração ou Archeo, preencha a conexão e clique em <strong>Salvar e conectar</strong>. Ela mostra o que está conectado agora e tem o botão para desconectar. A senha fica só neste computador e nunca volta para a tela.</figcaption>
+      </figure>
       <div class="grid2">
         <div class="card"><span class="tag tag--concluido"><i></i>Segurança</span><h3>Só leitura.</h3><p>A IA consulta e não altera nada. Cada consulta tem limite de tempo, para não pesar no sistema.</p></div>
-        <div class="card"><span class="tag tag--concluido"><i></i>Compatível</span><h3>Os bancos mais comuns.</h3><p>Funciona com os bancos de sistemas de gestão e PDV: SQL Server, Oracle, PostgreSQL, MariaDB, Firebird e arquivos DBF. A conexão é configurada uma vez, na própria tela, normalmente por quem cuida do seu sistema.</p></div>
+        <div class="card"><span class="tag tag--concluido"><i></i>Compatível</span><h3>Os bancos mais comuns.</h3><p>Funciona com os bancos de sistemas de gestão e PDV: SQL Server, Oracle, PostgreSQL, MariaDB, Firebird e arquivos DBF. A conexão é configurada uma vez, na guia Configurações, normalmente por quem cuida do seu sistema. Use uma conta só de leitura.</p></div>
         <div class="card"><span class="tag tag--concluido"><i></i>Archeo</span><h3>Usa o Archeo?</h3><p>Entre com a sua conta do <a href="https://archeo.cd2.com.br">Archeo</a> e pergunte direto. Só quem é do seu workspace vê os dados.</p></div>
         <div class="card"><span class="tag tag--melhoria"><i></i>Sem internet</span><h3>Só quer conhecer?</h3><p>O modo Demonstração funciona sem internet, com dados de exemplo, sempre identificados como exemplo.</p></div>
       </div>
     </div>
   </section>
 
-  <section class="s" id="cuidados" style="background:var(--surface-raised)">
+  <section class="s" id="conhecimento" style="background:var(--surface-raised)">
+    <div class="wrap">
+      <span class="eyebrow">Conhecimento</span>
+      <h2>Ela aprende o seu banco. <em>Você corrige o que ela entendeu.</em></h2>
+      <p class="lead">Nome de tabela de sistema de gestão raramente explica o que tem dentro. Ao conectar, a IA de Bolso olha cada tabela, entende o papel dela e escreve uma frase sobre cada uma. Na guia <strong>Conhecimento</strong> você vê tudo isso e ajusta com uma palavra sua.</p>
+      <figure class="tela">
+        <img src="assets/telas/conhecimento.webp" width="2560" height="2048" loading="lazy" alt="Guia Conhecimento da IA de Bolso: no topo, &quot;Banco de dados · Oracle · 10 tabelas, 3 com nota&quot; e os botões Atualizar com o banco, Exportar e Importar. À esquerda, a lista de tabelas com o papel de cada uma (movimento, cadastro, parâmetro, itens). À direita, a tabela FI_TITULO com o texto &quot;O que a IA entendeu&quot;, o campo Comentário sobre a tabela e a lista de campos com tipo e uma caixa de comentário por campo, como &quot;SEQPESSOA é um cliente&quot;.">
+        <figcaption>À esquerda, as tabelas do banco com o papel que a IA deu a cada uma. À direita, o que ela entendeu da tabela escolhida, o comentário dela já preenchido para você corrigir, e uma caixa de comentário por campo.</figcaption>
+      </figure>
+      <div class="grid2">
+        <div class="card"><span class="tag tag--concluido"><i></i>Entendimento</span><h3>Ela lê antes de responder.</h3><p>Ao conectar, a IA lê algumas linhas de cada tabela e classifica o papel dela: movimento, itens de movimento, cadastro ou parâmetro. Depois escreve uma frase sobre cada uma, em segundo plano, enquanto você já pergunta. Isso fica guardado no computador, por banco, e não é refeito a cada abertura. Se o banco não parecer de um sistema de varejo, ela avisa.</p></div>
+        <div class="card"><span class="tag tag--concluido"><i></i>Comentários</span><h3>Uma frase sua vale muito.</h3><p>"SEQPESSOA é o cliente." "Esta tabela é o caixa do dia." Quem cuida do sistema escreve o comentário na tabela ou no campo e, a partir dali, a IA usa isso para escolher a tabela certa e montar a consulta. O texto da IA já vem preenchido; é só corrigir o que estiver errado.</p></div>
+        <div class="card"><span class="tag tag--concluido"><i></i>Consultas salvas</span><h3>Gostou da resposta? Dê um joinha.</h3><p>O botão <strong>👍</strong> na resposta salva a consulta com um nome. Ela vai para a barra da esquerda, na Conversa, e dali em diante roda direto no banco, sem passar pela IA: mesmo número, toda vez. Um valor fixo da consulta, como uma data ou um código, pode virar um campo que você preenche na hora de rodar.</p></div>
+        <div class="card"><span class="tag tag--melhoria"><i></i>Leve junto</span><h3>Exporta, importa e atualiza.</h3><p><strong>Exportar</strong> gera um arquivo com os comentários e as consultas salvas, para levar a outro computador ou guardar. <strong>Importar</strong> junta o que vem no arquivo com o que já existe e avisa antes de sobrescrever alguma coisa. <strong>Atualizar com o banco</strong> lê o banco de novo e traz tabelas e campos novos sem perder o que você escreveu.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s" id="cuidados">
     <div class="wrap">
       <span class="eyebrow">Antes de usar</span>
       <h2>Antes de usar, <em>vale saber.</em></h2>

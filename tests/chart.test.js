@@ -42,6 +42,15 @@ test('render linha: um ponto por linha, sem NaN com um ponto ou tudo zero', () =
   assert.ok(!/NaN/.test(G.render('linha', ['mes', 'v'], [{ mes:'a', v:0 }, { mes:'b', v:0 }], { x:'mes', y:'v' })));
 });
 
+test('render linha: o último rótulo do eixo aparece e o anterior some quando ficaria em cima dele', () => {
+  // 61 meses: o passo é 8, o índice 56 cairia a 4 pontos (uns 60 px) do último e ficava sobreposto
+  const l = []; for(let i = 0; i < 61; i++){ const y = 2021 + Math.floor((6 + i) / 12), m = (6 + i) % 12 + 1; l.push({ mes:y + '-' + String(m).padStart(2, '0') + '-01', v:i }); }
+  const s = G.render('linha', ['mes', 'v'], l, { x:'mes', y:'v' });
+  const rotulos = [...s.matchAll(/text-anchor="middle">([^<]+)</g)].map(m => m[1]);
+  assert.equal(rotulos[rotulos.length - 1], 'jul/2026'); assert.ok(!rotulos.includes('mar/2026'), rotulos.join('|'));
+  assert.ok(rotulos.includes('jul/2021') && rotulos.length >= 8, rotulos.join('|'));
+});
+
 test('render pizza: fatias, legenda, fatia única vira círculo, total zero sem NaN', () => {
   const s = G.render('pizza', ['d', 'v'], [{ d:'A', v:1 }, { d:'B', v:1 }, { d:'C', v:2 }], { x:'d', y:'v' });
   assert.equal(count(s, '<path'), 3); assert.equal(count(s, '<li>'), 3);

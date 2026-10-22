@@ -29,3 +29,6 @@ installer/*.syso
 worker/.dev.vars
 worker/.wrangler/
 worker/node_modules/
+
+# capturas do Playwright MCP (sessao local)
+.playwright-mcp/
