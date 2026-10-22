@@ -525,7 +525,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 </div>
 <section class="notas painel" id="notas" role="tabpanel" aria-labelledby="gConhecimento" hidden>
   <div class="notas__top">
-    <h2 id="nTitulo" tabindex="-1">Entendimento do banco</h2>
+    <h2 id="nTitulo">Entendimento do banco</h2>
     <span class="spacer"></span>
     <span class="resumo" id="nResumo"></span>
     <span class="actions" id="nAcoes">
@@ -1447,7 +1447,8 @@ function syncBotaoNotas(){
 // Motivo curto ao lado do nome da guia apagada.
 function motivoConhecimento(){
   const conectado = modoAtual() === 'toolbox' && !!st.provider && st.provider !== demo;
-  if(!conectado || st.catalogoFalhou) return 'conecte um banco';
+  if(!conectado) return 'conecte um banco';
+  if(st.catalogoFalhou) return 'catálogo indisponível';
   // Banco e entendimento prontos, mas as notas não foram lidas (já avisado na conversa).
   if(st.catalog && st.entendimentoPronto && !st.notas) return 'notas indisponíveis';
   return 'entendendo o banco…';
@@ -1482,7 +1483,11 @@ function fecharNotas(voltar){
   if(!voltar){ nt.rascunho = null; nt.sel = null; nt.sujo = false; nt.msg = ''; $('#nBusca').value = ''; if($('#atualizar').open) $('#atualizar').close(); }
   if(!nt.aberta) return;
   nt.aberta = false;
-  if(guiaAtual === 'conhecimento') mostrarGuia('conversa');
+  if(guiaAtual !== 'conhecimento') return;
+  // O foco estava dentro da tela que some: vai para a guia Conversa, em vez de cair no body.
+  const dentro = $('#notas').contains(document.activeElement);
+  mostrarGuia('conversa');
+  if(dentro) $('#gConversa').focus();
 }
 
 /* ---------- guias: Conversa, Conhecimento e Configurações ---------- */
@@ -2386,10 +2391,13 @@ function openCfg(forcar){
   const foco = !$('#guias').contains(document.activeElement);
   if(guiaAtual === 'cfg'){ if(typeof forcar === 'string' && forcar){ marcar(); syncCfgBoxes(); } if(foco) $('#cfgTitulo').focus(); return; }
   fecharNotas(true); mostrarGuia('cfg');
-  marcar();
-  $('#mcpUrl').value = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
-  $('#mcpTok').value = store.get('cd2.tok', true) || '';
-  $('#cfgStatus').textContent = ''; $('#cfgStatus').className = 'status';
+  // Com o "Salvar e conectar" em curso, o formulário e o "Conectando ao banco..." ficam como estão.
+  if(!st.ctlBusy){
+    marcar();
+    $('#mcpUrl').value = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
+    $('#mcpTok').value = store.get('cd2.tok', true) || '';
+    $('#cfgStatus').textContent = ''; $('#cfgStatus').className = 'status';
+  }
   refreshAuthBox();
   renderToolbox(); syncCfgBoxes();
   $('#pCfg').scrollTop = 0; if(foco) $('#cfgTitulo').focus();
