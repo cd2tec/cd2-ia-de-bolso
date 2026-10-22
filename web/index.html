@@ -935,18 +935,26 @@ async function planoToolbox(salvo){
   return { tentar: salvo !== 'mcp' && salvo !== 'demo', configurado: salvo === 'toolbox' };
 }
 // Conecta num modo; lança se não der.
-async function conectarModo(mode){
+// exigirBanco (só no arranque): no toolbox, sem banco de verdade do outro lado (status sem motor ou
+// catálogo ilegível, ex.: Postgres fora do ar com o cd2-ctl de pé) também lança.
+async function conectarModo(mode, exigirBanco){
   const url = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
   const tok = store.get('cd2.tok', true) || '';
   if(mode === 'toolbox'){
     const turl = CD2Toolbox.urlFor(location);
     const c = new McpClient(turl, { token: async () => null, origin: location.origin });
     st.tools = await c.init(); st.provider = c;
-    st.dbStatus = CD2Toolbox.parseStatus(await c.call('db_connection_status', {}));
+    const statusTxt = await c.call('db_connection_status', {});
+    st.dbStatus = CD2Toolbox.parseStatus(statusTxt);
+    let catalogoTxt = null;
+    if(exigirBanco){
+      catalogoTxt = await c.call('db_catalog', {});
+      if(!CD2Toolbox.bancoAtivo(statusTxt, CD2Ask.parseRows(catalogoTxt))) throw new Error('Sem conexão com o banco.');
+    }
     const eng = st.dbStatus ? CD2Toolbox.engineLabel(st.dbStatus.engine) : 'Banco de dados';
     setPill('#pMcp', 'ok', eng + ': ' + st.tools.length + ' ferramentas');
     st.catalogoFalhou = false;
-    st.catalogPromise = loadCatalog(c, st.catalogGen);
+    st.catalogPromise = loadCatalog(c, st.catalogGen, catalogoTxt);
   }else if(mode === 'mcp'){
     if(!url) throw new Error('Informe a URL do servidor MCP');
     const oauth = oauthFor(url);
@@ -974,7 +982,7 @@ async function connectTools(arranque){
     let configurado = false;
     const tentar = async m => {
       st.modo = m;
-      try{ await conectarModo(m); if($('#hero')) renderHero(true); return true; }
+      try{ await conectarModo(m, true); if($('#hero')) renderHero(true); return true; }
       catch(e){ limpar(); return false; }
     };
     // Archeo guardado vem primeiro e não espera o cd2-ctl.
@@ -1290,10 +1298,11 @@ async function gravarEntendimento(doc){
 function zerarEntendimento(){
   st.entendimento = null; st.entendimentoChave = null; st.entendimentoPronto = false; st.entendimentoDesconhecidas = [];
 }
-async function loadCatalog(client, gen){
+// texto (opcional): o db_catalog já lido no arranque, para não ler duas vezes.
+async function loadCatalog(client, gen, texto){
   let cat = null, sug = null;
   try{
-    const r = CD2Ask.parseRows(await client.call('db_catalog', {}));
+    const r = CD2Ask.parseRows(texto != null ? texto : await client.call('db_catalog', {}));
     if(r.ok && r.rows.length){ cat = CD2Catalog.buildCatalog(r.rows); sug = CD2Catalog.suggest(cat); }
   }catch(e){}
   if(gen !== st.catalogGen) return;
