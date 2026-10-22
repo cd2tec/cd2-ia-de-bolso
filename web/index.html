@@ -122,7 +122,10 @@ body{background:var(--surface-100);color:var(--ink);font:400 15px/24px var(--fon
 
 /* ---------- faixa de guias (logo abaixo do topo): Conversa, Conhecimento e Configurações ---------- */
 /* Em tela estreita a faixa rola de lado; a página nunca. */
-.guias{display:flex;gap:var(--space-1);padding:0 var(--space-6);background:var(--surface-guias);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;flex:none}
+.guias{display:flex;align-items:stretch;justify-content:space-between;gap:var(--space-4);padding:0 var(--space-6);background:var(--surface-guias);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;flex:none}
+.guias__lista{display:flex;gap:var(--space-1);flex:none}
+/* "Reiniciar conversa" mora no canto direito da faixa, fora da lista de guias; não rola com o chat */
+.guias__reiniciar{align-self:center;flex:none}
 .guias::-webkit-scrollbar{display:none}
 .guia{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:var(--space-2);flex:none;padding:10px var(--space-4) 7px;border-bottom:3px solid transparent;font:700 13px/20px var(--font-sans);color:var(--ink-muted);white-space:nowrap;cursor:pointer}
 .guia:hover{color:var(--ink)}
@@ -134,8 +137,6 @@ body{background:var(--surface-100);color:var(--ink);font:400 15px/24px var(--fon
 /* Cada guia é um painel que ocupa o resto da tela. */
 .painel{flex:1;min-height:0;display:flex;flex-direction:column}
 .painel[hidden]{display:none}
-/* barra da guia Conversa: "Nova conversa" à direita, acima do chat */
-.conversa__barra{display:flex;justify-content:flex-end;margin-bottom:var(--space-2)}
 /* guia Configurações: o que era a janela, agora como página */
 .cfg{overflow-y:auto;background:var(--surface-raised)}
 .cfg__wrap{width:100%;max-width:640px;margin:0 auto;padding:var(--space-6)}
@@ -348,8 +349,11 @@ button.contorno:hover{background:var(--surface-100)}
   .topbar{padding:var(--space-3) var(--space-4)}
   .product__txt span{display:none}
   .wrap{padding:0 var(--space-4)}
-  .guias{padding:0 var(--space-2)}
-  .guia{padding:10px var(--space-3) 7px}
+  .guias{padding:0 var(--space-2);gap:var(--space-2)}
+  .guia{padding:10px var(--space-2) 7px}
+  /* em tela estreita o botão vira só a seta, para caber ao lado das três guias */
+  .guias__reiniciar{padding:0 var(--space-3)}
+  .guias__reiniciar__txt{display:none}
   .cfg__wrap{padding:var(--space-4)}
   .cfg__wrap > .row:last-child{margin:var(--space-6) calc(-1 * var(--space-4)) 0;padding:var(--space-3) var(--space-4)}
   .dbf{grid-template-columns:1fr}
@@ -545,10 +549,13 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
   </div>
 </header>
 <!-- Guias: setas (esquerda/direita, Home/End) andam entre elas; Enter ou Espaço abre. A aberta não é lembrada. -->
-<div class="guias" id="guias" role="tablist" aria-label="Seções da IA de Bolso">
-  <button type="button" class="guia" role="tab" id="gConversa" aria-controls="pConversa" aria-selected="true">💬 Conversa</button>
-  <button type="button" class="guia" role="tab" id="gConhecimento" aria-controls="notas" aria-selected="false" aria-disabled="true" aria-describedby="gConhecimentoMotivo" tabindex="-1" title="Ver o que a IA entendeu do banco e escrever comentários">📚 Conhecimento <small id="gConhecimentoMotivo">conecte um banco</small></button>
-  <button type="button" class="guia" role="tab" id="gCfg" aria-controls="pCfg" aria-selected="false" tabindex="-1" title="Configurar o banco de dados e as ferramentas">⚙️ Configurações</button>
+<div class="guias" id="guias">
+  <div class="guias__lista" role="tablist" aria-label="Seções da IA de Bolso">
+    <button type="button" class="guia" role="tab" id="gConversa" aria-controls="pConversa" aria-selected="true">💬 Conversa</button>
+    <button type="button" class="guia" role="tab" id="gConhecimento" aria-controls="notas" aria-selected="false" aria-disabled="true" aria-describedby="gConhecimentoMotivo" tabindex="-1" title="Ver o que a IA entendeu do banco e escrever comentários">📚 Conhecimento <small id="gConhecimentoMotivo">conecte um banco</small></button>
+    <button type="button" class="guia" role="tab" id="gCfg" aria-controls="pCfg" aria-selected="false" tabindex="-1" title="Configurar o banco de dados e as ferramentas">⚙️ Configurações</button>
+  </div>
+  <button type="button" class="sm primary guias__reiniciar" id="bNew" title="Apagar a conversa e começar de novo, na guia Conversa" aria-label="Reiniciar conversa"><span aria-hidden="true">↻</span><span class="guias__reiniciar__txt">Reiniciar conversa</span></button>
 </div>
 <div class="sono" id="sono" role="status" aria-live="polite" hidden></div>
 <div class="analise" id="analise" hidden>
@@ -569,7 +576,6 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
     </div>
   </aside>
   <main id="main">
-    <div class="wrap conversa__barra"><button class="sm primary" id="bNew" title="Começar uma nova conversa">Nova conversa</button></div>
     <div class="wrap" id="chat"></div>
   </main>
 </div>
@@ -889,22 +895,22 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 </dialog>
 
 <div id="printArea" aria-hidden="true"></div>
-<script src="mcp.js?v=0.20.0"></script>
-<script src="oauth.js?v=0.20.0"></script>
-<script src="toolbox.js?v=0.20.0"></script>
-<script src="chart.js?v=0.20.0"></script>
-<script src="catalog.js?v=0.20.0"></script>
-<script src="perfil.js?v=0.20.0"></script>
-<script src="descricao.js?v=0.20.0"></script>
-<script src="notas.js?v=0.20.0"></script>
-<script src="consultas.js?v=0.20.0"></script>
-<script src="entendimento.js?v=0.20.0"></script>
-<script src="ask.js?v=0.20.0"></script>
-<script src="report.js?v=0.20.0"></script>
-<script src="demo.js?v=0.20.0"></script>
-<script src="momento.js?v=0.20.0"></script>
-<script src="sono.js?v=0.20.0"></script>
-<script src="instalar.js?v=0.20.0"></script>
+<script src="mcp.js?v=0.20.1"></script>
+<script src="oauth.js?v=0.20.1"></script>
+<script src="toolbox.js?v=0.20.1"></script>
+<script src="chart.js?v=0.20.1"></script>
+<script src="catalog.js?v=0.20.1"></script>
+<script src="perfil.js?v=0.20.1"></script>
+<script src="descricao.js?v=0.20.1"></script>
+<script src="notas.js?v=0.20.1"></script>
+<script src="consultas.js?v=0.20.1"></script>
+<script src="entendimento.js?v=0.20.1"></script>
+<script src="ask.js?v=0.20.1"></script>
+<script src="report.js?v=0.20.1"></script>
+<script src="demo.js?v=0.20.1"></script>
+<script src="momento.js?v=0.20.1"></script>
+<script src="sono.js?v=0.20.1"></script>
+<script src="instalar.js?v=0.20.1"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -2477,7 +2483,8 @@ function renderHero(noLugar){
   if(noLugar === true && velho) velho.replaceWith(h);
   else{ c.innerHTML = ''; c.appendChild(h); }
 }
-function newChat(){ if(st.ctl) st.ctl.abort(); st.messages = []; st.periodoSaudado = null; renderHero(); }
+// Reiniciar conversa: de qualquer guia, volta para a Conversa já limpa.
+function newChat(){ if(st.ctl) st.ctl.abort(); st.messages = []; st.periodoSaudado = null; irParaGuia('conversa'); renderHero(); }
 
 /* ---------- configurações ---------- */
 function syncCfgBoxes(){

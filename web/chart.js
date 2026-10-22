@@ -60,7 +60,8 @@ function linha(linhas, x, y){
   const step = Math.max(1, Math.ceil(n / 8));
   vals.forEach((v, i) => {
     s += '<circle class="pt" cx="' + px(i) + '" cy="' + py(v) + '" r="4"><title>' + esc(labs[i] + ': ' + fmt(v)) + '</title></circle>';
-    if(i % step === 0 || i === n - 1) s += '<text class="lbl" x="' + px(i) + '" y="' + (h - 16) + '" text-anchor="middle">' + esc(cut(labs[i], 12)) + '</text>';
+    // o último rótulo sempre aparece; o anterior some quando ficaria a menos de 80 px dele (em cima)
+    if(i === n - 1 || (i % step === 0 && (n - 1 - i) * pw / (n - 1) >= 80)) s += '<text class="lbl" x="' + px(i) + '" y="' + (h - 16) + '" text-anchor="middle">' + esc(cut(labs[i], 12)) + '</text>';
   });
   return s + '</svg>';
 }
