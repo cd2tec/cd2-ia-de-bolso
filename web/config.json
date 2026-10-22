@@ -3,7 +3,7 @@
   "product": "IA de Bolso",
   "tagline": "IA rodando 100% no seu computador",
   "mcp": {
-    "mode": "toolbox",
+    "mode": "demo",
     "name": "Archeo",
     "url": ""
   },

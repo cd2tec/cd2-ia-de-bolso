@@ -70,6 +70,31 @@ body{background:var(--surface-100);color:var(--ink);font:400 15px/24px var(--fon
 .tags .tag{max-width:220px}
 .tag span{overflow:hidden;text-overflow:ellipsis;min-width:0}
 
+/* ---------- faixa de guias (logo abaixo do topo): Conversa, Conhecimento e Configurações ---------- */
+/* Em tela estreita a faixa rola de lado; a página nunca. */
+.guias{display:flex;gap:var(--space-1);padding:0 var(--space-6);background:var(--surface-100);border-bottom:1px solid rgba(13,18,51,.12);overflow-x:auto;scrollbar-width:none;flex:none}
+.guias::-webkit-scrollbar{display:none}
+.guia{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:var(--space-2);flex:none;padding:10px var(--space-4) 7px;border-bottom:3px solid transparent;font:700 13px/20px var(--font-sans);color:var(--ink-muted);white-space:nowrap;cursor:pointer}
+.guia:hover{color:var(--ink)}
+.guia[aria-selected=true]{color:var(--ink-brand);border-bottom-color:var(--brand)}
+.guia:focus-visible{outline:2px solid var(--focus);outline-offset:-2px;border-radius:var(--radius-sm) var(--radius-sm) 0 0}
+.guia[aria-disabled=true]{color:var(--gray-solution);cursor:not-allowed}
+.guia small{font:600 10px/14px var(--font-sans);background:rgba(13,18,51,.06);color:var(--ink-muted);border-radius:var(--radius-pill);padding:1px 6px}
+.guia small:empty{display:none}
+/* Cada guia é um painel que ocupa o resto da tela. */
+.painel{flex:1;min-height:0;display:flex;flex-direction:column}
+.painel[hidden]{display:none}
+/* barra da guia Conversa: "Nova conversa" à direita, acima do chat */
+.conversa__barra{display:flex;justify-content:flex-end;margin-bottom:var(--space-2)}
+/* guia Configurações: o que era a janela, agora como página */
+.cfg{overflow-y:auto;background:var(--surface-raised)}
+.cfg__wrap{width:100%;max-width:640px;margin:0 auto;padding:var(--space-6)}
+.cfg__titulo{margin:0 0 var(--space-2);font:700 17px/24px var(--font-sans)}
+.cfg__titulo:focus{outline:none}
+.cfg__titulo span{font:500 13px/20px var(--font-sans);color:var(--ink-muted)}
+/* "Salvar e conectar" preso no rodapé da página, sempre à vista. */
+.cfg__wrap > .row:last-child{position:sticky;bottom:0;z-index:1;margin:var(--space-6) calc(-1 * var(--space-6)) 0;padding:var(--space-4) var(--space-6);background:var(--surface-raised);border-top:1px solid var(--border)}
+
 /* ---------- faixa da análise das tabelas ---------- */
 /* Robô em pixel art no estilo do robô do terminal (core/robo.txt), andando em dois quadros. Com
    "reduzir movimento", fica parado e só o texto e a barra de progresso mudam. */
@@ -273,6 +298,10 @@ button.contorno:hover{background:var(--surface-100)}
   .topbar{padding:var(--space-3) var(--space-4)}
   .product__txt span{display:none}
   .wrap{padding:0 var(--space-4)}
+  .guias{padding:0 var(--space-2)}
+  .guia{padding:10px var(--space-3) 7px}
+  .cfg__wrap{padding:var(--space-4)}
+  .cfg__wrap > .row:last-child{margin:var(--space-6) calc(-1 * var(--space-4)) 0;padding:var(--space-3) var(--space-4)}
   .dbf{grid-template-columns:1fr}
   .hero h1{font-size:32px;line-height:38px;letter-spacing:-.5px}
   footer{padding:var(--space-3) var(--space-4)}
@@ -296,6 +325,7 @@ button.contorno:hover{background:var(--surface-100)}
 .answer.demo{margin:0 0 var(--space-6)} .roteiro .answer.demo{margin:var(--space-2) 0 var(--space-4)}
 .demo-top{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);font:700 13px/20px var(--font-sans)}
 .demo-q{margin:0 0 var(--space-2);color:var(--ink-muted);font-style:italic}
+.demo-nota{margin:var(--space-2) 0 0;color:var(--ink-muted)}
 .roteiro p{margin:0 0 var(--space-3)} .roteiro ol,.roteiro ul{margin:0 0 var(--space-3);padding-left:var(--space-6)} .roteiro li{margin-bottom:var(--space-1)}
 .convite{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-2);margin:0 0 var(--space-6);padding:var(--space-4);background:var(--surface-raised);border:1px solid rgba(13,18,51,.12);border-left:4px solid var(--brand);border-radius:var(--radius-md)}
 .convite b{font:700 16px/22px var(--font-sans)} .convite p{margin:0;max-width:64ch;color:var(--ink-muted);font:400 14px/22px var(--font-sans)}
@@ -304,8 +334,7 @@ button.contorno:hover{background:var(--surface-100)}
 .msg .chips{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-3)}
 #printArea{display:none}
 /* ---------- tela "Entendimento do banco": o que a IA entendeu e as notas da TI ---------- */
-/* Troca de tela: com a tela aberta, a conversa e o compositor somem e ela ocupa o lugar deles. */
-body.com-notas .palco,body.com-notas footer{display:none}
+/* É o painel da guia Conhecimento. */
 .notas{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--surface-raised)}
 .notas[hidden]{display:none}
 .notas__top{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);padding:var(--space-3) var(--space-6);border-bottom:1px solid rgba(13,18,51,.12)}
@@ -389,6 +418,8 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 .salvas__run:focus-visible,.salvas__mais:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 .salvas__menu{flex:0 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);padding:0 var(--space-2) var(--space-2);font:500 12px/18px var(--font-sans)}
 .salvas__it > input{flex:0 0 calc(100% - 16px);height:32px;margin:var(--space-2);font-size:13px}
+.salvas__aviso{margin:0;font:500 12px/18px var(--font-sans);color:var(--ink-muted)}
+.salvas__aviso[hidden]{display:none}
 .salvas__erro{flex:0 0 100%;margin:0;padding:0 var(--space-2) var(--space-2);font:500 12px/18px var(--font-sans);color:var(--ink)}
 .answer .valores{margin:0 0 var(--space-2);font:600 13px/20px var(--font-sans);color:var(--ink-muted)}
 .answer .acts{flex-wrap:wrap}
@@ -456,11 +487,14 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
   </div>
   <div class="actions">
     <button class="sm contorno" id="bInstalar" hidden>Instalar no computador</button>
-    <button class="sm primary" id="bNew" title="Começar uma nova conversa">Nova conversa</button>
-    <button class="sm" id="bNotas" title="Ver o que a IA entendeu do banco e escrever as notas da TI" hidden>Entendimento do banco</button>
-    <button class="sm" id="bCfg" title="Configurar o banco de dados e as ferramentas">Configurações</button>
   </div>
 </header>
+<!-- Guias: setas (esquerda/direita, Home/End) andam entre elas; Enter ou Espaço abre. A aberta não é lembrada. -->
+<div class="guias" id="guias" role="tablist" aria-label="Seções da IA de Bolso">
+  <button type="button" class="guia" role="tab" id="gConversa" aria-controls="pConversa" aria-selected="true">💬 Conversa</button>
+  <button type="button" class="guia" role="tab" id="gConhecimento" aria-controls="notas" aria-selected="false" aria-disabled="true" aria-describedby="gConhecimentoMotivo" tabindex="-1" title="Ver o que a IA entendeu do banco e escrever as notas da TI">📚 Conhecimento <small id="gConhecimentoMotivo">conecte um banco</small></button>
+  <button type="button" class="guia" role="tab" id="gCfg" aria-controls="pCfg" aria-selected="false" tabindex="-1" title="Configurar o banco de dados e as ferramentas">⚙️ Configurações</button>
+</div>
 <div class="sono" id="sono" role="status" aria-live="polite" hidden></div>
 <div class="analise" id="analise" hidden>
   <svg class="robo" id="analiseRobo" viewBox="0 0 12 10" shape-rendering="crispEdges" aria-hidden="true"></svg>
@@ -469,20 +503,33 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 </div>
 <span class="oculto" id="analiseFase" aria-live="polite"></span>
 
+<div class="painel" id="pConversa" role="tabpanel" aria-labelledby="gConversa">
 <div class="palco">
   <aside class="salvas" id="salvas" aria-labelledby="sTitulo" hidden>
     <div class="salvas__cab"><h2 id="sTitulo">Consultas salvas (0)</h2><button class="sm salvas__mostrar" id="sMostrar" aria-expanded="false" aria-controls="sCorpo">Mostrar</button></div>
     <div class="salvas__corpo" id="sCorpo">
+      <p class="salvas__aviso" id="sAviso" hidden></p>
       <input type="text" id="sBusca" placeholder="🔎 Buscar…" aria-label="Buscar consulta salva pelo nome" spellcheck="false" autocomplete="off">
       <div class="salvas__itens" id="sItens" role="list"></div>
     </div>
   </aside>
-  <main id="main"><div class="wrap" id="chat"></div></main>
+  <main id="main">
+    <div class="wrap conversa__barra"><button class="sm primary" id="bNew" title="Começar uma nova conversa">Nova conversa</button></div>
+    <div class="wrap" id="chat"></div>
+  </main>
 </div>
-<section class="notas" id="notas" aria-labelledby="nTitulo" hidden>
+<footer>
+  <div class="composer">
+    <textarea id="input" rows="1" aria-label="Mensagem" placeholder="Pergunte alguma coisa… (Enter envia, Shift+Enter quebra linha)"></textarea>
+    <button class="primary" id="bSend">Enviar</button>
+    <button id="bStop" style="display:none">Parar</button>
+  </div>
+  <div class="note" id="note">Modelo pequeno rodando localmente: pode errar. Confira números importantes. <button type="button" class="lnk-btn" id="bAbout">Sobre este projeto</button></div>
+</footer>
+</div>
+<section class="notas painel" id="notas" role="tabpanel" aria-labelledby="gConhecimento" hidden>
   <div class="notas__top">
-    <button class="sm" id="nVoltar">← Voltar para a conversa</button>
-    <h2 id="nTitulo" tabindex="-1">Entendimento do banco</h2>
+    <h2 id="nTitulo">Entendimento do banco</h2>
     <span class="spacer"></span>
     <span class="resumo" id="nResumo"></span>
     <span class="actions" id="nAcoes">
@@ -502,19 +549,11 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
   </div>
 </section>
 
-<footer>
-  <div class="composer">
-    <textarea id="input" rows="1" aria-label="Mensagem" placeholder="Pergunte alguma coisa… (Enter envia, Shift+Enter quebra linha)"></textarea>
-    <button class="primary" id="bSend">Enviar</button>
-    <button id="bStop" style="display:none">Parar</button>
-  </div>
-  <div class="note" id="note">Modelo pequeno rodando localmente: pode errar. Confira números importantes. <button type="button" class="lnk-btn" id="bAbout">Sobre este projeto</button></div>
-</footer>
 
-<dialog id="dlg">
-  <span class="eyebrow">Configuração</span>
-  <h2>Configurações</h2>
-  <div class="radio">
+<section class="painel cfg" id="pCfg" role="tabpanel" aria-labelledby="gCfg" hidden>
+<div class="cfg__wrap">
+  <h2 class="cfg__titulo" id="cfgTitulo" tabindex="-1">Banco de dados <span>· como a IA de Bolso se conecta</span></h2>
+  <div class="radio" role="radiogroup" aria-labelledby="cfgTitulo">
     <label><input type="radio" name="mode" value="toolbox"> MCP Nativo para Banco de dados</label>
     <label><input type="radio" name="mode" value="demo"> Demonstração (offline)</label>
     <label><input type="radio" name="mode" value="mcp"> Archeo MCP</label>
@@ -558,10 +597,10 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
   </div>
   <div class="row">
     <span class="status" id="cfgStatus"></span>
-    <button id="cfgClose">Fechar</button>
     <button class="primary" id="cfgSave">Salvar e conectar</button>
   </div>
-</dialog>
+</div>
+</section>
 
 <dialog id="welcome" class="welcome" aria-labelledby="wTitle">
   <div class="welcome__top">
@@ -795,22 +834,22 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 </dialog>
 
 <div id="printArea" aria-hidden="true"></div>
-<script src="mcp.js?v=0.18.0"></script>
-<script src="oauth.js?v=0.18.0"></script>
-<script src="toolbox.js?v=0.18.0"></script>
-<script src="chart.js?v=0.18.0"></script>
-<script src="catalog.js?v=0.18.0"></script>
-<script src="perfil.js?v=0.18.0"></script>
-<script src="descricao.js?v=0.18.0"></script>
-<script src="notas.js?v=0.18.0"></script>
-<script src="consultas.js?v=0.18.0"></script>
-<script src="entendimento.js?v=0.18.0"></script>
-<script src="ask.js?v=0.18.0"></script>
-<script src="report.js?v=0.18.0"></script>
-<script src="demo.js?v=0.18.0"></script>
-<script src="momento.js?v=0.18.0"></script>
-<script src="sono.js?v=0.18.0"></script>
-<script src="instalar.js?v=0.18.0"></script>
+<script src="mcp.js?v=0.19.0"></script>
+<script src="oauth.js?v=0.19.0"></script>
+<script src="toolbox.js?v=0.19.0"></script>
+<script src="chart.js?v=0.19.0"></script>
+<script src="catalog.js?v=0.19.0"></script>
+<script src="perfil.js?v=0.19.0"></script>
+<script src="descricao.js?v=0.19.0"></script>
+<script src="notas.js?v=0.19.0"></script>
+<script src="consultas.js?v=0.19.0"></script>
+<script src="entendimento.js?v=0.19.0"></script>
+<script src="ask.js?v=0.19.0"></script>
+<script src="report.js?v=0.19.0"></script>
+<script src="demo.js?v=0.19.0"></script>
+<script src="momento.js?v=0.19.0"></script>
+<script src="sono.js?v=0.19.0"></script>
+<script src="instalar.js?v=0.19.0"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -869,40 +908,102 @@ async function handleOAuthReturn(){
 const demo = { async init(){ return CD2Demo.TOOLS; }, async call(name, a){ return CD2Demo.call(name, a); } };
 
 /* ---------- conexão com as ferramentas ---------- */
-async function connectTools(){
-  const mode = store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
+// Modo guardado (Configurações) e modo em vigor (st.modo): ao abrir, sem conexão de verdade, o em vigor
+// cai para a Demonstração sem mexer no guardado, que é tentado de novo na próxima abertura.
+const modoGuardado = () => store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
+const modoAtual = () => st.modo || modoGuardado();
+const AVISO_DEMO = 'Não consegui conectar ao banco configurado; abri a Demonstração. Veja em Configurações.';
+// Lê o /status do cd2-ctl (5 s no máximo cada leitura: ctl travado conta como fora do ar);
+// enquanto ele ainda sobe o toolbox, espera um pouco (até ~30 s).
+async function esperarCtl(){
+  await refreshCtl(5000);
+  for(let i = 0; i < 30 && st.ctlStatus && st.ctlStatus.estado === 'subindo'; i++){
+    await new Promise(ok => setTimeout(ok, 1000));
+    await refreshCtl(5000);
+  }
+}
+// Ao abrir, depois do Archeo (se guardado e não conectou): tenta o toolbox? Decide pela conexão real.
+// Banco rodando no cd2-ctl entra mesmo sem modo guardado ou com a Demonstração guardada (o localStorage
+// some quando a porta muda). configurado: havia banco de verdade, e cair na Demonstração merece aviso.
+async function planoToolbox(salvo){
+  await esperarCtl();
+  const cs = st.ctlStatus;
+  // Com o cd2-ctl de pé, ele manda: só há banco se ele tiver um (desconectar apaga o db.env e
+  // deixa o cd2.mode como estava, então o modo guardado sozinho não diz nada).
+  if(st.ctlUp) return { tentar: !!(cs && cs.estado === 'rodando'), configurado: salvo !== 'demo' && !!(cs && cs.motor) };
+  // Sem cd2-ctl (aberto à mão, janela antiga), o toolbox ainda pode responder sozinho.
+  return { tentar: salvo !== 'mcp' && salvo !== 'demo', configurado: salvo === 'toolbox' };
+}
+// Conecta num modo; lança se não der.
+// exigirBanco (só no arranque): no toolbox, sem banco de verdade do outro lado (status sem motor ou
+// catálogo ilegível, ex.: Postgres fora do ar com o cd2-ctl de pé) também lança.
+async function conectarModo(mode, exigirBanco){
   const url = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
   const tok = store.get('cd2.tok', true) || '';
+  if(mode === 'toolbox'){
+    const turl = CD2Toolbox.urlFor(location);
+    const c = new McpClient(turl, { token: async () => null, origin: location.origin });
+    st.tools = await c.init(); st.provider = c;
+    const statusTxt = await c.call('db_connection_status', {});
+    st.dbStatus = CD2Toolbox.parseStatus(statusTxt);
+    let catalogoTxt = null;
+    if(exigirBanco){
+      catalogoTxt = await c.call('db_catalog', {});
+      if(!CD2Toolbox.bancoAtivo(statusTxt, CD2Ask.parseRows(catalogoTxt))) throw new Error('Sem conexão com o banco.');
+    }
+    const eng = st.dbStatus ? CD2Toolbox.engineLabel(st.dbStatus.engine) : 'Banco de dados';
+    setPill('#pMcp', 'ok', eng + ': ' + st.tools.length + ' ferramentas');
+    st.catalogoFalhou = false;
+    st.catalogPromise = loadCatalog(c, st.catalogGen, catalogoTxt);
+  }else if(mode === 'mcp'){
+    if(!url) throw new Error('Informe a URL do servidor MCP');
+    const oauth = oauthFor(url);
+    if(!tok && !oauth.isLoggedIn()) throw new Error('Entre com a conta do Archeo ou informe uma chave de acesso.');
+    // token estático tem prioridade; sem ele, o OAuth renova sozinho e um 401 força a renovação
+    const c = new McpClient(url, { token: async () => tok || oauth.getToken(), onUnauthorized: tok ? null : () => oauth.forceRefresh(), origin: location.origin });
+    st.tools = await c.init(); st.provider = c;
+    setPill('#pMcp', 'ok', (st.cfg.mcp.name || 'MCP') + ': ' + st.tools.length + ' ferramentas');
+  }else{
+    st.tools = await demo.init(); st.provider = demo;
+    setPill('#pMcp', 'gold', 'Demonstração: ' + st.tools.length + ' ferramentas');
+  }
+  syncBotaoNotas();
+}
+// arranque (true só na abertura da página): tenta o que estiver de pé e, sem nada, abre a Demonstração.
+// Sem arranque (Salvar e conectar, sair do Archeo): conecta no modo guardado e mostra a falha.
+async function connectTools(arranque){
   st.catalog = null; st.suggestions = null; st.catalogPromise = null; st.descricao = null; st.catalogGen++;
   st.notas = null; st.notasBanco = null; st.notasChave = null; zerarEntendimento(); fecharNotas(); syncBotaoNotas();
   esconderFaixa();
   setPill('#pMcp', '', 'ferramentas…');
+  const limpar = () => { st.tools = []; st.provider = null; st.dbStatus = null; st.catalogPromise = null; };
+  if(arranque === true){
+    const salvo = store.get('cd2.mode');
+    let configurado = false;
+    const tentar = async m => {
+      st.modo = m;
+      try{ await conectarModo(m, true); if($('#hero')) renderHero(true); return true; }
+      catch(e){ limpar(); return false; }
+    };
+    // Archeo guardado vem primeiro e não espera o cd2-ctl.
+    if(salvo === 'mcp'){ configurado = true; if(await tentar('mcp')) return { ok:true }; }
+    const tb = await planoToolbox(salvo);
+    configurado = configurado || tb.configurado;
+    if(tb.tentar && await tentar('toolbox')) return { ok:true };
+    st.modo = 'demo';
+    await conectarModo('demo');
+    if($('#hero')) renderHero(true);
+    if(configurado) addNote(AVISO_DEMO);
+    return { ok:true };
+  }
+  const mode = modoGuardado();
+  st.modo = mode;
   try{
-    if(mode === 'toolbox'){
-      const turl = CD2Toolbox.urlFor(location);
-      const c = new McpClient(turl, { token: async () => null, origin: location.origin });
-      st.tools = await c.init(); st.provider = c;
-      st.dbStatus = CD2Toolbox.parseStatus(await c.call('db_connection_status', {}));
-      const eng = st.dbStatus ? CD2Toolbox.engineLabel(st.dbStatus.engine) : 'Banco de dados';
-      setPill('#pMcp', 'ok', eng + ': ' + st.tools.length + ' ferramentas');
-      st.catalogPromise = loadCatalog(c, st.catalogGen);
-    }else if(mode === 'mcp'){
-      if(!url) throw new Error('Informe a URL do servidor MCP');
-      const oauth = oauthFor(url);
-      if(!tok && !oauth.isLoggedIn()) throw new Error('Entre com a conta do Archeo ou informe uma chave de acesso.');
-      // token estático tem prioridade; sem ele, o OAuth renova sozinho e um 401 força a renovação
-      const c = new McpClient(url, { token: async () => tok || oauth.getToken(), onUnauthorized: tok ? null : () => oauth.forceRefresh(), origin: location.origin });
-      st.tools = await c.init(); st.provider = c;
-      setPill('#pMcp', 'ok', (st.cfg.mcp.name || 'MCP') + ': ' + st.tools.length + ' ferramentas');
-    }else{
-      st.tools = await demo.init(); st.provider = demo;
-      setPill('#pMcp', 'gold', 'Demonstração: ' + st.tools.length + ' ferramentas');
-    }
+    await conectarModo(mode);
     return { ok:true };
   }catch(e){
-    st.tools = []; st.provider = null;
-    setPill('#pMcp', 'err', 'ferramentas offline');
-    st.dbStatus = null;
+    limpar();
+    setPill('#pMcp', 'err', 'ferramentas offline'); syncBotaoNotas();
     let hint = '';
     if(e instanceof TypeError) hint = (mode === 'toolbox')
       ? ' O toolbox não respondeu em ' + CD2Toolbox.urlFor(location) + '. Configure o banco em Configurações, modo MCP Nativo para Banco de dados, ou use a Demonstração.'
@@ -1197,15 +1298,17 @@ async function gravarEntendimento(doc){
 function zerarEntendimento(){
   st.entendimento = null; st.entendimentoChave = null; st.entendimentoPronto = false; st.entendimentoDesconhecidas = [];
 }
-async function loadCatalog(client, gen){
+// texto (opcional): o db_catalog já lido no arranque, para não ler duas vezes.
+async function loadCatalog(client, gen, texto){
   let cat = null, sug = null;
   try{
-    const r = CD2Ask.parseRows(await client.call('db_catalog', {}));
+    const r = CD2Ask.parseRows(texto != null ? texto : await client.call('db_catalog', {}));
     if(r.ok && r.rows.length){ cat = CD2Catalog.buildCatalog(r.rows); sug = CD2Catalog.suggest(cat); }
   }catch(e){}
   if(gen !== st.catalogGen) return;
-  st.catalog = cat; st.suggestions = sug;
+  st.catalog = cat; st.suggestions = sug; st.catalogoFalhou = !cat;
   if($('#hero')) renderHero();
+  if(!cat) syncBotaoNotas();
   if(cat){
     // Entendimento guardado: aplicado, não refaz a varredura e o botão já pode aparecer.
     const lido = await lerEntendimento();
@@ -1391,14 +1494,27 @@ function gravarNotas(mudar, rota, chave){
   st.filaNotas = vez.catch(() => false);
   return vez;
 }
-const modoAtual = () => store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
 // Botão (e a barra das consultas salvas) só com banco conectado, catálogo pronto, notas lidas e fora da Demonstração.
 const podeSalvar = () => modoAtual() === 'toolbox' && st.provider !== demo && !!st.catalog && !!st.notas;
+// Guia Conhecimento (a tela "Entendimento do banco"): mesma regra do antigo botão. Apagada, mostra o motivo.
 function syncBotaoNotas(){
-  const b = $('#bNotas'); if(!b) return;
-  // O botão espera o entendimento completo; a barra das consultas salvas, não.
-  b.hidden = !(podeSalvar() && st.entendimentoPronto);
+  const g = $('#gConhecimento'); if(!g) return;
+  // A guia espera o entendimento completo; a barra das consultas salvas, não.
+  const pode = podeSalvar() && st.entendimentoPronto;
+  g.setAttribute('aria-disabled', String(!pode));
+  $('#gConhecimentoMotivo').textContent = pode ? '' : motivoConhecimento();
+  // Aberta e ficou indisponível (trocou de banco, desconectou): volta para a Conversa.
+  if(!pode && nt.aberta) fecharNotas(true);
   syncSalvas();
+}
+// Motivo curto ao lado do nome da guia apagada.
+function motivoConhecimento(){
+  const conectado = modoAtual() === 'toolbox' && !!st.provider && st.provider !== demo;
+  if(!conectado) return 'conecte um banco';
+  if(st.catalogoFalhou) return 'catálogo indisponível';
+  // Banco e entendimento prontos, mas as notas não foram lidas (já avisado na conversa).
+  if(st.catalog && st.entendimentoPronto && !st.notas) return 'notas indisponíveis';
+  return 'entendendo o banco…';
 }
 // Estado da tela: tabela aberta, busca e o rascunho de todas as notas (copiado de st.notas ao abrir;
 // trocar de tabela não perde o que foi digitado, só o "Salvar notas" grava).
@@ -1421,15 +1537,52 @@ function abrirNotas(){
   if(nt.rascunho && nt.chave !== st.notasChave) nt.rascunho = null;
   if(!nt.rascunho){ nt.rascunho = copiaTabelas(st.notas); nt.chave = st.notasChave || ''; nt.sujo = false; nt.msg = ''; nt.erro = false; }
   if(!nt.sel || !st.catalog.tables.some(t => t.name === nt.sel)) nt.sel = st.catalog.tables.length ? st.catalog.tables[0].name : null;
-  nt.aberta = true; document.body.classList.add('com-notas'); $('#notas').hidden = false;
-  renderNotas(); $('#nTitulo').focus();
+  nt.aberta = true; mostrarGuia('conhecimento');
+  renderNotas();
 }
-// Voltar mantém o rascunho; trocar de banco (connectTools) descarta tudo.
+// Sair da guia (voltar) mantém o rascunho; trocar de banco (connectTools) descarta tudo.
+// Se a guia estava aberta, a Conversa assume o lugar.
 function fecharNotas(voltar){
   if(!voltar){ nt.rascunho = null; nt.sel = null; nt.sujo = false; nt.msg = ''; $('#nBusca').value = ''; if($('#atualizar').open) $('#atualizar').close(); }
   if(!nt.aberta) return;
-  nt.aberta = false; document.body.classList.remove('com-notas'); $('#notas').hidden = true;
-  if(voltar) $('#input').focus();
+  nt.aberta = false;
+  if(guiaAtual !== 'conhecimento') return;
+  // O foco estava dentro da tela que some: vai para a guia Conversa, em vez de cair no body.
+  const dentro = $('#notas').contains(document.activeElement);
+  mostrarGuia('conversa');
+  if(dentro) $('#gConversa').focus();
+}
+
+/* ---------- guias: Conversa, Conhecimento e Configurações ---------- */
+const GUIAS = { conversa:['#gConversa', '#pConversa'], conhecimento:['#gConhecimento', '#notas'], cfg:['#gCfg', '#pCfg'] };
+let guiaAtual = 'conversa';
+// Só a troca visual (aria-selected, tabindex e qual painel aparece); quem decide se pode é irParaGuia.
+function mostrarGuia(nome){
+  guiaAtual = nome;
+  for(const k in GUIAS){
+    const [g, p] = GUIAS[k], on = k === nome;
+    $(g).setAttribute('aria-selected', String(on)); $(g).tabIndex = on ? 0 : -1; $(p).hidden = !on;
+  }
+  // Em tela estreita a faixa rola de lado: a guia aberta fica à vista.
+  const g = $(GUIAS[nome][0]); if(g.scrollIntoView) g.scrollIntoView({ block:'nearest', inline:'nearest' });
+}
+function irParaGuia(nome){
+  if(nome === guiaAtual) return;
+  if(nome === 'conhecimento'){ if($('#gConhecimento').getAttribute('aria-disabled') !== 'true') abrirNotas(); return; }
+  if(nome === 'cfg') return openCfg();
+  fecharNotas(true); mostrarGuia(nome);
+}
+// Setas andam entre as guias (a apagada também recebe foco, para o motivo ser lido); Enter/Espaço abre.
+function teclaGuias(e){
+  const ordem = Object.keys(GUIAS), at = ordem.findIndex(k => $(GUIAS[k][0]) === document.activeElement);
+  if(at < 0) return;
+  let i = null;
+  if(e.key === 'ArrowRight') i = (at + 1) % ordem.length;
+  else if(e.key === 'ArrowLeft') i = (at - 1 + ordem.length) % ordem.length;
+  else if(e.key === 'Home') i = 0;
+  else if(e.key === 'End') i = ordem.length - 1;
+  if(i === null) return;
+  e.preventDefault(); $(GUIAS[ordem[i]][0]).focus();
 }
 function resumoNotas(){
   const s = st.dbStatus || {}, b = st.notasBanco || {};
@@ -1860,13 +2013,18 @@ function mostrarErro(el, texto){
 const gravarConsultas = mudar => gravarNotas(atual => Object.assign({}, atual, { consultas:mudar(consultasSalvas().slice()) }));
 
 /* barra lateral */
+// Na Demonstração a barra mostra consultas de exemplo (web/demo.js), sem renomear nem apagar.
+const emDemo = () => !!st.provider && st.provider === demo;
 function syncSalvas(){
-  const a = $('#salvas'), on = podeSalvar();
+  const a = $('#salvas'), on = podeSalvar() || emDemo();
   a.hidden = !on;
-  if(on) renderSalvas(); else{ sb.menu = null; sb.modo = ''; sb.erro = ''; fecharRodar(); }
+  $('#sAviso').hidden = !emDemo();
+  if(!on || emDemo()){ sb.menu = null; sb.modo = ''; sb.erro = ''; fecharRodar(); }
+  if(on) renderSalvas();
 }
 function renderSalvas(){
   const a = $('#salvas'); if(a.hidden) return;
+  if(emDemo()) return renderExemplos();
   const todas = consultasSalvas();
   $('#sTitulo').textContent = 'Consultas salvas (' + todas.length + ')';
   const q = $('#sBusca').value.trim().toLowerCase(), box = $('#sItens');
@@ -1882,6 +2040,35 @@ function renderSalvas(){
   }
   if(foco && sb.focar) foco.focus();
   sb.focar = false; sb.voltar = null;
+}
+function renderExemplos(){
+  const todos = CD2Demo.exemplos();
+  $('#sTitulo').textContent = 'Consultas salvas (' + todos.length + ')';
+  const q = $('#sBusca').value.trim().toLowerCase(), box = $('#sItens');
+  const lista = todos.filter(e => !q || e.nome.toLowerCase().includes(q));
+  box.innerHTML = '';
+  for(const e of lista){
+    const el = document.createElement('div'); el.className = 'salvas__it'; el.setAttribute('role', 'listitem');
+    const run = document.createElement('button'); run.type = 'button'; run.className = 'salvas__run'; run.disabled = st.busy;
+    run.innerHTML = '<b></b><span></span>';
+    run.querySelector('b').textContent = e.nome;
+    run.querySelector('span').textContent = (VISUAL_ROTULO[e.visual] || 'tabela') + ' · exemplo';
+    run.title = 'Ver o exemplo, com dados fictícios';
+    run.onclick = () => mostrarExemplo(e);
+    el.appendChild(run); box.appendChild(el);
+  }
+  if(!lista.length){ const p = document.createElement('p'); p.className = 'notas__mais'; p.textContent = 'Nenhuma consulta com esse nome.'; box.appendChild(p); }
+}
+// Clique num exemplo: o card da Demonstração na conversa, com a frase do que muda com o banco.
+function mostrarExemplo(e){
+  if(st.busy || !emDemo()) return;
+  const hero = $('#hero'); if(hero) hero.remove();
+  addUser('Consulta salva: ' + e.nome);
+  const el = addMsg('assistant'), body = document.createElement('div'); body.className = 'body';
+  const card = demoCard(e.g);
+  const p = document.createElement('p'); p.className = 'demo-nota'; p.textContent = CD2Demo.EXEMPLO_FRASE; card.appendChild(p);
+  body.appendChild(card); el.appendChild(body); el.classList.remove('falando');
+  scrollDown();
 }
 function botaoSm(texto, cls){ const b = document.createElement('button'); b.type = 'button'; b.className = 'sm' + (cls ? ' ' + cls : ''); b.textContent = texto; return b; }
 // Fechou o menu: o foco volta para o ⋯ do item.
@@ -2181,26 +2368,28 @@ function send(text){
   $('#input').value = ''; $('#input').style.height = 'auto';
   const hero = $('#hero'); if(hero) hero.remove();
   addUser(text);
-  const mode = store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
+  const mode = modoAtual();
   const rot = (st.provider === demo) ? CD2Demo.roteiro(text) : null;
   if(rot){ st.messages.push({ role:'user', content:text }); runTurn({ roteiro:rot }); }
   else if(mode === 'toolbox' && st.catalogPromise) runAsk(text);
   else{ st.messages.push({ role:'user', content:text }); runTurn(); }
 }
-function renderHero(){
-  const c = $('#chat'); c.innerHTML = '';
+// noLugar: troca só o bloco de boas-vindas (o modo mudou ao conectar) e mantém os avisos já na conversa.
+function renderHero(noLugar){
+  const c = $('#chat'), velho = $('#hero');
   const h = document.createElement('div'); h.className = 'hero'; h.id = 'hero';
   h.innerHTML = '<span class="eyebrow">IA local · IA de Bolso</span><h1><span class="sauda"></span> Eu sou a IA da <em>CD2</em>.</h1><p></p><span class="eyebrow sub">Experimente perguntar</span><div class="chips"></div>';
   h.querySelector('.sauda').textContent = CD2Momento.saudacaoCurta(new Date()) + '!';
   h.querySelector('p').textContent = st.cfg.tagline + '. Nada do que você digitar sai deste computador, a não ser consultas às ferramentas que você conectar.';
-  const mode = store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
+  const mode = modoAtual();
   const sug = (mode === 'toolbox' && st.suggestions && st.suggestions.length) ? st.suggestions
     : Array.isArray(st.cfg.suggestions) ? st.cfg.suggestions : ((st.cfg.suggestions || {})[mode] || []);
   for(const s of sug){
     const b = document.createElement('button'); b.className = 'chip'; b.textContent = s; b.onclick = () => send(s); h.querySelector('.chips').appendChild(b);
   }
   if(mode === 'demo') h.insertBefore(convite(), h.querySelector('.sub'));
-  c.appendChild(h);
+  if(noLugar === true && velho) velho.replaceWith(h);
+  else{ c.innerHTML = ''; c.appendChild(h); }
 }
 function newChat(){ if(st.ctl) st.ctl.abort(); st.messages = []; st.periodoSaudado = null; renderHero(); }
 
@@ -2236,11 +2425,12 @@ async function ctlRequest(method, path, body, timeoutMs){
   try{ data = (await r.json()) || {}; }catch(e){}
   return { status:r.status, data };
 }
-async function refreshCtl(){
+// timeoutMs (opcional): passado esse tempo sem resposta, o cd2-ctl conta como fora do ar.
+async function refreshCtl(timeoutMs){
   st.ctlUp = false; st.ctlStale = false; st.ctlStatus = null;
   if(!st.ctlKey) return;
   try{
-    const r = await ctlRequest('GET', '/status');
+    const r = await ctlRequest('GET', '/status', null, timeoutMs);
     if(r.status === 200){ st.ctlUp = true; st.ctlStatus = r.data; }
     else if(r.status === 401) st.ctlStale = true;
   }catch(e){}
@@ -2293,15 +2483,25 @@ function renderToolbox(){
   $('#bDbOff').style.display = (on && cs && cs.motor) ? '' : 'none';
   $('#bPerfilPdf').style.display = st.catalog ? '' : 'none';
 }
+// Abre a guia Configurações (no modo pedido, se vier um). Já aberta, só troca o modo: não apaga o que foi digitado.
 function openCfg(forcar){
-  const mode = (typeof forcar === 'string' && forcar) || store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
-  document.querySelectorAll('input[name=mode]').forEach(r => r.checked = (r.value === mode));
-  $('#mcpUrl').value = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
-  $('#mcpTok').value = store.get('cd2.tok', true) || '';
-  $('#cfgStatus').textContent = ''; $('#cfgStatus').className = 'status';
+  // O formulário mostra o modo guardado; sem nenhum guardado, o que conectou ao abrir (banco achado pelo cd2-ctl).
+  const mode = (typeof forcar === 'string' && forcar) || store.get('cd2.mode') || (st.modo && st.modo !== 'demo' ? st.modo : '') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
+  const marcar = () => document.querySelectorAll('input[name=mode]').forEach(r => r.checked = (r.value === mode));
+  // Vindo de fora da faixa de guias (convite da Demonstração, link de ajuda), o foco vai para o título da página.
+  const foco = !$('#guias').contains(document.activeElement);
+  if(guiaAtual === 'cfg'){ if(typeof forcar === 'string' && forcar){ marcar(); syncCfgBoxes(); } if(foco) $('#cfgTitulo').focus(); return; }
+  fecharNotas(true); mostrarGuia('cfg');
+  // Com o "Salvar e conectar" em curso, o formulário e o "Conectando ao banco..." ficam como estão.
+  if(!st.ctlBusy){
+    marcar();
+    $('#mcpUrl').value = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
+    $('#mcpTok').value = store.get('cd2.tok', true) || '';
+    $('#cfgStatus').textContent = ''; $('#cfgStatus').className = 'status';
+  }
   refreshAuthBox();
   renderToolbox(); syncCfgBoxes();
-  $('#dlg').showModal();
+  $('#pCfg').scrollTop = 0; if(foco) $('#cfgTitulo').focus();
   refreshCtl().then(() => { if(!st.ctlBusy) fillDbForm(st.ctlStatus); renderToolbox(); });
 }
 function refreshAuthBox(){
@@ -2339,7 +2539,7 @@ async function saveDb(){
   if(!r.data.erro) fillDbForm(r.data);  // na falha, o que a pessoa digitou fica no formulário
   let c = null;
   if(r.data.estado === 'rodando') c = await connectTools();
-  else{ st.dbStatus = null; st.tools = []; st.provider = null; setPill('#pMcp', 'err', 'sem banco'); }
+  else{ st.dbStatus = null; st.tools = []; st.provider = null; setPill('#pMcp', 'err', 'sem banco'); syncBotaoNotas(); }
   renderToolbox();
   if(r.data.erro) showCfgError(r.data.estado === 'rodando' ? 'A conexão nova falhou. A anterior continua valendo.' : 'A conexão falhou.');
   else if(c && c.ok){ s.className = 'status tag tag--concluido'; s.textContent = st.tools.length + ' ferramentas disponíveis'; }
@@ -2356,7 +2556,7 @@ async function disconnectDb(ev){
   // catalogGen++: varredura ou atualização em curso param caladas (era do banco que saiu), sem aviso de falha.
   if(r && r.status === 200){ st.ctlStatus = r.data; st.catalogGen++; esconderFaixa(); st.notas = null; st.notasBanco = null; st.notasChave = null; zerarEntendimento(); fecharNotas(); syncBotaoNotas(); }
   st.dbStatus = null;
-  if((store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode)) === 'toolbox'){ st.tools = []; st.provider = null; setPill('#pMcp', 'err', 'sem banco'); }
+  if(modoAtual() === 'toolbox'){ st.tools = []; st.provider = null; setPill('#pMcp', 'err', 'sem banco'); syncBotaoNotas(); }
   fillDbForm(null); renderToolbox();
   const s = $('#cfgStatus');
   if(r && r.status === 200){ s.className = 'status tag tag--backlog'; s.textContent = 'Banco desconectado.'; }
@@ -2620,14 +2820,14 @@ async function boot(){
   document.title = (st.cfg.brand || 'CD2 Tech') + ' · ' + (st.cfg.product || 'IA de Bolso');
   $('#tagline').textContent = st.cfg.tagline || '';
   if(window.matchMedia && matchMedia('(max-width:640px)').matches) $('#input').placeholder = 'Pergunte alguma coisa…';
-  renderHero(); await handleOAuthReturn(); connectTools(); pingModel().then(ok => { if(ok) vigiarSono(); });
+  renderHero(); await handleOAuthReturn(); connectTools(true); pingModel().then(ok => { if(ok) vigiarSono(); });
   iniciarInstalacao();
 }
 $('#bSend').onclick = () => send();
 $('#bStop').onclick = () => st.ctl && st.ctl.abort();
 $('#bNew').onclick = newChat;
-$('#bNotas').onclick = abrirNotas;
-$('#nVoltar').onclick = () => fecharNotas(true);
+for(const k in GUIAS) $(GUIAS[k][0]).onclick = () => irParaGuia(k);
+$('#guias').addEventListener('keydown', teclaGuias);
 $('#nBusca').addEventListener('input', renderListaNotas);
 $('#nExportar').onclick = exportarNotas;
 $('#nAtualizar').onclick = abrirAtualizar;
@@ -2641,6 +2841,7 @@ $('#nArquivo').addEventListener('change', lerArquivoNotas);
 $('#impCancelar').onclick = () => $('#importar').close();
 $('#impOk').onclick = confirmarImportar;
 $('#importar').addEventListener('close', () => { imp.dados = null; imp.etapa = ''; });
+$('#sAviso').textContent = CD2Demo.EXEMPLOS_TOPO;
 $('#sBusca').addEventListener('input', renderSalvas);
 $('#sMostrar').onclick = () => { const a = $('#salvas'), on = !a.classList.contains('aberta'); a.classList.toggle('aberta', on); $('#sMostrar').setAttribute('aria-expanded', String(on)); $('#sMostrar').textContent = on ? 'Esconder' : 'Mostrar'; };
 $('#svCancelar').onclick = () => $('#salvar').close();
@@ -2652,8 +2853,6 @@ $('#svValor').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preven
 document.addEventListener('selectionchange', aoSelecionarSql);
 $('#rCancelar').onclick = () => $('#rodar').close();
 $('#rRodar').onclick = confirmarRodar;
-$('#bCfg').onclick = () => openCfg();
-$('#cfgClose').onclick = () => $('#dlg').close();
 $('#cfgSave').onclick = saveCfg;
 $('#wOk').onclick = () => { $('#welcome').close(); $('#input').focus(); };
 $('#bAbout').onclick = openWelcome;

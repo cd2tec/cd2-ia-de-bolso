@@ -110,7 +110,7 @@ const ROTEIRO = [
     fecho:'o ideal é usar um usuário do banco só de leitura', blocos:[
     { p:'Para eu trabalhar com os números da sua loja, é rápido:' },
     { lista:[
-      'Clique em **Configurações**, no topo da tela.',
+      'Abra a guia **Configurações**, logo abaixo do topo da tela.',
       'Escolha **MCP Nativo para Banco de dados**.',
       'Preencha o motor (PostgreSQL, Oracle, MariaDB/MySQL ou SQL Server), o endereço do servidor, a porta, a base, o usuário e a senha.',
       'Clique em **Salvar e conectar**.'
@@ -153,6 +153,21 @@ function instrucao(r){
 const CONVITE = { titulo:'Quer ver isso com os números da sua loja?',
   texto:'A IA de Bolso foi feita para analisar ERPs de varejo. Conecte o banco de dados do seu ERP em Configurações, de preferência com um usuário somente leitura.' };
 
-const api = { TAG, TOOLS, PROMPT, ROTEIRO, CONVITE, call, grafico, roteiro, texto, instrucao, norm };
+// Barra de consultas salvas na Demonstração: exemplos montados com os gráficos fictícios acima.
+const EXEMPLOS_TOPO = 'Exemplos. Com o seu banco, você salva com 👍 as perguntas que mais usa e vê o resultado atualizado num clique.';
+const EXEMPLO_FRASE = 'No seu banco, esta consulta traz os números atualizados num clique.';
+const EXEMPLOS = [
+  { id:'ex-departamentos', nome:'Vendas do mês por departamento', grafico:'vendas_por_departamento' },
+  { id:'ex-meses', nome:'Vendas por mês no ano', grafico:'vendas_por_mes' },
+  { id:'ex-ruptura', nome:'Curva A em ruptura nas lojas', grafico:'rupturas_criticas', args:{ limite:5 } },
+  { id:'ex-perdas', nome:'Maiores perdas do mês', grafico:'perdas_do_mes' },
+  { id:'ex-cliente', nome:'Onde o cliente 0042 gasta', grafico:'perfil_do_cliente' }
+];
+// Os exemplos como a barra mostra: nome, tipo de gráfico (visual) e o gráfico pronto para o card.
+function exemplos(){
+  return EXEMPLOS.map(e => { const g = grafico(e.grafico, e.args); return { id:e.id, nome:e.nome, visual:g.visual, g }; });
+}
+
+const api = { TAG, TOOLS, PROMPT, ROTEIRO, CONVITE, EXEMPLOS, EXEMPLOS_TOPO, EXEMPLO_FRASE, call, grafico, roteiro, texto, instrucao, norm, exemplos };
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else root.CD2Demo = api;
 })(typeof window !== 'undefined' ? window : globalThis);

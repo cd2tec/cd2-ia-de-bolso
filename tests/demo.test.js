@@ -80,3 +80,27 @@ test('instrução do roteiro: fecho obrigatório e o que evitar', () => {
   assert.match(D.instrucao(D.roteiro('Como você entende o meu banco?')), /Termine a resposta dizendo.*vários minutos/);
   assert.match(D.instrucao(D.roteiro('É seguro conectar?')), /Evite dizer que é 100% seguro/);
 });
+
+test('exemplos da barra: de 4 a 6, nomes únicos e cada um com gráfico que desenha', () => {
+  const ex = D.exemplos();
+  assert.ok(ex.length >= 4 && ex.length <= 6);
+  assert.equal(new Set(ex.map(e => e.nome)).size, ex.length);
+  assert.equal(new Set(ex.map(e => e.id)).size, ex.length);
+  for(const e of ex){
+    assert.ok(e.nome && e.g && e.g.titulo, e.id);
+    assert.equal(e.visual, e.g.visual, e.id);
+    assert.match(G.render(e.g.visual, e.g.colunas, e.g.linhas, { x:e.g.x, y:e.g.y }), /<svg/, e.id);
+  }
+  assert.equal(ex.find(e => e.id === 'ex-ruptura').g.linhas.length, 5);
+});
+
+test('exemplos da barra: textos exatos e nunca "sem IA"', () => {
+  assert.equal(D.EXEMPLOS_TOPO, 'Exemplos. Com o seu banco, você salva com 👍 as perguntas que mais usa e vê o resultado atualizado num clique.');
+  assert.equal(D.EXEMPLO_FRASE, 'No seu banco, esta consulta traz os números atualizados num clique.');
+  for(const t of [D.EXEMPLOS_TOPO, D.EXEMPLO_FRASE, ...D.EXEMPLOS.map(e => e.nome)]) assert.doesNotMatch(t, /sem IA/i);
+});
+
+test('config.json sai com a Demonstração como modo padrão (pen drive novo abre nela)', () => {
+  const cfg = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'web', 'config.json'), 'utf8'));
+  assert.equal(cfg.mcp.mode, 'demo');
+});

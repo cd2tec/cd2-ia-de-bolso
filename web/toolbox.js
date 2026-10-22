@@ -94,6 +94,11 @@ function parseStatus(text){
     return row;
   }catch(e){ return null; }
 }
+// Ao abrir a página: o toolbox respondeu, mas há banco de verdade do outro lado? Só se o
+// db_connection_status trouxer o motor e o db_catalog tiver sido lido (catalogo: parseRows dele).
+function bancoAtivo(statusTxt, catalogo){
+  return !!parseStatus(statusTxt) && !!(catalogo && catalogo.ok);
+}
 function statusLines(s){
   const v = x => (x == null ? '' : String(x));
   return [
@@ -157,7 +162,7 @@ function ctlStatusLines(cs){
   ];
 }
 
-const api = { ENGINES, TOOL_DESCRIPTIONS, engineLabel, urlFor, guardSql, prepareSql, parseStatus, statusLines,
+const api = { ENGINES, TOOL_DESCRIPTIONS, engineLabel, urlFor, guardSql, prepareSql, parseStatus, bancoAtivo, statusLines,
   UNSAFE_PORTS, ctlUrlFor, readKeyFromHash, defaultsFor, placeholdersFor, portFor, configPayload, ctlStatusLines };
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else root.CD2Toolbox = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -213,3 +213,13 @@ test('db_catalog: nos motores, views vêm antes da ordem por linhas', () => {
     assert.match(ordens[0], /^CASE WHEN .*(VIEW|'v'|'V').* THEN 0 ELSE 1 END, /, motor + ': ' + ordens[0]);
   }
 });
+
+test('bancoAtivo: só com motor no status e catálogo lido (Postgres fora do ar com o toolbox de pé não conta)', () => {
+  const A = require('../web/ask.js');
+  const ok = JSON.stringify([{ engine:'postgres', host:'127.0.0.1' }]);
+  assert.equal(T.bancoAtivo(ok, A.parseRows('[{"table_name":"vendas"}]')), true);
+  assert.equal(T.bancoAtivo(ok, A.parseRows('ERRO: connection refused')), false);
+  assert.equal(T.bancoAtivo('ERRO: dial tcp 127.0.0.1:5432: connect: connection refused', A.parseRows('[]')), false);
+  assert.equal(T.bancoAtivo('', A.parseRows('[{"a":1}]')), false);
+  assert.equal(T.bancoAtivo(ok, null), false);
+});
