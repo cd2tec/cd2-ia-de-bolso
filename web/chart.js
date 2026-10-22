@@ -1,9 +1,10 @@
 /* Gráficos do roteiro de relatórios: barra, linha, pizza, número e tabela, em SVG/HTML feito à
-   mão (sem biblioteca, funciona offline). Cores por classe CSS (tokens em index.html); a pizza usa
-   os hex dos mesmos tokens. Todo texto que vem do banco é escapado aqui. Sem animação. */
+   mão (sem biblioteca, funciona offline). Cores por classe CSS (tokens em index.html); a pizza lê os
+   tokens --pizza-N (claro ou escuro) e guarda o hex do claro como reserva fora da página. Todo texto que vem do banco é escapado aqui. Sem animação. */
 (function(root){
 "use strict";
 const PALETA = ['#0000ff', '#011e80', '#019eff', '#0333f7', '#a1a6ae', '#dbff2a'];
+const corPizza = i => 'var(--pizza-' + (i % PALETA.length + 1) + ',' + PALETA[i % PALETA.length] + ')';
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const W = 640;
 const NF = new Intl.NumberFormat('pt-BR', { maximumFractionDigits:2 });
@@ -69,15 +70,15 @@ function pizza(linhas, x, y){
   let a0 = -Math.PI / 2;
   let s = '<div class="pie"><svg class="chart" viewBox="0 0 280 280" role="img" aria-label="' + esc('Gráfico de pizza: ' + y + ' por ' + x) + '">';
   vals.forEach((v, i) => {
-    const frac = tot ? v / tot : 0, a1 = a0 + frac * 2 * Math.PI, cor = PALETA[i % PALETA.length];
+    const frac = tot ? v / tot : 0, a1 = a0 + frac * 2 * Math.PI, cor = corPizza(i);
     const t = '<title>' + esc(labs[i] + ': ' + fmt(v)) + '</title>';
     const p = a => (cx + rr * Math.cos(a)).toFixed(2) + ' ' + (cy + rr * Math.sin(a)).toFixed(2);
-    if(frac >= 0.9999) s += '<circle cx="' + cx + '" cy="' + cy + '" r="' + rr + '" fill="' + cor + '">' + t + '</circle>';
-    else if(frac > 0) s += '<path d="M' + cx + ' ' + cy + ' L' + p(a0) + ' A' + rr + ' ' + rr + ' 0 ' + (frac > 0.5 ? 1 : 0) + ' 1 ' + p(a1) + ' Z" fill="' + cor + '">' + t + '</path>';
+    if(frac >= 0.9999) s += '<circle cx="' + cx + '" cy="' + cy + '" r="' + rr + '" style="fill:' + cor + '">' + t + '</circle>';
+    else if(frac > 0) s += '<path d="M' + cx + ' ' + cy + ' L' + p(a0) + ' A' + rr + ' ' + rr + ' 0 ' + (frac > 0.5 ? 1 : 0) + ' 1 ' + p(a1) + ' Z" style="fill:' + cor + '">' + t + '</path>';
     a0 = a1;
   });
   s += '</svg><ul class="legend">';
-  vals.forEach((v, i) => { s += '<li><i style="background:' + PALETA[i % PALETA.length] + '"></i>' + esc(labs[i]) + ' <b>' + esc(fmt(v)) + '</b></li>'; });
+  vals.forEach((v, i) => { s += '<li><i style="background:' + corPizza(i) + '"></i>' + esc(labs[i]) + ' <b>' + esc(fmt(v)) + '</b></li>'; });
   return s + '</ul></div>';
 }
 function numero(colunas, linhas, y){

@@ -45,6 +45,8 @@ test('render linha: um ponto por linha, sem NaN com um ponto ou tudo zero', () =
 test('render pizza: fatias, legenda, fatia única vira círculo, total zero sem NaN', () => {
   const s = G.render('pizza', ['d', 'v'], [{ d:'A', v:1 }, { d:'B', v:1 }, { d:'C', v:2 }], { x:'d', y:'v' });
   assert.equal(count(s, '<path'), 3); assert.equal(count(s, '<li>'), 3);
+  assert.ok(s.includes('fill:var(--pizza-1,#0000ff)'), 'fatia lê o token do tema, com o hex do claro de reserva');
+  assert.ok(s.includes('background:var(--pizza-3,#019eff)'), 'legenda usa o mesmo token da fatia');
   assert.ok(G.render('pizza', ['d', 'v'], [{ d:'A', v:9 }], { x:'d', y:'v' }).includes('<circle'));
   assert.ok(!/NaN/.test(G.render('pizza', ['d', 'v'], [{ d:'A', v:0 }, { d:'B', v:0 }], { x:'d', y:'v' })));
 });
