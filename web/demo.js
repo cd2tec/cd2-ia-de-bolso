@@ -110,7 +110,7 @@ const ROTEIRO = [
     fecho:'o ideal é usar um usuário do banco só de leitura', blocos:[
     { p:'Para eu trabalhar com os números da sua loja, é rápido:' },
     { lista:[
-      'Clique em **Configurações**, no topo da tela.',
+      'Abra a guia **Configurações**, logo abaixo do topo da tela.',
       'Escolha **MCP Nativo para Banco de dados**.',
       'Preencha o motor (PostgreSQL, Oracle, MariaDB/MySQL ou SQL Server), o endereço do servidor, a porta, a base, o usuário e a senha.',
       'Clique em **Salvar e conectar**.'
