@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#ffffff">
 <script>
-/* Tema antes da primeira pintura, para não piscar claro: 'cd2.tema' é claro, escuro ou sistema (padrão). */
+/* Tema antes da primeira pintura, para não piscar claro: 'cd2.tema' é claro, escuro ou sistema (padrão).
+   CD2_COR_TOPO guarda o theme-color de cada tema num lugar só; o aplicarTema do script grande usa o mesmo. */
+window.CD2_COR_TOPO = { claro:'#ffffff', escuro:'#2b2e35' };
 (function(){ var t; try{ t = localStorage.getItem('cd2.tema') }catch(e){}
   if(t !== 'claro' && t !== 'escuro') t = 'sistema';
   var escuro = t === 'escuro' || (t === 'sistema' && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.setAttribute('data-tema', escuro ? 'escuro' : 'claro');
-  if(escuro) document.querySelector('meta[name=theme-color]').setAttribute('content', '#2b2e35'); })();
+  if(escuro) document.querySelector('meta[name=theme-color]').setAttribute('content', window.CD2_COR_TOPO.escuro); })();
 </script>
 <title>CD2 Tech · IA de Bolso</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%22104%2081%20352%20332%22%3E%3Cpath%20fill%3D%22%230000ff%22%20d%3D%22M%20242.320312%20397.777344%20C%20174.101562%20397.742188%20118.683594%20341.917969%20119.3125%20273.550781%20C%20119.9375%20205.753906%20176.226562%20151.621094%20244.023438%20151.621094%20L%20316.152344%20151.621094%20C%20316.191406%20151.621094%20316.21875%20151.648438%20316.21875%20151.683594%20C%20316.21875%20182.632812%20291.132812%20207.722656%20260.183594%20207.722656%20L%20243.574219%20207.722656%20C%20206.863281%20207.722656%20176.082031%20236.761719%20175.421875%20273.46875%20C%20174.746094%20310.9375%20205.011719%20341.640625%20242.320312%20341.675781%20C%20242.355469%20341.675781%20242.386719%20341.703125%20242.386719%20341.738281%20L%20242.386719%20397.710938%20C%20242.386719%20397.75%20242.355469%20397.777344%20242.320312%20397.777344%20%22/%3E%3Cpath%20fill%3D%22%23210e9e%22%20d%3D%22M%20314.554688%20341.699219%20L%20242.421875%20341.699219%20C%20242.386719%20341.699219%20242.359375%20341.667969%20242.359375%20341.632812%20C%20242.359375%20310.683594%20267.445312%20285.597656%20298.394531%20285.597656%20L%20315.003906%20285.597656%20C%20351.714844%20285.597656%20382.492188%20256.554688%20383.15625%20219.851562%20C%20383.832031%20182.378906%20353.566406%20151.679688%20316.257812%20151.644531%20C%20316.21875%20151.644531%20316.191406%20151.613281%20316.191406%20151.578125%20L%20316.191406%2095.605469%20C%20316.191406%2095.570312%20316.222656%2095.539062%20316.257812%2095.539062%20C%20384.476562%2095.578125%20439.890625%20151.402344%20439.265625%20219.769531%20C%20438.640625%20287.5625%20382.351562%20341.699219%20314.554688%20341.699219%20%22/%3E%3C/svg%3E">
@@ -44,6 +46,7 @@
   --tint:rgba(13,18,51,.06); --tint-2:rgba(13,18,51,.1); --backdrop:rgba(13,18,51,.55);
   --atencao-bg:#fff4e0; --tip-bg:#0d1233; --tip-ink:#ffffff; --ink-papel:#011e80;
   --ink-disabled:#a1a6ae; --disabled-bg:#a1a6ae; --disabled-ink:#464a53;
+  --contorno-primario:transparent; /* no escuro, 1px claro em volta do botão azul para a forma aparecer no grafite */
   /* gráficos: série, eixo e as fatias da pizza */
   --grafico-1:#0000ff; --grafico-eixo:#a1a6ae;
   --pizza-1:#0000ff; --pizza-2:#011e80; --pizza-3:#019eff; --pizza-4:#0333f7; --pizza-5:#a1a6ae; --pizza-6:#dbff2a;
@@ -59,9 +62,9 @@
 @media screen{
 :root[data-tema="escuro"]{
   color-scheme:dark;
-  --surface-100:#1f2126; --surface-raised:#2f333b; --surface-brand:#0333f7;
+  --surface-100:#1f2126; --surface-raised:#2b2e35; --surface-brand:#0333f7;
   --surface-top:#2b2e35; --surface-guias:#25282e;
-  --ink:#f2f2f2; --ink-muted:#a1a6ae; --ink-brand:#24abff; --on-brand:#ffffff;
+  --ink:#f2f2f2; --ink-muted:#a1a6ae; --ink-brand:#019eff; --on-brand:#ffffff;
   --focus:#019eff;
   --border:#464a53; --border-strong:#a1a6ae; --border-field:#80868f;
   --logo-ink:#ffffff; --logo-ink-tech:#ffffff;
@@ -69,9 +72,9 @@
   --tint:rgba(242,242,242,.08); --tint-2:rgba(242,242,242,.12); --backdrop:rgba(0,0,0,.65);
   --atencao-bg:#3d3222; --tip-bg:#464a53; --tip-ink:#f2f2f2; --ink-papel:#dbff2a;
   --ink-disabled:#7d8492; --disabled-bg:#464a53; --disabled-ink:#a1a6ae;
-  --grafico-1:#019eff; --grafico-eixo:#6a717f;
-  --pizza-1:#019eff; --pizza-2:#8a72ff; --pizza-3:#dbff2a; --pizza-4:#3c1fff; --pizza-5:#a1a6ae; --pizza-6:#f2f2f2;
-  --shadow-card:0 4px 16px rgba(0,0,0,.4);
+  --grafico-1:#019eff; --grafico-eixo:#a1a6ae;
+  --pizza-1:#019eff; --pizza-2:#dbff2a; --pizza-3:#a1a6ae; --pizza-4:#553fe6; --pizza-5:#f2f2f2; --pizza-6:#0333f7;
+  --shadow-card:0 4px 16px rgba(0,0,0,.4); --contorno-primario:rgba(242,242,242,.24);
 }
 }
 *{box-sizing:border-box}
@@ -104,6 +107,8 @@ body{background:var(--surface-100);color:var(--ink);font:400 15px/24px var(--fon
 .product__txt span{font:500 12px/16px var(--font-sans);color:var(--ink-muted)}
 .spacer{flex:1}
 .tags,.actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+/* Sem "Instalar no computador" à vista, o grupo some e não deixa vão antes do seletor de tema. */
+.topbar .actions:not(:has(> :not([hidden]))){display:none}
 .tags .tag{max-width:220px}
 .tag span{overflow:hidden;text-overflow:ellipsis;min-width:0}
 
@@ -180,7 +185,7 @@ body{background:var(--surface-100);color:var(--ink);font:400 15px/24px var(--fon
 /* ---------- botões (Button) ---------- */
 button{font:700 13px/16px var(--font-sans);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);height:44px;padding:0 var(--space-6);border-radius:var(--radius-pill);border:2px solid var(--border-strong);background:transparent;color:var(--ink);cursor:pointer;transition:background-color .15s,color .15s,border-color .15s}
 button:hover{background:var(--surface-raised)}
-button.primary{background:var(--brand);border-color:var(--brand);color:var(--on-primary)}
+button.primary{background:var(--brand);border-color:var(--brand);color:var(--on-primary);box-shadow:0 0 0 1px var(--contorno-primario)}
 button.primary:hover{background:var(--brand-hover);border-color:var(--brand-hover)}
 button.sm{height:32px;padding:0 var(--space-4);font-size:12px}
 button:disabled{background:var(--disabled-bg);border-color:transparent;color:var(--disabled-ink);cursor:not-allowed}
@@ -922,28 +927,30 @@ const store = {
 const TEMAS = ['claro', 'escuro', 'sistema'];
 const temaEscuroMq = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
 function temaEscolhido(){ const t = store.get('cd2.tema'); return TEMAS.includes(t) ? t : 'sistema'; }
+// A escolha vive aqui; o localStorage só a leva para a próxima abertura (pode estar bloqueado).
+let temaAtual = temaEscolhido();
 function aplicarTema(){
-  const t = temaEscolhido(), escuro = t === 'escuro' || (t === 'sistema' && !!(temaEscuroMq && temaEscuroMq.matches));
+  const t = temaAtual, escuro = t === 'escuro' || (t === 'sistema' && !!(temaEscuroMq && temaEscuroMq.matches));
   document.documentElement.setAttribute('data-tema', escuro ? 'escuro' : 'claro');
-  document.querySelector('meta[name=theme-color]').setAttribute('content', escuro ? '#2b2e35' : '#ffffff');
+  document.querySelector('meta[name=theme-color]').setAttribute('content', window.CD2_COR_TOPO[escuro ? 'escuro' : 'claro']);
   document.querySelectorAll('#tema .tema__op').forEach(b => {
     const on = b.dataset.tema === t;
     b.setAttribute('aria-checked', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1;
   });
 }
 function escolherTema(t, foco){
-  store.set('cd2.tema', t); aplicarTema();
+  temaAtual = t; store.set('cd2.tema', t); aplicarTema();
   if(foco) document.querySelector('#tema .tema__op[data-tema="' + t + '"]').focus();
 }
 document.querySelectorAll('#tema .tema__op').forEach(b => { b.onclick = () => escolherTema(b.dataset.tema); });
 document.getElementById('tema').addEventListener('keydown', e => {
-  const i = TEMAS.indexOf(temaEscolhido()), n = TEMAS.length;
+  const i = TEMAS.indexOf(temaAtual), n = TEMAS.length;
   const alvo = { ArrowRight:i + 1, ArrowDown:i + 1, ArrowLeft:i - 1, ArrowUp:i - 1, Home:0, End:n - 1 }[e.key];
   if(alvo === undefined) return;
   e.preventDefault(); escolherTema(TEMAS[(alvo + n) % n], true);
 });
 // Em "sistema", acompanha a troca do sistema ao vivo.
-if(temaEscuroMq){ const f = () => { if(temaEscolhido() === 'sistema') aplicarTema(); };
+if(temaEscuroMq){ const f = () => { if(temaAtual === 'sistema') aplicarTema(); };
   if(temaEscuroMq.addEventListener) temaEscuroMq.addEventListener('change', f); else if(temaEscuroMq.addListener) temaEscuroMq.addListener(f); }
 aplicarTema();
 
