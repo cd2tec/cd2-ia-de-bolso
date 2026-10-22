@@ -88,11 +88,15 @@ function resumo(catalog){
 // Perfil de todas as tabelas. Segunda passada: tabela com valor ou quantidade que se liga a uma
 // tabela de movimento pela chave do registro dela vira itens (mov_venda_item pelo nr_cupom,
 // order_lines pelo order_id -> sales_orders.id). Movimento só vira itens se tiver item no nome; cadastro só se tiver quantidade.
-function analisarCatalogo(catalog, amostras){
-  const tabs = (catalog && catalog.tables) || [];
-  for(const t of tabs) t.perfil = analisarTabela(t, amostras ? amostras.get(t.name) : null);
-  const movs = tabs.filter(t => t.perfil.papel === 'movimento' && t.perfil.chave);
+// o.so (Set de nomes, opcional): só essas tabelas ganham perfil novo, as outras mantêm o que têm (o
+// entendimento guardado) e servem de movimento para a segunda passada. É o caso do "Atualizar com o banco".
+function analisarCatalogo(catalog, amostras, o){
+  const tabs = (catalog && catalog.tables) || [], so = o && o.so;
+  const nova = t => !so || so.has(t.name);
+  for(const t of tabs) if(nova(t)) t.perfil = analisarTabela(t, amostras ? amostras.get(t.name) : null);
+  const movs = tabs.filter(t => t.perfil && t.perfil.papel === 'movimento' && t.perfil.chave);
   for(const t of tabs){
+    if(!nova(t)) continue;
     const p = t.perfil;
     if(p.papel !== 'indefinida' && p.papel !== 'movimento' && !(p.papel === 'cadastro' && p.colunas.quantidade)) continue;
     if(!p.colunas.valor && !p.colunas.quantidade) continue;

@@ -487,3 +487,99 @@ test('buildMessages: cadastro e parâmetro mostram só o papel, sem colunas úte
   const sys = A.buildMessages({ pergunta:'p', tabelas, motor:'oracle' })[0].content;
   assert.match(sys, /- ge_pessoa \(cerca de 4 linhas; cadastro\): DTANASCFUND DATE/);
 });
+
+const tabNota = (nota, extra) => Object.assign({ name:'vendas', type:'TABLE', rows:10, score:5, nota,
+  perfil:{ papel:'movimento', descricao:'cupons', colunas:{} },
+  columns:[{ name:'id', type:'int' }, { name:'status', type:'int', nota:'9 = cancelado' }] }, extra);
+
+test('buildMessages: nota da tabela vem antes da descrição e nota do campo junto do campo', () => {
+  const sys = A.buildMessages({ pergunta:'p', tabelas:[tabNota('Tabela oficial')], motor:'postgres' })[0].content;
+  assert.match(sys, /- vendas \(cerca de 10 linhas; movimento[^)]*\): nota da TI: Tabela oficial \| descrição: cupons \| colunas: .*status int \(nota da TI: 9 = cancelado\)/);
+});
+
+test('buildMessages: nota da TI sem quebra de linha nem controle', () => {
+  const sys = A.buildMessages({ pergunta:'p', tabelas:[tabNota('linha1\nlinha2\u0007 fim')], motor:'postgres' })[0].content;
+  assert.match(sys, /nota da TI: linha1 linha2 fim \|/);
+});
+
+test('buildMessages: tabela sem nota continua como antes', () => {
+  const sys = A.buildMessages({ pergunta:'p', tabelas:[tabNota(undefined, { perfil:null, columns:[{ name:'id', type:'int' }] })], motor:'postgres' })[0].content;
+  assert.match(sys, /- vendas \(cerca de 10 linhas\): id int/);
+  assert.doesNotMatch(sys, /nota da TI/);
+});
+
+test('buildMessages: notas acima de 2000 caracteres são cortadas pela ordem do spec', () => {
+  const mk = (name, score, nota, comCampo) => ({ name, type:'TABLE', rows:1, score, nota:'n'.repeat(nota), perfil:{ papel:'cadastro', descricao:'d'.repeat(150) },
+    columns:[{ name:'id', type:'int' }].concat(comCampo ? [{ name:'k', type:'int', nota:'k'.repeat(120) }] : []) });
+  const nomes = ['t_a', 't_b', 't_c', 't_d', 't_e'];
+  const linha = (sys, n) => sys.split('\n').find(l => l.startsWith('- ' + n + ' '));
+  // 1) nota 200 + campo 120 + descrição 150 por tabela = 2350: os campos saem da tabela menos relevante para a mais
+  const ts = nomes.map((n, i) => mk(n, 10 - i, 200, true));
+  const sys = A.buildMessages({ pergunta:'p', tabelas:ts, motor:'postgres' })[0].content;
+  assert.match(linha(sys, 't_a'), /k{120}/); assert.match(linha(sys, 't_b'), /k{120}/);
+  for(const n of ['t_c', 't_d', 't_e']) assert.doesNotMatch(linha(sys, n), /k{120}/); // 2350 -> 2230 -> 2110 -> 1990
+  for(const n of nomes){ assert.match(linha(sys, n), /n{200}/); assert.match(linha(sys, n), /d{150}/); }
+  assert.equal(ts[4].columns[1].nota.length, 120); // a entrada não é mutada
+  // 2) sem notas de campo e ainda acima do teto: sai a descrição da IA, a nota da tabela fica
+  const ts2 = nomes.map((n, i) => mk(n, 10 - i, 300, false));
+  const sys2 = A.buildMessages({ pergunta:'p', tabelas:ts2, motor:'postgres' })[0].content;
+  assert.match(linha(sys2, 't_a'), /d{150}/); assert.doesNotMatch(linha(sys2, 't_d'), /d{150}/); assert.doesNotMatch(linha(sys2, 't_e'), /d{150}/);
+  for(const n of nomes) assert.match(linha(sys2, n), /n{300}/);
+});
+
+test('ask devolve sqlBase sem o limite do prepareSql', async () => {
+  const callModel = fila([J({ sql:'SELECT loja FROM venda ORDER BY loja', visual:'tabela', x:'', y:'', titulo:'T' })]);
+  const runSql = fila([{ ok:true, rows:LINHAS }]);
+  const r = await A.ask(base({ motor:'sqlserver', callModel, runSql }));
+  assert.equal(r.ok, true);
+  assert.equal(r.sqlBase, 'SELECT loja FROM venda ORDER BY loja');
+  assert.notEqual(r.sql, r.sqlBase);
+  assert.equal(r.sql, 'SELECT loja FROM venda ORDER BY loja OFFSET 0 ROWS');
+});
+
+// Consultas salvas: rodam direto no banco, sem o modelo.
+const SALVA_SQL = "SELECT loja, SUM(valor) AS total FROM venda WHERE dt_venda >= '2026-10-01' AND loja LIKE '%CENTRO%' GROUP BY loja ORDER BY total DESC";
+function salva(){
+  const i = SALVA_SQL.indexOf('2026-10-01'), j = SALVA_SQL.indexOf('CENTRO');
+  return { id:'c1', nome:'Vendas do centro', sql:SALVA_SQL, visual:'barra', x:'loja', y:'total', criada:'2026-10-21',
+    params:[{ nome:'Desde', tipo:'data', inicio:i, fim:i + 10, valor:'2026-10-01' }, { nome:'Loja', tipo:'texto', inicio:j, fim:j + 6, valor:'CENTRO' }] };
+}
+
+test('rodarSalva roda sem chamar o modelo e usa o visual salvo', async () => {
+  const runSql = fila([{ ok:true, rows:LINHAS }]);
+  const r = await A.rodarSalva({ consulta:salva(), valores:['2026-09-01', "D'ÁVILA"], motor:'sqlserver', runSql });
+  const esperado = "SELECT loja, SUM(valor) AS total FROM venda WHERE dt_venda >= '2026-09-01' AND loja LIKE '%D''ÁVILA%' GROUP BY loja ORDER BY total DESC OFFSET 0 ROWS";
+  assert.equal(runSql.calls.length, 1); assert.equal(runSql.calls[0][0], esperado);
+  assert.equal(r.ok, true); assert.equal(r.titulo, 'Vendas do centro'); assert.equal(r.visual, 'barra');
+  assert.equal(r.x, 'loja'); assert.equal(r.y, 'total'); assert.equal(r.frase, 'Maior: B, 30. Total: 40 em 2 categorias.');
+  assert.deepEqual(r.colunas, ['loja', 'total']); assert.equal(r.todas.length, 2); assert.equal(r.sql, esperado);
+  assert.deepEqual(r.valores, ['2026-09-01', "D'ÁVILA"]);
+});
+
+test('rodarSalva devolve o número normalizado em valores, não o digitado', async () => {
+  const s = 'SELECT loja FROM venda WHERE valor > 10 ORDER BY loja', i = s.indexOf('10');
+  const c = { nome:'Acima de', sql:s, visual:'tabela', params:[{ nome:'Valor', tipo:'numero', inicio:i, fim:i + 2, valor:'10' }] };
+  const runSql = fila([{ ok:true, rows:LINHAS }]);
+  const r = await A.rodarSalva({ consulta:c, valores:[' 2,5 '], motor:'postgres', runSql });
+  assert.equal(runSql.calls[0][0].includes('valor > 2.5'), true);
+  assert.deepEqual(r.valores, ['2.5']);
+});
+
+test('rodarSalva recusa SQL que não é leitura', async () => {
+  const runSql = fila([{ ok:true, rows:LINHAS }]);
+  const r = await A.rodarSalva({ consulta:{ nome:'x', sql:'DELETE FROM x', visual:'tabela', params:[] }, valores:[], motor:'postgres', runSql });
+  assert.deepEqual(r, { ok:false, motivo:'sql', sql:'DELETE FROM x', barrado:true });
+  assert.equal(runSql.calls.length, 0);
+});
+
+test('rodarSalva: parâmetro inválido não vai ao banco; vazio, erro e timeout como no ask', async () => {
+  const runSql = fila([]);
+  assert.deepEqual(await A.rodarSalva({ consulta:salva(), valores:['2026-02-30', 'X'], motor:'postgres', runSql }),
+    { ok:false, motivo:'param', erro:'Desde: data inválida.' });
+  assert.equal(runSql.calls.length, 0);
+  const sql = SALVA_SQL;
+  assert.deepEqual(await A.rodarSalva({ consulta:salva(), motor:'postgres', runSql:fila([{ ok:true, rows:[] }]) }), { ok:false, motivo:'vazio', sql });
+  assert.deepEqual(await A.rodarSalva({ consulta:salva(), motor:'postgres', runSql:fila([{ ok:false, error:'boom' }]) }), { ok:false, motivo:'sql', sql });
+  assert.deepEqual(await A.rodarSalva({ consulta:salva(), motor:'postgres', runSql:fila([{ ok:false, timeout:true, front:true }]) }), { ok:false, motivo:'timeout', sql });
+  assert.deepEqual(await A.rodarSalva({ consulta:salva(), motor:'oracle', runSql:fila([{ ok:false, timeout:true, front:true }]) }), { ok:false, motivo:'timeout_front', sql });
+});

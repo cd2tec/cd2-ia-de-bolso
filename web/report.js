@@ -40,16 +40,19 @@ function printHtml(o){
 }
 
 // O que o harness entende do banco: as tabelas agrupadas pelo papel do perfil, com colunas úteis e a
-// descrição do modelo. As vazias só pelo nome, no fim. Sem as ligações entre tabelas.
+// descrição do modelo e as notas da TI. As vazias só pelo nome, no fim. Sem as ligações entre tabelas.
 const GRUPOS = [['movimento', 'Movimento'], ['itens', 'Itens de movimento'], ['cadastro', 'Cadastro'], ['parametro', 'Parâmetro'], ['indefinida', 'Indefinida']];
 function linhaTabela(t){
   const p = t.perfil, c = (p.papel === 'movimento' || p.papel === 'itens') ? (p.colunas || {}) : {};
   const uteis = [c.data ? 'data: ' + c.data : '', c.valor ? 'valor: ' + c.valor : '', c.quantidade ? 'quantidade: ' + c.quantidade : ''].filter(Boolean).join('; ');
   const linhas = n => 'cerca de ' + Number(n).toLocaleString('pt-BR') + (Number(n) === 1 ? ' linha' : ' linhas');
+  const campos = (t.columns || []).filter(x => x.nota).map(x => esc(x.name) + ': ' + esc(x.nota)).join('; ');
   const tam = t.type === 'VIEW' ? (t.rows ? 'view, ' + linhas(t.rows) : 'view') : linhas(t.rows || 0);
   return '<li><b>' + esc(t.name) + '</b> <span class="pr-meta">(' + esc(tam) + ')</span>'
     + (uteis ? '<br><span class="pr-meta">' + esc(uteis) + '</span>' : '')
-    + (p.descricao ? '<br>' + esc(p.descricao) : '') + '</li>';
+    + (p.descricao ? '<br>' + esc(p.descricao) : '')
+    + (t.nota ? '<br><span class="pr-nota">Nota da TI: ' + esc(t.nota) + '</span>' : '')
+    + (campos ? '<br><span class="pr-meta">Notas dos campos: ' + campos + '</span>' : '') + '</li>';
 }
 function perfilHtml(o){
   const tabs = o.tabelas || [], com = tabs.filter(t => t.perfil && t.perfil.papel);

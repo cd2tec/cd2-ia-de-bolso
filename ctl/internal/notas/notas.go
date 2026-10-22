@@ -1,0 +1,193 @@
+// Package notas guarda, por banco, as notas da TI e as consultas salvas: um arquivo JSON por
+// conexão na pasta de cache. O arquivo nunca leva senha nem usuário.
+package notas
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+// MaxDados é o maior arquivo aceito em Gravar.
+const MaxDados = 1 << 20
+
+// MaxEntendimento é o maior arquivo de entendimento aceito: o mapa do schema de um ERP grande
+// passa fácil de 1 MiB.
+const MaxEntendimento = 16 << 20
+
+// ErrDados é o erro de Gravar quando o conteúdo não tem o formato esperado.
+var ErrDados = errors.New("notas: conteúdo inválido")
+
+// ErrCorrompido é o erro de Ler quando o arquivo gravado não tem o formato esperado.
+var ErrCorrompido = errors.New("notas: arquivo corrompido")
+
+// vazio é o que Ler devolve quando ainda não há arquivo.
+const vazio = `{"versao":1,"tabelas":{},"consultas":[]}`
+
+// vazioEntendimento é o que Ler devolve quando o banco ainda não tem entendimento.
+const vazioEntendimento = `{"versao":1,"tabelas":{}}`
+
+// Banco identifica a conexão. O usuário só entra na conta do schema do Oracle; não vai para o JSON.
+type Banco struct {
+	Motor   string `json:"motor"`
+	Host    string `json:"host"`
+	Porta   int    `json:"porta"`
+	Base    string `json:"base"`
+	Usuario string `json:"-"`
+	Schema  string `json:"schema"`
+}
+
+// SchemaEfetivo é o schema que a consulta enxerga de fato, com o padrão de cada motor.
+func SchemaEfetivo(b Banco) string {
+	switch b.Motor {
+	case "postgres":
+		if b.Schema != "" {
+			return b.Schema
+		}
+		return "public"
+	case "sqlserver":
+		if b.Schema != "" {
+			return b.Schema
+		}
+		return "dbo"
+	case "oracle":
+		if b.Schema != "" {
+			return b.Schema
+		}
+		return strings.ToUpper(b.Usuario)
+	case "mariadb", "mysql":
+		return b.Base
+	}
+	return ""
+}
+
+// Chave é o nome do arquivo do banco: 32 hex do SHA-256 de motor, host, porta, base e schema.
+func Chave(b Banco) string {
+	s := fmt.Sprintf("%s|%s|%d|%s|%s", b.Motor, strings.ToLower(b.Host), b.Porta, b.Base, SchemaEfetivo(b))
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:16])
+}
+
+// Store lê e grava os arquivos dentro de <dir>/<sub>. O mesmo mecanismo serve às notas e ao
+// entendimento; o que muda é a subpasta, o documento vazio, o limite e a validação.
+type Store struct {
+	dir     string
+	sub     string
+	vazio   string
+	limite  int
+	validar func([]byte) error
+}
+
+// New cria o Store das notas; a pasta só nasce na primeira gravação.
+func New(dir string) *Store {
+	return &Store{dir: dir, sub: "notas", vazio: vazio, limite: MaxDados, validar: validar}
+}
+
+// NewEntendimento cria o Store do entendimento do schema (<dir>/entendimento), com limite maior
+// e só o envelope validado: versao 1 e tabelas objeto; o resto do documento é livre.
+func NewEntendimento(dir string) *Store {
+	return &Store{dir: dir, sub: "entendimento", vazio: vazioEntendimento, limite: MaxEntendimento, validar: validarEntendimento}
+}
+
+// Limite é o maior documento que Gravar aceita neste Store.
+func (s *Store) Limite() int { return s.limite }
+
+func (s *Store) caminho(b Banco) string {
+	return filepath.Join(s.dir, s.sub, Chave(b)+".json")
+}
+
+// Ler devolve o JSON gravado, ou o documento vazio se o banco ainda não tem notas. Um arquivo
+// que não passa na validação devolve ErrCorrompido (e fica onde está, para a TI recuperar).
+func (s *Store) Ler(b Banco) (json.RawMessage, error) {
+	raw, err := os.ReadFile(s.caminho(b))
+	if errors.Is(err, fs.ErrNotExist) {
+		return json.RawMessage(s.vazio), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if s.validar(raw) != nil {
+		return nil, ErrCorrompido
+	}
+	return json.RawMessage(raw), nil
+}
+
+// Gravar valida o documento e troca o arquivo inteiro: temporário na mesma pasta, Sync e rename.
+func (s *Store) Gravar(b Banco, dados json.RawMessage) error {
+	if err := s.validar(dados); err != nil {
+		return err
+	}
+	arq := s.caminho(b)
+	if err := os.MkdirAll(filepath.Dir(arq), 0o700); err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(filepath.Dir(arq), Chave(b)+"-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	_, err = f.Write(dados)
+	if err == nil {
+		err = f.Sync()
+	}
+	if errFechar := f.Close(); err == nil {
+		err = errFechar
+	}
+	if err == nil {
+		err = os.Rename(tmp, arq)
+	}
+	if err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
+}
+
+// validar aceita só um objeto com versao 1, tabelas objeto e consultas array.
+func validar(dados []byte) error {
+	if len(dados) > MaxDados {
+		return ErrDados
+	}
+	var doc struct {
+		Versao    int             `json:"versao"`
+		Tabelas   json.RawMessage `json:"tabelas"`
+		Consultas json.RawMessage `json:"consultas"`
+	}
+	if err := json.Unmarshal(dados, &doc); err != nil || doc.Versao != 1 {
+		return ErrDados
+	}
+	var tabelas map[string]json.RawMessage
+	if json.Unmarshal(doc.Tabelas, &tabelas) != nil || tabelas == nil {
+		return ErrDados
+	}
+	var consultas []json.RawMessage
+	if json.Unmarshal(doc.Consultas, &consultas) != nil || consultas == nil {
+		return ErrDados
+	}
+	return nil
+}
+
+// validarEntendimento aceita só um objeto com versao 1 e tabelas objeto, até MaxEntendimento.
+func validarEntendimento(dados []byte) error {
+	if len(dados) > MaxEntendimento {
+		return ErrDados
+	}
+	var doc struct {
+		Versao  int             `json:"versao"`
+		Tabelas json.RawMessage `json:"tabelas"`
+	}
+	if err := json.Unmarshal(dados, &doc); err != nil || doc.Versao != 1 {
+		return ErrDados
+	}
+	var tabelas map[string]json.RawMessage
+	if json.Unmarshal(doc.Tabelas, &tabelas) != nil || tabelas == nil {
+		return ErrDados
+	}
+	return nil
+}

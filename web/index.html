@@ -184,7 +184,7 @@ dialog > .row:last-child{position:sticky;bottom:calc(-1 * var(--dlg-pad));z-inde
 dialog::backdrop{background:rgba(13,18,51,.55)}
 dialog h2{margin:var(--space-6) 0 var(--space-4);font:700 22px/28px var(--font-sans)}
 label{display:block;font:600 13px/16px var(--font-sans);color:var(--ink);margin:var(--space-6) 0 var(--space-2)}
-input[type=text],input[type=password]{width:100%;height:44px;background:var(--surface-raised);color:var(--ink);border:1px solid var(--border-field);border-radius:var(--radius-sm);padding:0 var(--space-3);font:400 15px/24px var(--font-sans)}
+input[type=text],input[type=password],input[type=date]{width:100%;height:44px;background:var(--surface-raised);color:var(--ink);border:1px solid var(--border-field);border-radius:var(--radius-sm);padding:0 var(--space-3);font:400 15px/24px var(--font-sans)}
 input[type=radio]{accent-color:var(--brand);width:18px;height:18px;margin:0}
 .radio{display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-6);margin-top:var(--space-2)}
 .radio label{margin:0;font-weight:500;font-size:15px;display:flex;gap:var(--space-2);align-items:center;cursor:pointer}
@@ -303,6 +303,125 @@ button.contorno:hover{background:var(--surface-100)}
 .hero .convite{margin-top:var(--space-6)} .hero .convite p{font:400 15px/24px var(--font-sans)}
 .msg .chips{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-3)}
 #printArea{display:none}
+/* ---------- tela "Entendimento do banco": o que a IA entendeu e as notas da TI ---------- */
+/* Troca de tela: com a tela aberta, a conversa e o compositor somem e ela ocupa o lugar deles. */
+body.com-notas .palco,body.com-notas footer{display:none}
+.notas{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--surface-raised)}
+.notas[hidden]{display:none}
+.notas__top{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);padding:var(--space-3) var(--space-6);border-bottom:1px solid rgba(13,18,51,.12)}
+.notas__top h2{margin:0;font:700 17px/24px var(--font-sans)}
+.notas__top .resumo{font:500 13px/20px var(--font-sans);color:var(--ink-muted)}
+.notas__corpo{flex:1;min-height:0;display:flex}
+.notas__lista{flex:0 0 280px;display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3);background:var(--surface-100);border-right:1px solid rgba(13,18,51,.12);min-height:0}
+.notas__lista input{height:36px;font-size:13px}
+.notas__itens{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:var(--space-2);padding:2px}
+.notas__it{all:unset;box-sizing:border-box;display:block;cursor:pointer;padding:var(--space-2);border-radius:var(--radius-sm);background:var(--surface-raised);border:1px solid rgba(13,18,51,.12);font:500 11px/16px var(--font-sans);color:var(--ink-muted)}
+.notas__it:hover{border-color:var(--brand)}
+.notas__it:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.notas__it[aria-current=true]{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand)}
+.notas__it .papel{display:block;font:700 10px/14px var(--font-sans);text-transform:uppercase;letter-spacing:.5px;color:var(--on-accent)}
+.notas__it b{display:block;font:700 12px/18px var(--font-sans);color:var(--ink);overflow-wrap:anywhere}
+.notas__mais{font:400 12px/18px var(--font-sans);color:var(--ink-muted)}
+.notas__det{flex:1;min-width:0;overflow-y:auto;padding:var(--space-4) var(--space-6);display:flex;flex-direction:column;gap:var(--space-3)}
+.notas__det .cab{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.notas__det .cab b{font:700 17px/24px var(--font-sans);overflow-wrap:anywhere}
+.notas__det .cab .hint{margin:0}
+.notas__ia{margin:0;padding:var(--space-3);border-radius:var(--radius-sm);background:var(--surface-100);font:400 13px/20px var(--font-sans)}
+.notas__det label{margin:0 0 var(--space-1)}
+.notas__det textarea{width:100%;min-height:72px;max-height:none;font-size:14px;line-height:22px;resize:vertical}
+.notas__conta{font:500 11px/16px var(--font-sans);color:var(--ink-muted);text-align:right}
+.notas__campos{border-collapse:collapse;width:100%;font-size:13px}
+.notas__campos th{text-align:left;font:700 11px/16px var(--font-sans);text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted)}
+.notas__campos th,.notas__campos td{padding:var(--space-1) var(--space-2);border-bottom:1px solid rgba(13,18,51,.08);vertical-align:middle}
+.notas__campos td:first-child{font-family:var(--font-mono);font-size:12px;overflow-wrap:anywhere}
+.notas__campos td:nth-child(2){color:var(--ink-muted);font-size:12px;white-space:nowrap}
+.notas__campos input{height:32px;font-size:13px}
+.notas__acts{position:sticky;bottom:calc(-1 * var(--space-4));display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3);padding:var(--space-3) 0;background:var(--surface-raised)}
+.notas__acts .hint{margin:0}
+.notas__vazio{margin:auto;color:var(--ink-muted)}
+.notas__top .actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.notas__top [hidden],#importar [hidden],#atualizar [hidden]{display:none}
+/* tabelas do banco que o entendimento guardado ainda não conhece */
+.notas__aviso{margin:0;padding:var(--space-2) var(--space-6);border-left:4px solid var(--status-atencao);background:#fff4e0;font:500 13px/20px var(--font-sans)}
+.notas__aviso[hidden]{display:none}
+/* janela Importar: resumo, aviso laranja e a tabela com o antes riscado e o depois */
+#importar,#atualizar{width:min(620px,92vw)}
+#importar h2,#atualizar h2{margin-top:0}
+.imp__soma{display:flex;gap:var(--space-3);margin:var(--space-3) 0}
+.imp__soma > div{flex:1;padding:var(--space-2);border-radius:var(--radius-sm);background:var(--surface-100);text-align:center;font:500 12px/18px var(--font-sans)}
+.imp__soma > div.sobre{background:#fff4e0}
+.imp__soma b{display:block;font:700 18px/24px var(--font-sans)}
+.imp__alerta{margin:var(--space-3) 0;padding:var(--space-3);border-left:4px solid var(--status-atencao);border-radius:var(--radius-sm);background:#fff4e0;font:400 13px/20px var(--font-sans)}
+.imp__erro{margin:var(--space-3) 0;font:500 14px/22px var(--font-sans)}
+.imp__tab{border-collapse:collapse;width:100%;font-size:13px}
+.imp__tab th{text-align:left;font:700 11px/16px var(--font-sans);text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted)}
+.imp__tab th,.imp__tab td{padding:var(--space-2) var(--space-1);border-bottom:1px solid rgba(13,18,51,.08);vertical-align:top;overflow-wrap:anywhere}
+.imp__tab td:first-child{width:38%}
+.imp__tab .sub{display:block;color:var(--ink-muted);font-size:12px}
+.imp__tab .antes{display:block;color:var(--ink-muted);text-decoration:line-through}
+.imp__tab .sql{white-space:pre-wrap;font:400 12px/18px var(--font-mono)}
+button.aviso{background:var(--status-atencao);border-color:var(--status-atencao);color:var(--status-ink-escuro)}
+button.aviso:hover{background:#e68a00;border-color:#e68a00}
+@media (max-width:640px){
+  .notas__top{padding:var(--space-3) var(--space-4)}
+  .notas__corpo{flex-direction:column}
+  .notas__lista{flex:0 0 auto;max-height:40vh;border-right:0;border-bottom:1px solid rgba(13,18,51,.12)}
+  .notas__det{padding:var(--space-4)}
+}
+/* ---------- consultas salvas: barra lateral, 👍 e as janelas de salvar e de rodar ---------- */
+.palco{flex:1;min-height:0;display:flex}
+.palco > main{min-width:0}
+.salvas{flex:0 0 260px;display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3);background:var(--surface-100);border-right:1px solid rgba(13,18,51,.12);min-height:0}
+.salvas[hidden]{display:none}
+.salvas__cab{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2)}
+.salvas__cab h2{margin:0;font:700 12px/16px var(--font-sans);text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted)}
+.salvas__mostrar{display:none}
+.salvas__corpo{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--space-2)}
+.salvas__corpo > input{height:36px;font-size:13px}
+.salvas__itens{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:var(--space-2);padding:2px}
+.salvas__it{display:flex;flex-wrap:wrap;align-items:flex-start;background:var(--surface-raised);border:1px solid rgba(13,18,51,.12);border-radius:var(--radius-sm)}
+.salvas__it:hover,.salvas__it:focus-within{border-color:var(--brand)}
+.salvas__run{all:unset;box-sizing:border-box;display:block;flex:1;min-width:0;cursor:pointer;padding:var(--space-2);font:500 11px/16px var(--font-sans);color:var(--ink-muted)}
+.salvas__run b{display:block;font:700 12px/18px var(--font-sans);color:var(--ink);overflow-wrap:anywhere}
+.salvas__run:disabled{background:none;color:var(--ink-muted);cursor:wait;opacity:.6}
+.salvas__mais{all:unset;cursor:pointer;padding:var(--space-2);font:700 14px/18px var(--font-sans);color:var(--ink-muted);border-radius:var(--radius-sm)}
+.salvas__mais:hover{color:var(--ink-brand);background:none}
+.salvas__run:focus-visible,.salvas__mais:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.salvas__menu{flex:0 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);padding:0 var(--space-2) var(--space-2);font:500 12px/18px var(--font-sans)}
+.salvas__it > input{flex:0 0 calc(100% - 16px);height:32px;margin:var(--space-2);font-size:13px}
+.salvas__erro{flex:0 0 100%;margin:0;padding:0 var(--space-2) var(--space-2);font:500 12px/18px var(--font-sans);color:var(--ink)}
+.answer .valores{margin:0 0 var(--space-2);font:600 13px/20px var(--font-sans);color:var(--ink-muted)}
+.answer .acts{flex-wrap:wrap}
+#salvar{width:min(660px,92vw)}
+#salvar h2,#rodar h2{margin-top:0;overflow-wrap:anywhere}
+.sqlv{margin:0;max-height:220px;overflow:auto;padding:var(--space-3);border-radius:var(--radius-sm);background:var(--surface-100);font:400 12px/20px var(--font-mono);white-space:pre-wrap;overflow-wrap:anywhere}
+.sqlv mark{background:var(--accent);color:var(--on-accent);border-radius:3px;font-weight:700}
+.sqlv mark.off{background:rgba(13,18,51,.1);color:var(--ink-muted);font-weight:400}
+.lits{border-collapse:collapse;width:100%;margin-top:var(--space-2);font-size:13px}
+.lits th{text-align:left;font:700 11px/16px var(--font-sans);text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted)}
+.lits th,.lits td{padding:var(--space-1) var(--space-2);border-bottom:1px solid rgba(13,18,51,.08);vertical-align:middle}
+.lits td:nth-child(2){font-family:var(--font-mono);font-size:12px;overflow-wrap:anywhere;max-width:180px}
+.lits td:nth-child(4){color:var(--ink-muted);white-space:nowrap}
+.lits input[type=text]{height:32px;font-size:13px}
+.lits input[type=checkbox]{accent-color:var(--brand);width:18px;height:18px;margin:0}
+.lits tr.extra{background:var(--surface-100)}
+.addp{margin-top:var(--space-3);padding:var(--space-3);border:1px dashed var(--brand);border-radius:var(--radius-sm)}
+.addp > b{font:700 13px/20px var(--font-sans)}
+.addp .hint{margin:var(--space-1) 0 var(--space-2)}
+.addp__campos{display:grid;grid-template-columns:1fr 1fr auto;gap:var(--space-2);align-items:center}
+.addp__campos input{height:36px;font-size:13px}
+.erro-campo{margin-top:var(--space-2);font:500 13px/20px var(--font-sans);color:var(--ink)}
+.erro-campo:empty{display:none}
+.rodar__campos{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--space-4)}
+.rodar__campos label{margin:var(--space-4) 0 var(--space-2);overflow-wrap:anywhere}
+@media (max-width:640px){
+  .palco{flex-direction:column}
+  .salvas{flex:none;border-right:0;border-bottom:1px solid rgba(13,18,51,.12);padding:var(--space-2) var(--space-4)}
+  .salvas__mostrar{display:inline-flex}
+  .salvas:not(.aberta) .salvas__corpo{display:none}
+  .salvas.aberta .salvas__corpo{max-height:45vh}
+  .addp__campos,.rodar__campos{grid-template-columns:1fr}
+}
 @media print{
   body > *:not(#printArea){display:none !important}
   body{display:block;background:#fff}
@@ -311,6 +430,7 @@ button.contorno:hover{background:var(--surface-100)}
   .pr-foot{margin-top:24px;padding-top:8px;border-top:1px solid var(--border)}
   .pr-resumo{display:flex;flex-wrap:wrap;gap:4px 16px;list-style:none;padding:0;margin:8px 0 16px}
   .pr-tabs{list-style:none;padding:0;margin:0 0 16px} .pr-tabs li{padding:6px 0;border-bottom:1px solid var(--border);break-inside:avoid}
+  .pr-nota{font-weight:600}
   .pr h1{font:700 20px/26px var(--font-sans);margin:16px 0 4px} .pr h2{font:700 14px/20px var(--font-sans);margin:16px 0 6px}
   .pr pre{white-space:pre-wrap;font:11px/16px var(--font-mono)}
   .pr .tbl{max-height:none;overflow:visible} .pr svg.chart{width:100%;height:auto;max-height:420px}
@@ -337,6 +457,7 @@ button.contorno:hover{background:var(--surface-100)}
   <div class="actions">
     <button class="sm contorno" id="bInstalar" hidden>Instalar no computador</button>
     <button class="sm primary" id="bNew" title="Começar uma nova conversa">Nova conversa</button>
+    <button class="sm" id="bNotas" title="Ver o que a IA entendeu do banco e escrever as notas da TI" hidden>Entendimento do banco</button>
     <button class="sm" id="bCfg" title="Configurar o banco de dados e as ferramentas">Configurações</button>
   </div>
 </header>
@@ -348,7 +469,38 @@ button.contorno:hover{background:var(--surface-100)}
 </div>
 <span class="oculto" id="analiseFase" aria-live="polite"></span>
 
-<main id="main"><div class="wrap" id="chat"></div></main>
+<div class="palco">
+  <aside class="salvas" id="salvas" aria-labelledby="sTitulo" hidden>
+    <div class="salvas__cab"><h2 id="sTitulo">Consultas salvas (0)</h2><button class="sm salvas__mostrar" id="sMostrar" aria-expanded="false" aria-controls="sCorpo">Mostrar</button></div>
+    <div class="salvas__corpo" id="sCorpo">
+      <input type="text" id="sBusca" placeholder="🔎 Buscar…" aria-label="Buscar consulta salva pelo nome" spellcheck="false" autocomplete="off">
+      <div class="salvas__itens" id="sItens" role="list"></div>
+    </div>
+  </aside>
+  <main id="main"><div class="wrap" id="chat"></div></main>
+</div>
+<section class="notas" id="notas" aria-labelledby="nTitulo" hidden>
+  <div class="notas__top">
+    <button class="sm" id="nVoltar">← Voltar para a conversa</button>
+    <h2 id="nTitulo" tabindex="-1">Entendimento do banco</h2>
+    <span class="spacer"></span>
+    <span class="resumo" id="nResumo"></span>
+    <span class="actions" id="nAcoes">
+      <button class="sm" id="nAtualizar" title="Ler o banco de novo e trazer as tabelas e campos novos, sem perder as notas">↻ Atualizar com o banco</button>
+      <button class="sm" id="nExportar">Exportar</button>
+      <button class="sm" id="nImportar" hidden>Importar</button>
+      <input type="file" id="nArquivo" accept=".json,application/json" hidden>
+    </span>
+  </div>
+  <p class="notas__aviso" id="nDesconhecidas" role="status" hidden></p>
+  <div class="notas__corpo">
+    <div class="notas__lista">
+      <input type="text" id="nBusca" placeholder="🔎 Buscar tabela ou campo…" aria-label="Buscar tabela ou campo" spellcheck="false" autocomplete="off">
+      <div class="notas__itens" id="nItens" role="list"></div>
+    </div>
+    <div class="notas__det" id="nDet"></div>
+  </div>
+</section>
 
 <footer>
   <div class="composer">
@@ -544,20 +696,121 @@ button.contorno:hover{background:var(--surface-100)}
   </section>
 </dialog>
 
+<dialog id="salvar" aria-labelledby="svTitulo">
+  <h2 id="svTitulo">Salvar consulta</h2>
+  <div class="hint">Ela vai para a barra lateral e roda direto no banco, sem a IA.</div>
+  <label for="svNome">Nome</label>
+  <input type="text" id="svNome" maxlength="120" spellcheck="false" autocomplete="off">
+  <div id="svParams">
+    <label id="svSqlRot">Achei estes valores fixos na consulta</label>
+    <pre class="sqlv" id="svSql" aria-labelledby="svSqlRot"></pre>
+    <table class="lits">
+      <thead><tr><th scope="col"><span class="oculto">Perguntar a cada vez</span></th><th scope="col">Valor</th><th scope="col">Perguntar como</th><th scope="col">Tipo</th></tr></thead>
+      <tbody id="svLinhas"></tbody>
+    </table>
+    <div class="addp">
+      <b>+ Adicionar parâmetro</b>
+      <div class="hint">Selecione com o mouse um trecho da consulta acima, ou digite o valor exatamente como aparece nela.</div>
+      <div class="addp__campos">
+        <input type="text" id="svValor" placeholder="Valor na consulta" aria-label="Valor na consulta" spellcheck="false" autocomplete="off">
+        <input type="text" id="svComo" placeholder="Perguntar como" aria-label="Perguntar como" maxlength="60" spellcheck="false" autocomplete="off">
+        <button class="sm" id="svAdd">Adicionar</button>
+      </div>
+      <div class="erro-campo" id="svAddErro" role="alert"></div>
+    </div>
+    <div class="hint">Marque o que muda a cada vez. O resto fica fixo.</div>
+  </div>
+  <div class="row">
+    <span class="status hint" id="svErro" role="alert"></span>
+    <button id="svCancelar">Cancelar</button>
+    <button class="primary" id="svSalvar">Salvar</button>
+  </div>
+</dialog>
+
+<dialog id="rodar" aria-labelledby="rTitulo">
+  <h2 id="rTitulo"></h2>
+  <div class="hint">Confira os valores e rode. Vêm preenchidos com os da última vez.</div>
+  <div class="rodar__campos" id="rCampos"></div>
+  <div class="row">
+    <span class="status hint" id="rErro" role="alert"></span>
+    <button id="rCancelar">Cancelar</button>
+    <button class="primary" id="rRodar">Rodar</button>
+  </div>
+</dialog>
+
+<dialog id="importar" aria-labelledby="impTitulo">
+  <h2 id="impTitulo">Importar notas e consultas</h2>
+  <div class="imp__alerta" id="impBanco" hidden></div>
+  <p class="imp__erro" id="impErro" hidden></p>
+  <div id="impResumo" hidden>
+    <div class="hint" id="impOrigem"></div>
+    <div class="imp__soma">
+      <div><b id="impNotas"></b>notas novas</div>
+      <div><b id="impConsultas"></b>consultas novas</div>
+      <div class="sobre"><b id="impSobre"></b>vão ser sobrescritas</div>
+    </div>
+    <div id="impConflitos">
+      <div class="imp__alerta"><b>Atenção:</b> estes itens já existem aqui e vão ser <b>apagados e substituídos</b> pelo que vem no arquivo. Não dá para desfazer.</div>
+      <table class="imp__tab">
+        <thead><tr><th scope="col">Onde</th><th scope="col">Fica assim</th></tr></thead>
+        <tbody id="impLinhas"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="impSujo" hidden>As alterações não salvas nesta tela vão ser descartadas.</p>
+  </div>
+  <div class="row">
+    <span class="status hint" id="impMsg" role="alert"></span>
+    <button id="impCancelar">Cancelar</button>
+    <button class="primary" id="impOk">Importar</button>
+  </div>
+</dialog>
+
+<dialog id="atualizar" aria-labelledby="atTitulo">
+  <h2 id="atTitulo">Atualizar com o banco</h2>
+  <p class="hint" id="atLendo">Lendo o banco de novo…</p>
+  <p class="imp__erro" id="atErro" hidden></p>
+  <p class="imp__erro" id="atIgual" hidden>O entendimento já está igual ao banco.</p>
+  <div id="atResumo" hidden>
+    <div class="hint">Li o banco de novo e comparei com o entendimento guardado.</div>
+    <div class="imp__soma">
+      <div><b id="atNovas"></b><span id="atNovasTxt"></span></div>
+      <div><b id="atCampos"></b><span id="atCamposTxt"></span></div>
+      <div><b id="atSumiram"></b>sumiram do banco</div>
+    </div>
+    <div id="atApagadas" hidden>
+      <div class="imp__alerta"><b>Atenção:</b> estas tabelas e campos não existem mais no banco. As notas deles vão ser <b>apagadas</b>. Não dá para desfazer.</div>
+      <table class="imp__tab">
+        <thead><tr><th scope="col">Sumiu</th><th scope="col">Nota que vai ser apagada</th></tr></thead>
+        <tbody id="atLinhas"></tbody>
+      </table>
+    </div>
+    <p class="hint" id="atConsultas" hidden>Consultas salvas que usam o que sumiu (continuam salvas, mas podem dar erro): <b id="atConsultasNomes"></b></p>
+    <p class="hint" id="atFrase"></p>
+  </div>
+  <div class="row">
+    <span class="status hint" id="atMsg" role="alert"></span>
+    <button id="atCancelar">Cancelar</button>
+    <button class="primary" id="atOk">Atualizar</button>
+  </div>
+</dialog>
+
 <div id="printArea" aria-hidden="true"></div>
-<script src="mcp.js?v=0.16.0"></script>
-<script src="oauth.js?v=0.16.0"></script>
-<script src="toolbox.js?v=0.16.0"></script>
-<script src="chart.js?v=0.16.0"></script>
-<script src="catalog.js?v=0.16.0"></script>
-<script src="perfil.js?v=0.16.0"></script>
-<script src="descricao.js?v=0.16.0"></script>
-<script src="ask.js?v=0.16.0"></script>
-<script src="report.js?v=0.16.0"></script>
-<script src="demo.js?v=0.16.0"></script>
-<script src="momento.js?v=0.16.0"></script>
-<script src="sono.js?v=0.16.0"></script>
-<script src="instalar.js?v=0.16.0"></script>
+<script src="mcp.js?v=0.18.0"></script>
+<script src="oauth.js?v=0.18.0"></script>
+<script src="toolbox.js?v=0.18.0"></script>
+<script src="chart.js?v=0.18.0"></script>
+<script src="catalog.js?v=0.18.0"></script>
+<script src="perfil.js?v=0.18.0"></script>
+<script src="descricao.js?v=0.18.0"></script>
+<script src="notas.js?v=0.18.0"></script>
+<script src="consultas.js?v=0.18.0"></script>
+<script src="entendimento.js?v=0.18.0"></script>
+<script src="ask.js?v=0.18.0"></script>
+<script src="report.js?v=0.18.0"></script>
+<script src="demo.js?v=0.18.0"></script>
+<script src="momento.js?v=0.18.0"></script>
+<script src="sono.js?v=0.18.0"></script>
+<script src="instalar.js?v=0.18.0"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -566,7 +819,9 @@ const MAX_TOOL_CHARS = 4000, MAX_STEPS = 6;
 const USE_SCHEMA = true;
 const st = { cfg:{}, messages:[], provider:null, tools:[], busy:false, ctl:null, dbStatus:null,
   catalog:null, catalogPromise:null, catalogGen:0, suggestions:null,
-  ctlKey:null, ctlUp:false, ctlStale:false, ctlStatus:null, ctlBusy:false, dbSenhaSalva:false };
+  ctlKey:null, ctlUp:false, ctlStale:false, ctlStatus:null, ctlBusy:false, dbSenhaSalva:false,
+  notas:null, notasBanco:null, notasChave:null, notasErro:'',
+  entendimento:null, entendimentoChave:null, entendimentoPronto:false, entendimentoDesconhecidas:[] };
 
 /* ---------- storage (best effort) ---------- */
 const store = {
@@ -619,6 +874,7 @@ async function connectTools(){
   const url = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
   const tok = store.get('cd2.tok', true) || '';
   st.catalog = null; st.suggestions = null; st.catalogPromise = null; st.descricao = null; st.catalogGen++;
+  st.notas = null; st.notasBanco = null; st.notasChave = null; zerarEntendimento(); fecharNotas(); syncBotaoNotas();
   esconderFaixa();
   setPill('#pMcp', '', 'ferramentas…');
   try{
@@ -861,28 +1117,85 @@ function esconderFaixa(){ clearTimeout(st.faixaTimer); $('#analise').hidden = tr
 // Ao conectar: amostra de cada tabela e papel (segundos), depois a descrição pelo modelo, uma
 // tabela por vez, pausando enquanto uma pergunta roda (st.busy). Tudo na memória da página; trocou
 // de banco (catalogGen mudou), o resultado antigo é descartado.
-async function analisarBanco(client, gen){
+// guardado: o documento que o GET /entendimento trouxe e não deu para aplicar (pode ser null); dele
+// só vale saber se o aviso de varejo já foi dado neste banco.
+const AVISO_BOTAO = ' O botão "Entendimento do banco" aparece quando terminar.';
+// Amostra de uma tabela pelo toolbox (null se falhar). O prazo de cada amostra fica dentro de CD2Perfil.amostrar.
+const amostrador = client => async nome => {
+  const r = await client.call('db_sample_table', { table_name:nome }).then(CD2Ask.parseRows, () => null);
+  return r && r.ok ? r.rows : null;
+};
+const modeloDescricao = () => CD2Ask.modelCaller({ fetch:(...a) => fetch(...a), url:'/v1/chat/completions', useSchema:USE_SCHEMA, schema:CD2Descricao.SCHEMA, schemaName:'tabela', maxTokens:200 });
+async function analisarBanco(client, gen, guardado){
   const cat = st.catalog, vivo = () => gen === st.catalogGen;
   if(!cat || !vivo()) return;
   const total = cat.tables.length;
-  faixa('Lendo as tabelas…', 0, total);
-  // O prazo de cada amostra fica dentro de CD2Perfil.amostrar.
-  const sample = async nome => {
-    const r = await client.call('db_sample_table', { table_name:nome }).then(CD2Ask.parseRows, () => null);
-    return r && r.ok ? r.rows : null;
-  };
-  const amostras = await CD2Perfil.amostrar(cat, sample, { vivo, onProgresso:(n, t) => { if(vivo()) faixa('Lendo as tabelas…', n, t); } });
+  faixa('Lendo as tabelas…', 0, total, AVISO_BOTAO);
+  const amostras = await CD2Perfil.amostrar(cat, amostrador(client), { vivo, onProgresso:(n, t) => { if(vivo()) faixa('Lendo as tabelas…', n, t, AVISO_BOTAO); } });
   if(!vivo()) return;
   CD2Perfil.analisarCatalogo(cat, amostras);
+  if(nt.aberta){ renderListaNotas(); atualizarIaNotas(); }
   // Com o papel de cada tabela, as sugestões saem do movimento, não da maior tabela.
   st.suggestions = CD2Catalog.suggest(cat);
   if($('#hero')) renderHero();
   const r = await CD2Descricao.executarFila({ catalog:cat, amostras, vivo, ocupado:() => st.busy,
-    callModel:CD2Ask.modelCaller({ fetch:(...a) => fetch(...a), url:'/v1/chat/completions', useSchema:USE_SCHEMA, schema:CD2Descricao.SCHEMA, schemaName:'tabela', maxTokens:200 }),
-    onProgresso:(n, t) => { if(vivo()){ st.descricao = { feitos:n, total:t }; faixa('Entendendo as tabelas…', n, t, ' (dá para ir perguntando)'); } } });
+    callModel:modeloDescricao(),
+    onProgresso:(n, t) => { if(vivo()){ st.descricao = { feitos:n, total:t }; faixa('Entendendo as tabelas…', n, t, ' (dá para ir perguntando).' + AVISO_BOTAO); atualizarIaNotas(); } } });
   if(!vivo()) return;
   if(st.descricao) st.descricao.feitos = st.descricao.total;
+  atualizarIaNotas();
   faixa(r.parou === 'modelo' ? 'Tabelas lidas: ' + total + ' (o modelo não respondeu para descrevê-las)' : 'Banco entendido: ' + total + ' tabelas, ' + r.descritas + ' descritas pelo modelo', total, total, '', true);
+  await concluirEntendimento(cat, gen, guardado);
+}
+// Fim da primeira varredura (o modelo ter falhado também conta como completo): captura o entendimento,
+// verifica uma vez por banco se parece varejo, grava e libera o botão, mesmo que a gravação falhe.
+async function concluirEntendimento(cat, gen, guardado){
+  const doc = CD2Entendimento.capturar(cat, new Date());
+  const v = guardado && guardado.varejo;
+  if(v && typeof v === 'object' && v.verificado) doc.varejo = { ...v };
+  else verificarVarejo(cat, doc);
+  const ok = await gravarEntendimento(doc);
+  if(gen !== st.catalogGen) return;
+  // Sem a chave da sessão do cd2-ctl não há onde guardar (nem notas): só fica na memória, sem aviso.
+  if(!ok){ st.entendimento = doc; if(st.ctlKey) addNote('Não consegui guardar o entendimento; ele vai ser refeito na próxima abertura.'); }
+  st.entendimentoDesconhecidas = [];
+  st.entendimentoPronto = true;
+  syncBotaoNotas();
+}
+// Veredito de varejo no documento: sem evidência (faltam descrições) fica verificado:false, para um
+// Atualizar que descreva as tabelas verificar de novo; com evidência é final e o aviso sai uma vez.
+function verificarVarejo(cat, doc){
+  const r = CD2Entendimento.pareceVarejo(cat);
+  if(r.semEvidencia){ doc.varejo = { verificado:false }; return; }
+  doc.varejo = { verificado:true, parece:r.parece };
+  if(!r.parece) addNote(CD2Entendimento.TEXTO_VAREJO);
+}
+// Entendimento guardado pelo cd2-ctl (documento separado das notas). Devolve {chave, dados} ou null.
+async function lerEntendimento(){
+  if(!st.ctlKey) return null;
+  let r = null;
+  try{ r = await ctlRequest('GET', '/entendimento', null, 5000); }catch(e){}
+  if(!r || r.status !== 200 || !r.data || !r.data.chave || !r.data.dados || typeof r.data.dados !== 'object') return null;
+  return { chave:r.data.chave, dados:r.data.dados };
+}
+// Chave do banco para gravar o entendimento: a do GET /entendimento ou, se ele falhou (arquivo
+// corrompido, cd2-ctl lento), a das notas, que é a mesma (notas.Chave do banco conectado).
+const chaveEntendimento = () => st.entendimentoChave || st.notasChave || null;
+// Grava o entendimento com a chave do banco (409: o banco mudou, nada gravado). Arquivo corrompido no
+// disco não impede: o cd2-ctl troca o arquivo inteiro. Devolve true|false; só em sucesso
+// st.entendimento passa a ser o documento gravado.
+async function gravarEntendimento(doc){
+  const gen = st.catalogGen, chave = chaveEntendimento();
+  if(!st.ctlKey || !chave || !doc) return false;
+  let r;
+  try{ r = await ctlRequest('POST', '/entendimento', { chave, dados:doc }, 30000); }catch(e){ return false; }
+  if(gen !== st.catalogGen || chave !== chaveEntendimento() || r.status !== 200) return false;
+  st.entendimentoChave = chave;
+  st.entendimento = doc;
+  return true;
+}
+function zerarEntendimento(){
+  st.entendimento = null; st.entendimentoChave = null; st.entendimentoPronto = false; st.entendimentoDesconhecidas = [];
 }
 async function loadCatalog(client, gen){
   let cat = null, sug = null;
@@ -893,7 +1206,27 @@ async function loadCatalog(client, gen){
   if(gen !== st.catalogGen) return;
   st.catalog = cat; st.suggestions = sug;
   if($('#hero')) renderHero();
-  if(cat) analisarBanco(client, gen).catch(() => { if(gen === st.catalogGen) esconderFaixa(); });
+  if(cat){
+    // Entendimento guardado: aplicado, não refaz a varredura e o botão já pode aparecer.
+    const lido = await lerEntendimento();
+    if(gen !== st.catalogGen) return;
+    if(lido) st.entendimentoChave = lido.chave;
+    const a = lido ? CD2Entendimento.aplicar(cat, lido.dados) : { ok:false, desconhecidas:[] };
+    if(a.ok){
+      st.entendimento = lido.dados; st.entendimentoDesconhecidas = a.desconhecidas;
+      st.descricao = { feitos:cat.tables.length, total:cat.tables.length };
+      st.suggestions = CD2Catalog.suggest(cat);
+      if($('#hero')) renderHero();
+      st.entendimentoPronto = true;
+    }else{
+      analisarBanco(client, gen, lido && lido.dados).catch(() => {
+        // Erro inesperado no meio da varredura: nada é gravado, mas o botão não fica preso escondido.
+        if(gen === st.catalogGen){ esconderFaixa(); st.entendimentoPronto = true; syncBotaoNotas(); }
+      });
+    }
+    await carregarNotas();
+    if(gen === st.catalogGen) syncBotaoNotas();
+  }
 }
 async function runAsk(pergunta){
   st.busy = true; st.ctl = new AbortController(); toggleBusy();
@@ -930,30 +1263,51 @@ function suggestionChips(){
   for(const s of st.suggestions || []){ const b = document.createElement('button'); b.className = 'chip'; b.textContent = s; b.onclick = () => send(s); c.appendChild(b); }
   return c;
 }
-function renderAnswer(body, pergunta, r){
+// o.consulta: resultado de uma consulta salva (valores usados abaixo do título e o 👍 já como "Salva").
+function renderAnswer(body, pergunta, r, o){
+  o = o || {};
   body.innerHTML = '';
   if(!r.ok){
-    const p = document.createElement('p'); p.textContent = CD2Ask.MENSAGENS[r.motivo] || CD2Ask.MENSAGENS.modelo; body.appendChild(p);
+    const p = document.createElement('p');
+    const textoBarrado = r.motivo === 'sql' && r.barrado && o.consulta && Array.isArray(o.consulta.params) && o.consulta.params.some(x => x && x.tipo === 'texto');
+    p.textContent = r.motivo === 'param' ? (r.erro || CD2Ask.MENSAGENS.sql)
+      : textoBarrado ? 'Algum valor digitado parece um comando SQL (por exemplo UPDATE ou DELETE) e foi barrado por segurança.'
+      : (CD2Ask.MENSAGENS[r.motivo] || CD2Ask.MENSAGENS.modelo); body.appendChild(p);
     if(r.sql) body.appendChild(sqlBox(r.sql));
     if(st.suggestions && st.suggestions.length) body.appendChild(suggestionChips());
     scrollDown(); return;
   }
   const card = document.createElement('div'); card.className = 'answer';
   const h = document.createElement('h3'); h.textContent = r.titulo; card.appendChild(h);
+  const ps = (o.consulta && Array.isArray(o.consulta.params)) ? o.consulta.params : [];
+  if(ps.length && Array.isArray(r.valores)){
+    const v = document.createElement('p'); v.className = 'valores';
+    // r.valores já vem normalizado do montarSql; número aparece como a janela Rodar mostra (1,5).
+    const mostra = (p, x) => p.tipo === 'data' ? dataBr(x) : p.tipo === 'numero' ? String(x == null ? '' : x).replace('.', ',') : String(x == null ? '' : x);
+    v.textContent = ps.map((p, i) => nomeParam(p, i) + ': ' + mostra(p, r.valores[i])).join(' · ');
+    card.appendChild(v);
+  }
   const f = document.createElement('p'); f.className = 'frase'; f.textContent = r.frase; card.appendChild(f);
   const viz = document.createElement('div'); viz.className = 'viz';
   viz.innerHTML = CD2Chart.render(r.visual, r.colunas, r.linhas, { x:r.x, y:r.y }); card.appendChild(viz);
   if(r.aviso){ const a = document.createElement('p'); a.className = 'hint'; a.textContent = r.aviso; card.appendChild(a); }
   card.appendChild(sqlBox(r.sql));
   const acts = document.createElement('div'); acts.className = 'acts';
+  if(o.consulta || (r.sqlBase && podeSalvar())){
+    const bJoia = document.createElement('button'); bJoia.className = 'sm contorno';
+    if(o.consulta){ bJoia.textContent = '👍 Salva'; bJoia.disabled = true; }
+    else{ const gen = st.catalogGen; bJoia.textContent = '👍 Salvar consulta'; bJoia.onclick = () => abrirSalvar(r, bJoia, gen); }
+    acts.appendChild(bJoia);
+  }
   const bCsv = document.createElement('button'); bCsv.className = 'sm'; bCsv.textContent = 'CSV'; bCsv.onclick = () => downloadCsv(r);
   const bPdf = document.createElement('button'); bPdf.className = 'sm primary'; bPdf.textContent = 'Imprimir/PDF'; bPdf.onclick = () => printAnswer(pergunta, r);
   acts.appendChild(bCsv); acts.appendChild(bPdf); card.appendChild(acts);
   body.appendChild(card); scrollDown();
 }
-function downloadCsv(r){
-  const url = URL.createObjectURL(new Blob([CD2Report.toCsv(r.colunas, r.todas)], { type:'text/csv;charset=utf-8' }));
-  const a = document.createElement('a'); a.href = url; a.download = CD2Report.fileName(new Date());
+function downloadCsv(r){ baixarArquivo(CD2Report.fileName(new Date()), CD2Report.toCsv(r.colunas, r.todas), 'text/csv;charset=utf-8'); }
+function baixarArquivo(nome, conteudo, tipo){
+  const url = URL.createObjectURL(new Blob([conteudo], { type:tipo }));
+  const a = document.createElement('a'); a.href = url; a.download = nome;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -972,6 +1326,802 @@ function printPerfil(){
     quando:new Date().toLocaleString('pt-BR'), motor:CD2Toolbox.engineLabel(s.engine), base:s.database || '', schema:s.schema || '',
     contato:(st.cfg.report && st.cfg.report.contact) || '', logoSvg:$('.topbar .logo').outerHTML });
   window.print();
+}
+/* ---------- notas da TI (web/notas.js), guardadas pelo cd2-ctl, uma por banco ---------- */
+// Chamada quando o catálogo fica pronto: lê as notas do banco conectado e aplica no catálogo.
+// Falhou (cd2-ctl fora, sem banco, arquivo corrompido, 5 s sem resposta)? Fica sem notas e sem o
+// botão, com um aviso curto na conversa; nada de salvar por cima às cegas.
+// st.notasChave: identidade do banco que o cd2-ctl devolveu; vai em toda gravação (409 se mudou).
+async function carregarNotas(){
+  const gen = st.catalogGen;
+  if(!st.ctlKey || !st.catalog) return false;
+  let r = null;
+  try{ r = await ctlRequest('GET', '/notas', null, 5000); }catch(e){}
+  if(gen !== st.catalogGen || !st.catalog) return false;
+  if(!r || r.status !== 200 || !r.data.dados || typeof r.data.dados !== 'object' || !r.data.chave){
+    addNote('Não consegui ler as notas da TI deste banco; a tela de notas e as consultas salvas ficam escondidas.');
+    return false;
+  }
+  st.notas = r.data.dados; st.notasBanco = r.data.banco || null; st.notasChave = r.data.chave;
+  CD2Notas.aplicar(st.catalog, st.notas);
+  syncBotaoNotas();
+  return true;
+}
+// Grava as notas (padrão: st.notas) e reaplica no catálogo. Devolve true|false; o motivo da falha
+// fica em st.notasErro para a tela que chamou mostrar. Em falha st.notas não muda.
+// rota: '/notas' (padrão) ou '/notas/importar', que o cd2-ctl só aceita na versão instalada.
+// Não chame direto: passe pela fila (gravarNotas), senão uma gravação pode apagar a outra.
+async function salvarNotas(dados, rota){
+  dados = dados || st.notas;
+  const gen = st.catalogGen;
+  st.notasErro = '';
+  if(!dados){ st.notasErro = 'As notas deste banco não foram carregadas.'; return false; }
+  let r;
+  try{ r = await ctlRequest('POST', rota || '/notas', { chave:st.notasChave || '', dados }); }
+  catch(e){ st.notasErro = 'O controle do banco não respondeu. Feche e abra a IA de Bolso pelo atalho INICIAR.'; return false; }
+  if(r.status === 409){
+    // O banco do cd2-ctl não é o que a tela leu: nada foi gravado. Relê as notas do banco de agora.
+    st.notasErro = (r.data && r.data.erro) || 'O banco conectado mudou. Abra a tela de novo.';
+    const erro = st.notasErro;
+    if(gen === st.catalogGen) await carregarNotas();
+    st.notasErro = erro;
+    return false;
+  }
+  if(r.status !== 200){ st.notasErro = (r.data && r.data.erro) || ('O controle do banco respondeu HTTP ' + r.status + '.'); return false; }
+  if(gen !== st.catalogGen){ st.notasErro = 'O banco mudou enquanto salvava.'; return false; }
+  st.notas = dados;
+  if(st.catalog) CD2Notas.aplicar(st.catalog, st.notas);
+  return true;
+}
+// Fila única do documento de notas: a tela de notas, as consultas salvas e a importação gravam o
+// mesmo documento. Cada alteração parte do st.notas da vez dela (mudar(atual) devolve o documento
+// novo), então duas seguidas não se atropelam. Trocou de banco no meio, não grava (era do anterior).
+// chave (opcional): a do banco em que o rascunho nasceu (tela de notas, importação); se as notas foram
+// relidas de outro banco depois de um 409, não grava o rascunho antigo por cima.
+function gravarNotas(mudar, rota, chave){
+  const gen = st.catalogGen;
+  const vez = (st.filaNotas || Promise.resolve()).then(async () => {
+    if(gen !== st.catalogGen){ st.notasErro = 'O banco mudou.'; return false; }
+    if(chave && chave !== st.notasChave){ st.notasErro = 'O banco conectado mudou. Abra a tela de novo.'; return false; }
+    if(!st.notas){ st.notasErro = 'As notas deste banco não foram carregadas.'; return false; }
+    const ok = await salvarNotas(mudar(st.notas), rota);
+    renderSalvas();
+    return ok;
+  });
+  st.filaNotas = vez.catch(() => false);
+  return vez;
+}
+const modoAtual = () => store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode) || 'demo';
+// Botão (e a barra das consultas salvas) só com banco conectado, catálogo pronto, notas lidas e fora da Demonstração.
+const podeSalvar = () => modoAtual() === 'toolbox' && st.provider !== demo && !!st.catalog && !!st.notas;
+function syncBotaoNotas(){
+  const b = $('#bNotas'); if(!b) return;
+  // O botão espera o entendimento completo; a barra das consultas salvas, não.
+  b.hidden = !(podeSalvar() && st.entendimentoPronto);
+  syncSalvas();
+}
+// Estado da tela: tabela aberta, busca e o rascunho de todas as notas (copiado de st.notas ao abrir;
+// trocar de tabela não perde o que foi digitado, só o "Salvar notas" grava).
+const nt = { aberta:false, sel:null, rascunho:null, sujo:false, msg:'', erro:false, chave:'' };
+const MAX_ITENS_NOTAS = 300;
+const PAPEL_ROTULO = { movimento:'movimento', itens:'itens', cadastro:'cadastro', parametro:'parâmetro', vazia:'vazia', indefinida:'indefinida' };
+const copiaTabelas = d => JSON.parse(JSON.stringify((d && d.tabelas) || {}));
+const notaDe = (nome) => (Object.prototype.hasOwnProperty.call(nt.rascunho, nome) && nt.rascunho[nome]) || null;
+// Texto da IA como a caixa da nota mostra (cabe no limite da nota); é com ele que se compara "igual ao da IA".
+// (O trim final: o corte em 300 pode cair num espaço, e limpar do texto da caixa o tiraria.)
+const iaDe = t => CD2Notas.limpar(t && t.perfil && t.perfil.descricao, CD2Notas.LIMITE.tabela).trim();
+const tabelaDe = nome => st.catalog && st.catalog.tables.find(x => x.name === nome);
+// Nota da tabela que conta como da TI: não vazia e diferente do texto da IA.
+const notaTi = (texto, t) => { const x = CD2Notas.limpar(texto, CD2Notas.LIMITE.tabela); return x && x !== iaDe(t) ? x : ''; };
+const temNota = (nome, t) => { const n = notaDe(nome); return !!(n && (notaTi(n.nota, t === undefined ? tabelaDe(nome) : t) || Object.values(n.campos || {}).some(v => String(v).trim()))); };
+const rotuloLista = t => temNota(t.name, t) ? '📝 nota da TI' : (iaDe(t) ? 'texto da IA' : 'sem descrição');
+function abrirNotas(){
+  if(!st.catalog || !st.notas || !st.entendimentoPronto) return;
+  // Rascunho de outro banco (as notas foram relidas depois de um 409, já avisado na tela): começa de novo.
+  if(nt.rascunho && nt.chave !== st.notasChave) nt.rascunho = null;
+  if(!nt.rascunho){ nt.rascunho = copiaTabelas(st.notas); nt.chave = st.notasChave || ''; nt.sujo = false; nt.msg = ''; nt.erro = false; }
+  if(!nt.sel || !st.catalog.tables.some(t => t.name === nt.sel)) nt.sel = st.catalog.tables.length ? st.catalog.tables[0].name : null;
+  nt.aberta = true; document.body.classList.add('com-notas'); $('#notas').hidden = false;
+  renderNotas(); $('#nTitulo').focus();
+}
+// Voltar mantém o rascunho; trocar de banco (connectTools) descarta tudo.
+function fecharNotas(voltar){
+  if(!voltar){ nt.rascunho = null; nt.sel = null; nt.sujo = false; nt.msg = ''; $('#nBusca').value = ''; if($('#atualizar').open) $('#atualizar').close(); }
+  if(!nt.aberta) return;
+  nt.aberta = false; document.body.classList.remove('com-notas'); $('#notas').hidden = true;
+  if(voltar) $('#input').focus();
+}
+function resumoNotas(){
+  const s = st.dbStatus || {}, b = st.notasBanco || {};
+  const com = st.catalog.tables.filter(t => temNota(t.name, t)).length;
+  const quando = st.entendimento && st.entendimento.atualizado ? new Date(st.entendimento.atualizado) : null;
+  return [CD2Toolbox.engineLabel(s.engine || b.motor), (s.database || b.base) ? 'base ' + (s.database || b.base) : '',
+    st.catalog.tables.length + ' tabelas, ' + com + ' com nota', quando && !isNaN(quando) ? 'atualizado em ' + quando.toLocaleDateString('pt-BR') : ''].filter(Boolean).join(' · ');
+}
+// Topo da tela: resumo, botão de atualizar e o aviso das tabelas que o entendimento não conhece.
+function renderTopoNotas(){
+  $('#nResumo').textContent = resumoNotas();
+  syncAtualizar();
+  const n = st.entendimentoDesconhecidas.length, av = $('#nDesconhecidas');
+  av.hidden = !n;
+  av.textContent = !n ? '' : n === 1 ? 'O banco tem 1 tabela que o entendimento ainda não conhece. Clique em Atualizar com o banco.'
+    : 'O banco tem ' + n + ' tabelas que o entendimento ainda não conhece. Clique em Atualizar com o banco.';
+}
+function renderNotas(){
+  if(!nt.aberta) return;
+  syncImportar();
+  renderTopoNotas();
+  renderListaNotas(); renderDetalheNotas();
+}
+function renderListaNotas(){
+  const q = $('#nBusca').value.trim().toLowerCase(), box = $('#nItens');
+  const achou = t => !q || t.name.toLowerCase().includes(q) || t.columns.some(c => c.name.toLowerCase().includes(q));
+  const lista = st.catalog.tables.filter(achou);
+  box.innerHTML = '';
+  for(const t of lista.slice(0, MAX_ITENS_NOTAS)){
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'notas__it'; b.setAttribute('role', 'listitem');
+    b.setAttribute('aria-current', String(t.name === nt.sel));
+    const papel = t.perfil && t.perfil.papel ? PAPEL_ROTULO[t.perfil.papel] || t.perfil.papel : '';
+    b.innerHTML = (papel ? '<span class="papel"></span>' : '') + '<b></b><span class="tem"></span>';
+    if(papel) b.querySelector('.papel').textContent = papel;
+    b.querySelector('b').textContent = t.name;
+    b.querySelector('.tem').textContent = rotuloLista(t);
+    b.onclick = () => { nt.sel = t.name; renderListaNotas(); renderDetalheNotas(); };
+    box.appendChild(b);
+  }
+  const mais = document.createElement('p'); mais.className = 'notas__mais';
+  if(!lista.length) mais.textContent = 'Nenhuma tabela ou campo com esse nome.';
+  else if(lista.length > MAX_ITENS_NOTAS) mais.textContent = 'Mostrando ' + MAX_ITENS_NOTAS + ' de ' + lista.length + '. Use a busca para achar as outras.';
+  if(mais.textContent) box.appendChild(mais);
+}
+function linhasTexto(t){
+  const n = Number(t.rows) || 0, l = 'cerca de ' + n.toLocaleString('pt-BR') + (n === 1 ? ' linha' : ' linhas');
+  return t.type === 'VIEW' ? (n ? 'view, ' + l : 'view') : l;
+}
+// Descrição do modelo: a fila só descreve movimento, itens, indefinida e cadastro (CD2Descricao).
+// Tabela sem perfil: a atualização em segundo plano está lendo, ou o entendimento ainda não a conhece.
+function textoIa(t){
+  const p = t.perfil || {};
+  if(p.descricao) return p.descricao;
+  const lendoNova = !!(at.alvo && at.alvo.has(t.name));
+  if(!p.papel) return lendoNova ? 'A IA ainda está lendo esta tabela.' : 'A IA ainda não conhece esta tabela. Clique em Atualizar com o banco.';
+  const naFila = ['movimento', 'itens', 'indefinida', 'cadastro'].includes(p.papel) && (lendoNova || !st.descricao || st.descricao.feitos < st.descricao.total);
+  return naFila ? 'A IA ainda está lendo esta tabela.' : 'A IA não descreveu esta tabela.';
+}
+// A descrição chega em segundo plano: atualiza o parágrafo e, se a caixa da nota ainda não foi mexida
+// e só tem nada ou o texto antigo da IA, troca pelo novo. O que a pessoa digitou nunca é sobrescrito.
+function atualizarIaNotas(){
+  const p = nt.aberta && $('#nIa'), t = p && st.catalog && st.catalog.tables.find(x => x.name === nt.sel);
+  if(!t) return;
+  p.lastChild.textContent = textoIa(t);
+  const ta = $('#nNotaTab'); if(!ta || ta.dataset.mexeu) return;
+  const novo = iaDe(t), atual = CD2Notas.limpar(ta.value, CD2Notas.LIMITE.tabela);
+  if(atual && atual !== ta.dataset.ia) return;
+  ta.dataset.ia = novo;
+  // Rascunho igual ao texto antigo da IA não era nota da TI; não deixa ele virar nota agora.
+  const r = notaDe(t.name); if(r && r.nota) r.nota = '';
+  if(atual !== novo){ ta.value = novo; ta.dispatchEvent(new Event('cd2:ia')); }
+  const it = document.querySelector('.notas__it[aria-current=true] .tem'); if(it) it.textContent = rotuloLista(t);
+}
+function marcarSujo(){
+  nt.sujo = true; nt.msg = ''; nt.erro = false;
+  const s = $('#nStatus'); if(s){ s.textContent = 'Alterações não salvas.'; }
+  const t = tabelaDe(nt.sel), it = document.querySelector('.notas__it[aria-current=true] .tem'); if(it && t) it.textContent = rotuloLista(t);
+  $('#nResumo').textContent = resumoNotas();
+}
+function rascunhoDe(nome){
+  if(!notaDe(nome)) Object.defineProperty(nt.rascunho, nome, { value:{ nota:'', campos:{} }, enumerable:true, writable:true, configurable:true });
+  const n = nt.rascunho[nome]; if(!n.campos || typeof n.campos !== 'object') n.campos = {};
+  return n;
+}
+function renderDetalheNotas(){
+  const det = $('#nDet'); det.innerHTML = '';
+  const t = st.catalog.tables.find(x => x.name === nt.sel);
+  if(!t){ const p = document.createElement('p'); p.className = 'notas__vazio'; p.textContent = 'Escolha uma tabela na lista.'; det.appendChild(p); return; }
+  const L = CD2Notas.LIMITE, n = notaDe(t.name) || { nota:'', campos:{} };
+  const cab = document.createElement('div'); cab.className = 'cab';
+  cab.innerHTML = '<b></b>' + (t.perfil && t.perfil.papel ? '<span class="tag tag--melhoria"></span>' : '') + '<span class="hint"></span>';
+  cab.querySelector('b').textContent = t.name;
+  if(t.perfil && t.perfil.papel) cab.querySelector('.tag').textContent = PAPEL_ROTULO[t.perfil.papel] || t.perfil.papel;
+  cab.querySelector('.hint').textContent = linhasTexto(t);
+  det.appendChild(cab);
+  const ia = document.createElement('p'); ia.className = 'notas__ia'; ia.innerHTML = '<b>O que a IA entendeu:</b> ';
+  ia.appendChild(document.createTextNode(textoIa(t))); ia.id = 'nIa'; det.appendChild(ia);
+  const bloco = document.createElement('div');
+  bloco.innerHTML = '<label for="nNotaTab">Nota da TI sobre a tabela <span class="hint" id="nVeioIa">(veio da IA, corrija se precisar)</span></label><textarea id="nNotaTab" rows="3" placeholder="O que a IA precisa saber sobre esta tabela? Ex.: esta é a tabela oficial de vendas."></textarea><div class="notas__conta" id="nConta" aria-live="polite"></div>';
+  const ta = bloco.querySelector('textarea'), conta = bloco.querySelector('#nConta'), veio = bloco.querySelector('#nVeioIa');
+  // Sem nota da TI no rascunho, a caixa vem com o texto da IA (que só vira nota se for mudado).
+  ta.maxLength = L.tabela; ta.dataset.ia = iaDe(t); ta.value = notaTi(n.nota, t) ? n.nota : ta.dataset.ia;
+  const contar = () => {
+    conta.textContent = ta.value.length + '/' + L.tabela;
+    const x = CD2Notas.limpar(ta.value, L.tabela); veio.hidden = !(x && x === ta.dataset.ia);
+  };
+  contar();
+  ta.addEventListener('input', () => { ta.dataset.mexeu = '1'; rascunhoDe(t.name).nota = ta.value; contar(); marcarSujo(); });
+  ta.addEventListener('cd2:ia', contar);
+  det.appendChild(bloco);
+  const tab = document.createElement('table'); tab.className = 'notas__campos';
+  tab.innerHTML = '<thead><tr><th scope="col">Campo</th><th scope="col">Tipo</th><th scope="col">Nota da TI</th></tr></thead><tbody></tbody>';
+  const tb = tab.querySelector('tbody'), campos = n.campos || {};
+  for(const c of t.columns){
+    const tr = document.createElement('tr'); tr.innerHTML = '<td></td><td></td><td><input type="text" spellcheck="false" autocomplete="off" placeholder="Escreva uma nota…"></td>';
+    tr.children[0].textContent = c.name; tr.children[1].textContent = c.type || '';
+    const inp = tr.querySelector('input'); inp.maxLength = L.campo; inp.setAttribute('aria-label', 'Nota da TI sobre o campo ' + c.name);
+    inp.value = Object.prototype.hasOwnProperty.call(campos, c.name) ? String(campos[c.name]) : '';
+    inp.addEventListener('input', () => {
+      const r = rascunhoDe(t.name);
+      if(inp.value.trim()) Object.defineProperty(r.campos, c.name, { value:inp.value, enumerable:true, writable:true, configurable:true });
+      else delete r.campos[c.name];
+      marcarSujo();
+    });
+    tb.appendChild(tr);
+  }
+  det.appendChild(tab);
+  const acts = document.createElement('div'); acts.className = 'notas__acts';
+  acts.innerHTML = '<button class="sm primary" id="nSalvar">Salvar notas</button><span class="hint" id="nStatus" role="status" aria-live="polite"></span>';
+  const status = acts.querySelector('#nStatus');
+  if(nt.erro && nt.msg){ status.innerHTML = '<span class="tag tag--atencao">Atenção</span> '; status.appendChild(document.createTextNode(nt.msg)); }
+  else status.textContent = nt.msg || (nt.sujo ? 'Alterações não salvas.' : 'Salvo neste computador');
+  acts.querySelector('#nSalvar').onclick = salvarTelaNotas;
+  det.appendChild(acts);
+}
+// Junta o rascunho limpo às notas guardadas (as consultas salvas ficam como estão) e grava.
+// Erro: mensagem na tela e o texto digitado continua nas caixas.
+async function salvarTelaNotas(){
+  const b = $('#nSalvar'); if(b) b.disabled = true;
+  const L = CD2Notas.LIMITE, tabelas = {}, porNome = new Map((st.catalog ? st.catalog.tables : []).map(t => [t.name, t]));
+  for(const [nome, n] of Object.entries(nt.rascunho || {})){
+    if(!n || typeof n !== 'object') continue;
+    // Vazio ou igual ao texto da IA: a tabela fica sem nota (as notas de campo continuam).
+    const nota = notaTi(n.nota, porNome.get(nome)), campos = {};
+    for(const [c, v] of Object.entries(n.campos || {})){ const x = CD2Notas.limpar(v, L.campo); if(x) Object.defineProperty(campos, c, { value:x, enumerable:true, writable:true, configurable:true }); }
+    if(nota || Object.keys(campos).length) Object.defineProperty(tabelas, nome, { value:{ nota, campos }, enumerable:true, writable:true, configurable:true });
+  }
+  const ok = await gravarNotas(atual => Object.assign({}, atual, { versao:1, tabelas }), undefined, nt.chave);
+  if(ok && nt.rascunho){ nt.rascunho = copiaTabelas(st.notas); nt.sujo = false; nt.erro = false; nt.msg = 'Salvo neste computador'; }
+  if(!nt.aberta) return;
+  if(ok) renderNotas();
+  else{
+    nt.erro = true; nt.msg = 'Não deu para salvar: ' + st.notasErro;
+    const s = $('#nStatus'); if(s){ s.innerHTML = '<span class="tag tag--atencao">Atenção</span> '; s.appendChild(document.createTextNode(nt.msg)); }
+    if(b) b.disabled = false;
+  }
+}
+/* ---------- "↻ Atualizar com o banco": tabelas e campos novos sem perder as notas ---------- */
+// Relê o catálogo, compara com o entendimento guardado e mostra a janela. Confirmar: apaga as notas do
+// que sumiu (pela fila das notas; falhou, para e nada muda), grava o entendimento mesclado, troca o
+// catálogo mantendo o perfil guardado e, em segundo plano, entende só as tabelas novas e as sem descrição.
+// at.alvo: nomes das tabelas que a atualização em segundo plano está lendo (null fora dela).
+const at = { diff:null, cat:null, gen:0, chaveNotas:'', leitura:0, confirmando:false, vez:0, alvo:null };
+function syncAtualizar(){
+  const b = $('#nAtualizar'); if(!b) return;
+  b.disabled = !!at.alvo;
+  b.title = at.alvo ? 'A IA ainda está entendendo as tabelas novas. Dá para atualizar de novo quando ela terminar.'
+    : 'Ler o banco de novo e trazer as tabelas e campos novos, sem perder as notas';
+}
+const SEM_CHAVE_ATUALIZAR = 'Não consigo guardar o entendimento deste banco agora (o controle do banco não respondeu). Feche e abra a IA de Bolso pelo atalho INICIAR e tente de novo. Nenhuma nota foi apagada.';
+async function abrirAtualizar(){
+  if(!st.catalog || !st.notas || !st.entendimentoPronto || at.alvo) return;
+  const d = $('#atualizar'), leitura = ++at.leitura, gen = st.catalogGen, client = st.provider;
+  at.diff = null; at.cat = null; at.gen = gen; at.chaveNotas = st.notasChave || '';
+  etapaAtualizar('lendo');
+  if(!d.open) d.showModal();
+  let cat = null;
+  try{
+    if(client && client !== demo){
+      const r = CD2Ask.parseRows(await client.call('db_catalog', {}));
+      if(r.ok && r.rows.length) cat = CD2Catalog.buildCatalog(r.rows);
+    }
+  }catch(e){}
+  if(leitura !== at.leitura || gen !== st.catalogGen || !d.open) return;
+  if(!cat) return etapaAtualizar('erro', 'Não consegui ler o banco agora. Confira a conexão em Configurações e tente de novo. Nenhuma nota foi apagada.');
+  // Sem chave não dá para guardar o entendimento novo: nem chega no resumo, para nada ser apagado.
+  if(!chaveEntendimento()) return etapaAtualizar('erro', SEM_CHAVE_ATUALIZAR);
+  at.cat = cat; at.diff = CD2Entendimento.comparar(cat, st.entendimento, st.notas);
+  etapaAtualizar(at.diff.nadaMudou ? 'igual' : 'resumo');
+}
+// Uma janela, quatro etapas: 'lendo', 'erro', 'igual' (nada mudou) e 'resumo'.
+function etapaAtualizar(etapa, erro){
+  const ok = $('#atOk'), cancelar = $('#atCancelar');
+  $('#atLendo').hidden = etapa !== 'lendo'; $('#atErro').hidden = etapa !== 'erro';
+  $('#atIgual').hidden = etapa !== 'igual'; $('#atResumo').hidden = etapa !== 'resumo';
+  $('#atMsg').textContent = ''; ok.disabled = false; cancelar.disabled = false;
+  ok.hidden = etapa !== 'resumo';
+  cancelar.textContent = etapa === 'resumo' || etapa === 'lendo' ? 'Cancelar' : 'Fechar';
+  if(etapa === 'erro') $('#atErro').textContent = erro;
+  if(etapa === 'resumo') renderResumoAtualizar();
+  (etapa === 'resumo' ? ok : cancelar).focus();
+}
+const plural = (n, um, varios) => n === 1 ? um : varios;
+function renderResumoAtualizar(){
+  const d = at.diff, ok = $('#atOk');
+  const sumiram = d.sumiram.tabelas.length + d.sumiram.campos.length;
+  $('#atNovas').textContent = d.novasTabelas.length; $('#atNovasTxt').textContent = plural(d.novasTabelas.length, 'tabela nova', 'tabelas novas');
+  $('#atCampos').textContent = d.novosCampos.length; $('#atCamposTxt').textContent = plural(d.novosCampos.length, 'campo novo', 'campos novos');
+  $('#atSumiram').textContent = sumiram;
+  $('#atApagadas').hidden = !d.notasApagadas.length;
+  const tb = $('#atLinhas'); tb.textContent = '';
+  for(const n of d.notasApagadas){
+    const tr = document.createElement('tr'), onde = document.createElement('td'), nota = document.createElement('td');
+    onde.textContent = n.onde;
+    const sub = document.createElement('span'); sub.className = 'sub'; sub.textContent = n.tipo === 'tabela' ? 'tabela' : 'campo'; onde.appendChild(sub);
+    const velha = document.createElement('span'); velha.className = 'antes'; velha.textContent = n.nota; nota.appendChild(velha);
+    tr.appendChild(onde); tr.appendChild(nota); tb.appendChild(tr);
+  }
+  $('#atConsultas').hidden = !d.consultasAfetadas.length;
+  $('#atConsultasNomes').textContent = d.consultasAfetadas.join(', ');
+  const novas = d.novasTabelas.length, sem = d.semDescricao.length, partes = [];
+  if(novas) partes.push(novas === 1 ? 'a tabela nova' : 'as ' + novas + ' tabelas novas');
+  if(sem) partes.push(sem === 1 ? 'a tabela ainda sem descrição' : 'as ' + sem + ' tabelas ainda sem descrição');
+  const quem = partes.join(' e ');
+  $('#atFrase').textContent = (quem ? quem[0].toUpperCase() + quem.slice(1) + (novas + sem === 1 ? ' vai ser descrita' : ' vão ser descritas') + ' pela IA em segundo plano. ' : '')
+    + 'As notas e descrições que já existem não mudam.';
+  ok.textContent = d.notasApagadas.length ? 'Apagar notas e atualizar' : 'Atualizar';
+  ok.className = d.notasApagadas.length ? 'aviso' : 'primary';
+}
+async function confirmarAtualizar(){
+  const diff = at.diff, cat = at.cat, gen = at.gen, msg = $('#atMsg'), ok = $('#atOk'), cancelar = $('#atCancelar');
+  if(!diff || !cat || at.confirmando) return;
+  if(gen !== st.catalogGen || !st.notas) return mostrarErro(msg, 'O banco mudou. Feche e tente de novo. Nenhuma nota foi apagada.');
+  if(!chaveEntendimento()) return mostrarErro(msg, SEM_CHAVE_ATUALIZAR);
+  at.confirmando = true; ok.disabled = true; cancelar.disabled = true; msg.textContent = 'Atualizando…';
+  try{
+    const apaga = diff.notasApagadas.length > 0;
+    if(apaga){
+      const feito = await gravarNotas(atual => CD2Entendimento.limparNotas(atual, diff), undefined, at.chaveNotas);
+      if(!feito) return mostrarErro(msg, 'Não deu para atualizar, nenhuma nota foi apagada: ' + st.notasErro);
+    }
+    // O rascunho da tela também perde o que sumiu, senão o próximo "Salvar notas" traria as notas de volta.
+    if(nt.rascunho) nt.rascunho = CD2Entendimento.limparNotas({ tabelas:nt.rascunho }, diff).tabelas;
+    if(gen !== st.catalogGen) return mostrarErro(msg, 'O banco mudou. Feche e tente de novo.');
+    const base = st.entendimento || CD2Entendimento.capturar(st.catalog, new Date());
+    const doc = CD2Entendimento.mesclar(base, cat, diff, new Date());
+    if(!await gravarEntendimento(doc)){
+      return mostrarErro(msg, (apaga ? 'As notas do que sumiu foram apagadas, mas não' : 'Não')
+        + ' consegui guardar o entendimento atualizado (o controle do banco não respondeu ou o banco conectado mudou). Tente de novo.');
+    }
+    if(gen !== st.catalogGen) return;
+    $('#atualizar').close();
+    trocarCatalogo(cat, doc, diff, gen);
+  }finally{ at.confirmando = false; ok.disabled = false; cancelar.disabled = false; }
+}
+// Catálogo novo com o perfil guardado das tabelas que continuam e as notas reaplicadas.
+function trocarCatalogo(cat, doc, diff, gen){
+  CD2Entendimento.aplicar(cat, doc);
+  st.catalog = cat; st.descricao = { feitos:cat.tables.length, total:cat.tables.length };
+  if(st.notas) CD2Notas.aplicar(cat, st.notas);
+  st.suggestions = CD2Catalog.suggest(cat);
+  if($('#hero')) renderHero();
+  const nomes = new Set([...diff.novasTabelas, ...diff.semDescricao].map(n => n.toLowerCase()));
+  const alvo = cat.tables.filter(t => nomes.has(t.name.toLowerCase()));
+  // Perderam coluna útil ou chave: perfil refeito pela amostra, descrição mantida, sem o modelo.
+  const perdidos = new Set((diff.perfilPerdido || []).map(n => n.toLowerCase()));
+  const refazer = cat.tables.filter(t => perdidos.has(t.name.toLowerCase()));
+  const todos = new Set([...alvo, ...refazer]);
+  st.entendimentoDesconhecidas = cat.tables.filter(t => !t.perfil && !todos.has(t)).map(t => t.name);
+  if(todos.size) at.alvo = new Set([...todos].map(t => t.name));
+  if(nt.aberta){
+    if(!cat.tables.some(t => t.name === nt.sel)) nt.sel = cat.tables.length ? cat.tables[0].name : null;
+    renderNotas();
+  }
+  if(todos.size) entenderNovas(cat, alvo, refazer, gen).catch(() => {
+    // Erro inesperado: nada é gravado; o documento já guardado tem as novas sem perfil e o aviso volta.
+    if(gen === st.catalogGen) esconderFaixa();
+  });
+}
+// Amostra, perfil e descrição só das tabelas do alvo (novas e sem descrição), com a faixa de progresso; tela e botões continuam.
+// refazer: as que perderam coluna útil ou chave; ganham perfil novo pela amostra e mantêm a descrição
+// (o modelo não é chamado para elas). No fim grava o entendimento inteiro de novo e, se o veredito de
+// varejo ainda não tinha evidência, verifica de novo com as descrições novas.
+async function entenderNovas(cat, alvo, refazer, gen){
+  const vez = ++at.vez, vivo = () => gen === st.catalogGen && vez === at.vez && st.catalog === cat;
+  const todas = [...new Set([...alvo, ...refazer])];
+  const total = todas.length, sub = { tables:alvo };
+  const fimTela = () => { if(nt.aberta){ renderTopoNotas(); renderListaNotas(); atualizarIaNotas(); } };
+  try{
+    faixa('Lendo as tabelas…', 0, total);
+    const amostras = await CD2Perfil.amostrar({ tables:todas }, amostrador(st.provider), { vivo, onProgresso:(n, t) => { if(vivo()) faixa('Lendo as tabelas…', n, t); } });
+    if(!vivo()) return;
+    // Só as sem perfil e as que perderam coluna ganham um; as sem descrição que já tinham papel guardado ficam com ele.
+    const so = new Set([...alvo.filter(t => !t.perfil || typeof t.perfil.papel !== 'string'), ...refazer].map(t => t.name));
+    const descricoes = new Map(refazer.filter(t => t.perfil && t.perfil.descricao).map(t => [t, { descricao:t.perfil.descricao, descricaoTokens:t.perfil.descricaoTokens }]));
+    CD2Perfil.analisarCatalogo(cat, amostras, { so });
+    for(const [t, d] of descricoes) Object.assign(t.perfil, d);
+    st.suggestions = CD2Catalog.suggest(cat);
+    if($('#hero')) renderHero();
+    fimTela();
+    const r = !alvo.length ? { descritas:0, parou:null } : await CD2Descricao.executarFila({ catalog:sub, amostras, vivo, ocupado:() => st.busy, callModel:modeloDescricao(),
+      onProgresso:(n, t) => { if(vivo()){ faixa('Entendendo as tabelas…', n, t, ' (dá para ir perguntando).'); atualizarIaNotas(); } } });
+    if(!vivo()) return;
+    faixa(r.parou === 'modelo' ? 'Tabelas lidas: ' + total + ' (o modelo não respondeu para descrevê-las)'
+      : 'Banco atualizado: ' + total + plural(total, ' tabela lida, ', ' tabelas lidas, ') + r.descritas + ' descrita' + (r.descritas === 1 ? '' : 's') + ' pelo modelo', total, total, '', true);
+    const doc = CD2Entendimento.capturar(cat, new Date());
+    const v = st.entendimento && st.entendimento.varejo;
+    if(v && typeof v === 'object' && v.verificado) doc.varejo = { ...v };
+    else verificarVarejo(cat, doc);
+    const ok = await gravarEntendimento(doc);
+    if(!vivo()) return;
+    if(!ok){ st.entendimento = doc; if(st.ctlKey) addNote('Não consegui guardar o entendimento atualizado; na próxima abertura, clique de novo em Atualizar com o banco.'); }
+  }finally{
+    if(vez === at.vez){
+      at.alvo = null;
+      if(st.catalog === cat) st.entendimentoDesconhecidas = cat.tables.filter(t => !t.perfil || typeof t.perfil.papel !== 'string').map(t => t.name);
+      fimTela(); syncAtualizar();
+    }
+  }
+}
+/* ---------- exportar e importar notas e consultas salvas ---------- */
+// Exportar existe sempre (no pen drive é o jeito de não perder o trabalho); importar, só na versão
+// instalada: levar o trabalho para outro computador pede a versão instalada (o cd2-ctl também barra).
+const MAX_ARQUIVO_NOTAS = 5 * 1024 * 1024;
+const imp = { dados:null, banco:null, exportado:'', gen:0, chave:'', etapa:'' };
+const CONFLITO_ROTULO = { tabela:'nota da tabela', campo:'nota do campo', consulta:'consulta salva' };
+function syncImportar(){
+  const b = $('#nImportar'); if(b) b.hidden = !(inst.status && inst.status.origem === 'instalada');
+}
+function exportarNotas(){
+  if(!st.notas) return;
+  const a = CD2Notas.exportar(st.notas, st.notasBanco, new Date());
+  baixarArquivo(a.nome, a.conteudo, 'application/json');
+}
+function bancoTexto(b){
+  return b ? [b.motor ? CD2Toolbox.engineLabel(b.motor) : '', b.base || ''].filter(Boolean).join(' ') : '';
+}
+function escolherArquivoNotas(){
+  if(!(inst.status && inst.status.origem === 'instalada') || !st.notas) return;
+  const f = $('#nArquivo'); f.value = ''; f.click();
+}
+async function lerArquivoNotas(){
+  const f = $('#nArquivo').files[0];
+  if(!f) return;
+  imp.dados = null; imp.exportado = ''; imp.gen = st.catalogGen; imp.chave = st.notasChave || '';
+  let r;
+  if(f.size > MAX_ARQUIVO_NOTAS) r = CD2Notas.lerArquivo('');
+  else{
+    let texto = '';
+    try{ texto = await f.text(); }catch(e){}
+    r = CD2Notas.lerArquivo(texto);
+    if(r.ok){ try{ const d = new Date(JSON.parse(texto).exportado); imp.exportado = isNaN(d) ? '' : d.toLocaleDateString('pt-BR'); }catch(e){ imp.exportado = ''; } }
+  }
+  if(imp.gen !== st.catalogGen || !st.notas) return;
+  if(!r.ok) return etapaImportar('erro', r.erro);
+  imp.dados = r.dados; imp.banco = r.banco;
+  etapaImportar(CD2Notas.mesmoBanco(r.banco, st.notasBanco) ? 'resumo' : 'banco');
+}
+// Uma janela, três etapas: 'erro' (arquivo estragado), 'banco' (é de outro banco) e 'resumo'.
+function etapaImportar(etapa, erro){
+  imp.etapa = etapa;
+  const ok = $('#impOk');
+  $('#impErro').hidden = etapa !== 'erro'; $('#impBanco').hidden = etapa !== 'banco'; $('#impResumo').hidden = etapa !== 'resumo';
+  $('#impMsg').textContent = ''; ok.disabled = false; ok.hidden = etapa === 'erro';
+  $('#impCancelar').textContent = etapa === 'erro' ? 'Fechar' : 'Cancelar';
+  if(etapa === 'erro') $('#impErro').textContent = erro;
+  else if(etapa === 'banco'){
+    $('#impBanco').textContent = 'Este arquivo é de outro banco (' + (bancoTexto(imp.banco) || 'banco não informado') + '). As tabelas podem não bater.';
+    ok.textContent = 'Continuar'; ok.className = 'primary';
+  } else renderResumoImportar();
+  const d = $('#importar'); if(!d.open) d.showModal();
+  (etapa === 'erro' ? $('#impCancelar') : ok).focus();
+}
+function renderResumoImportar(){
+  const p = CD2Notas.planoImportacao(st.notas, imp.dados), n = p.conflitos.length, ok = $('#impOk');
+  $('#impOrigem').textContent = [imp.exportado ? 'Arquivo exportado em ' + imp.exportado : 'Arquivo exportado pela IA de Bolso',
+    bancoTexto(imp.banco) ? 'banco ' + bancoTexto(imp.banco) : ''].filter(Boolean).join(' · ');
+  $('#impNotas').textContent = p.novas.notas; $('#impConsultas').textContent = p.novas.consultas; $('#impSobre').textContent = n;
+  $('#impConflitos').hidden = !n;
+  const tb = $('#impLinhas'); tb.textContent = '';
+  for(const c of p.conflitos){
+    const tr = document.createElement('tr'), onde = document.createElement('td'), fica = document.createElement('td');
+    onde.textContent = c.onde;
+    const sub = document.createElement('span'); sub.className = 'sub'; sub.textContent = CONFLITO_ROTULO[c.tipo] || ''; onde.appendChild(sub);
+    const antes = document.createElement('span'), depois = document.createElement('span');
+    antes.className = 'antes'; antes.textContent = c.antes; depois.textContent = c.depois;
+    if(c.tipo === 'consulta'){ antes.classList.add('sql'); depois.className = 'sql'; }
+    fica.appendChild(antes); fica.appendChild(depois);
+    tr.appendChild(onde); tr.appendChild(fica); tb.appendChild(tr);
+  }
+  $('#impSujo').hidden = !nt.sujo;
+  ok.textContent = n ? 'Sobrescrever e importar' : 'Importar'; ok.className = n ? 'aviso' : 'primary';
+}
+// Junta pela fila no st.notas da vez (o plano é refeito lá) e manda para /notas/importar.
+// Deu certo: o rascunho da tela é refeito do que foi gravado, para não regravar as notas antigas.
+async function confirmarImportar(){
+  if(imp.etapa === 'banco') return etapaImportar('resumo');
+  if(imp.etapa !== 'resumo' || !imp.dados) return;
+  const ok = $('#impOk'), msg = $('#impMsg');
+  if(imp.gen !== st.catalogGen) return mostrarErro(msg, 'O banco mudou. Feche e importe de novo.');
+  const dados = imp.dados;
+  ok.disabled = true;
+  const feito = await gravarNotas(atual => CD2Notas.planoImportacao(atual, dados).resultado, '/notas/importar', imp.chave);
+  ok.disabled = false;
+  if(!feito) return mostrarErro(msg, 'Não deu para importar: ' + st.notasErro);
+  $('#importar').close(); imp.dados = null;
+  nt.rascunho = nt.rascunho ? copiaTabelas(st.notas) : null; nt.chave = st.notasChave || ''; nt.sujo = false; nt.erro = false; nt.msg = 'Importado neste computador';
+  syncBotaoNotas(); renderNotas();
+}
+/* ---------- consultas salvas (web/consultas.js): 👍, barra lateral e rodar de novo sem o modelo ---------- */
+// Ficam em st.notas.consultas, gravadas pelo cd2-ctl junto com as notas do banco conectado.
+const VISUAL_ROTULO = { barra:'barra', linha:'linha', pizza:'pizza', tabela:'tabela', numero:'número' };
+const TIPO_ROTULO = { data:'data', numero:'número', texto:'texto' };
+const MAX_NOME_CONSULTA = 120, MAX_NOME_PARAM = 60;
+const sb = { menu:null, modo:'', erro:'', focar:false, voltar:null };  // barra: item com o menu aberto, 'menu' | 'renomear' | 'apagar'
+const sv = { r:null, botao:null, linhas:[], sel:null };  // janela Salvar consulta
+const rd = { consulta:null, gen:0 };                 // janela de rodar com parâmetros
+const consultasSalvas = () => (st.notas && Array.isArray(st.notas.consultas)) ? st.notas.consultas : [];
+const nomeParam = (p, i) => (p && typeof p.nome === 'string' && p.nome.trim()) || ('Parâmetro ' + (i + 1));
+const mesmoNome = (a, b) => String(a == null ? '' : a).trim().toLowerCase() === String(b == null ? '' : b).trim().toLowerCase();
+function hojeIso(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function dataBr(v){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v == null ? '' : v)); return m ? m[3] + '/' + m[2] + '/' + m[1] : String(v == null ? '' : v); }
+function mostrarErro(el, texto){
+  el.textContent = ''; if(!texto) return;
+  el.innerHTML = '<span class="tag tag--atencao">Atenção</span> '; el.appendChild(document.createTextNode(texto));
+}
+// Mexe só na lista de consultas, pela mesma fila das notas (gravarNotas).
+const gravarConsultas = mudar => gravarNotas(atual => Object.assign({}, atual, { consultas:mudar(consultasSalvas().slice()) }));
+
+/* barra lateral */
+function syncSalvas(){
+  const a = $('#salvas'), on = podeSalvar();
+  a.hidden = !on;
+  if(on) renderSalvas(); else{ sb.menu = null; sb.modo = ''; sb.erro = ''; fecharRodar(); }
+}
+function renderSalvas(){
+  const a = $('#salvas'); if(a.hidden) return;
+  const todas = consultasSalvas();
+  $('#sTitulo').textContent = 'Consultas salvas (' + todas.length + ')';
+  const q = $('#sBusca').value.trim().toLowerCase(), box = $('#sItens');
+  const lista = todas.slice().reverse().filter(c => !q || String(c.nome || '').toLowerCase().includes(q));
+  if(sb.menu && !todas.some(c => c.id === sb.menu)){ sb.menu = null; sb.modo = ''; sb.erro = ''; }
+  box.innerHTML = '';
+  let foco = null;
+  for(const c of lista){ const it = itemSalva(c); box.appendChild(it.el); if(it.foco) foco = it.foco; }
+  if(!lista.length){
+    const p = document.createElement('p'); p.className = 'notas__mais';
+    p.textContent = todas.length ? 'Nenhuma consulta com esse nome.' : 'Nenhuma consulta salva ainda. Dê 👍 numa resposta para guardar aqui.';
+    box.appendChild(p);
+  }
+  if(foco && sb.focar) foco.focus();
+  sb.focar = false; sb.voltar = null;
+}
+function botaoSm(texto, cls){ const b = document.createElement('button'); b.type = 'button'; b.className = 'sm' + (cls ? ' ' + cls : ''); b.textContent = texto; return b; }
+// Fechou o menu: o foco volta para o ⋯ do item.
+function fecharMenuSalva(){ sb.voltar = sb.menu; sb.focar = true; sb.menu = null; sb.modo = ''; sb.erro = ''; renderSalvas(); }
+function abrirMenuSalva(c, modo){ sb.rascunho = null; sb.menu = c.id; sb.modo = modo; sb.erro = ''; sb.focar = true; renderSalvas(); }
+function itemSalva(c){
+  const el = document.createElement('div'); el.className = 'salvas__it'; el.setAttribute('role', 'listitem');
+  const aberto = sb.menu === c.id;
+  let foco = null;
+  if(aberto && sb.modo === 'renomear'){
+    const inp = document.createElement('input'); inp.type = 'text'; inp.value = sb.rascunho != null ? sb.rascunho : String(c.nome || ''); inp.maxLength = MAX_NOME_CONSULTA;
+    inp.spellcheck = false; inp.autocomplete = 'off'; inp.setAttribute('aria-label', 'Novo nome da consulta');
+    const menu = document.createElement('div'); menu.className = 'salvas__menu';
+    const ok = botaoSm('Salvar', 'primary'), nao = botaoSm('Cancelar');
+    ok.onclick = () => renomearSalva(c, inp.value);
+    nao.onclick = fecharMenuSalva;
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); renomearSalva(c, inp.value); } else if(e.key === 'Escape'){ e.preventDefault(); fecharMenuSalva(); } });
+    menu.appendChild(ok); menu.appendChild(nao); el.appendChild(inp); el.appendChild(menu); foco = inp;
+  }else{
+    const run = document.createElement('button'); run.type = 'button'; run.className = 'salvas__run'; run.disabled = st.busy;
+    run.innerHTML = '<b></b><span></span>';
+    run.querySelector('b').textContent = String(c.nome || '');
+    run.querySelector('span').textContent = (VISUAL_ROTULO[c.visual] || 'tabela') + (c.criada ? ' · salva ' + dataBr(c.criada).slice(0, 5) : '');
+    run.title = 'Rodar de novo, direto no banco';
+    run.onclick = () => clicarSalva(c);
+    const mais = document.createElement('button'); mais.type = 'button'; mais.className = 'salvas__mais'; mais.textContent = '⋯';
+    mais.setAttribute('aria-label', 'Opções da consulta ' + String(c.nome || '')); mais.setAttribute('aria-expanded', String(aberto));
+    mais.onclick = () => { if(aberto) fecharMenuSalva(); else abrirMenuSalva(c, 'menu'); };
+    el.appendChild(run); el.appendChild(mais);
+    if(sb.voltar === c.id) foco = mais;
+    if(aberto){
+      const menu = document.createElement('div'); menu.className = 'salvas__menu';
+      if(sb.modo === 'apagar'){
+        const t = document.createElement('span'); t.textContent = 'Apagar esta consulta?';
+        const sim = botaoSm('Apagar', 'primary'), nao = botaoSm('Cancelar');
+        sim.onclick = () => apagarSalva(c); nao.onclick = fecharMenuSalva;
+        menu.appendChild(t); menu.appendChild(sim); menu.appendChild(nao); foco = nao;
+      }else{
+        const ren = botaoSm('Renomear'), ap = botaoSm('Apagar');
+        ren.onclick = () => abrirMenuSalva(c, 'renomear'); ap.onclick = () => abrirMenuSalva(c, 'apagar');
+        menu.appendChild(ren); menu.appendChild(ap); foco = ren;
+      }
+      el.appendChild(menu);
+    }
+  }
+  if(aberto && sb.erro){ const p = document.createElement('p'); p.className = 'salvas__erro'; mostrarErro(p, sb.erro); el.appendChild(p); }
+  if(aberto) el.addEventListener('keydown', e => { if(e.key === 'Escape' && sb.modo !== 'renomear'){ e.preventDefault(); fecharMenuSalva(); } });
+  return { el, foco };
+}
+async function renomearSalva(c, valor){
+  sb.rascunho = String(valor || '');
+  const nome = String(valor || '').trim();
+  if(!nome){ sb.erro = 'Dê um nome à consulta.'; sb.focar = true; return renderSalvas(); }
+  if(consultasSalvas().some(x => x.id !== c.id && mesmoNome(x.nome, nome))){ sb.erro = 'Já existe uma consulta com esse nome.'; sb.focar = true; return renderSalvas(); }
+  const ok = await gravarConsultas(l => l.map(x => x.id === c.id ? Object.assign({}, x, { nome }) : x));
+  if(ok){ sb.voltar = c.id; sb.focar = true; sb.menu = null; sb.modo = ''; sb.erro = ''; } else sb.erro = 'Não deu para salvar: ' + st.notasErro;
+  renderSalvas();
+}
+async function apagarSalva(c){
+  const ok = await gravarConsultas(l => l.filter(x => x.id !== c.id));
+  if(ok){ sb.menu = null; sb.modo = ''; sb.erro = ''; } else sb.erro = 'Não deu para apagar: ' + st.notasErro;
+  renderSalvas();
+}
+// Clique na barra: sem parâmetros roda direto; com parâmetros, a janela com os valores da última vez.
+// Com uma resposta em andamento, espera (mesma regra do Enviar).
+function clicarSalva(c){
+  if(st.busy || !st.provider) return;
+  if(sb.menu) fecharMenuSalva();
+  const ps = Array.isArray(c.params) ? c.params : [];
+  if(ps.length) abrirRodar(c); else executarSalva(c, []);
+}
+
+/* janela de rodar com parâmetros */
+function abrirRodar(c){
+  rd.consulta = c; rd.gen = st.catalogGen;
+  $('#rTitulo').textContent = String(c.nome || '');
+  const box = $('#rCampos'); box.innerHTML = '';
+  c.params.forEach((p, i) => {
+    const d = document.createElement('div');
+    const lb = document.createElement('label'); lb.htmlFor = 'rP' + i; lb.textContent = nomeParam(p, i);
+    const inp = document.createElement('input'); inp.id = 'rP' + i; inp.autocomplete = 'off'; inp.spellcheck = false;
+    inp.type = p && p.tipo === 'data' ? 'date' : 'text';
+    if(p && p.tipo === 'numero') inp.inputMode = 'decimal';
+    // Número da última vez em formato brasileiro (1.5 → 1,5): nunca no padrão ambíguo do milhar.
+    const ultimo = String(p && p.valor != null ? p.valor : '');
+    inp.value = p && p.tipo === 'numero' ? ultimo.replace('.', ',') : ultimo;
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); confirmarRodar(); } });
+    d.appendChild(lb); d.appendChild(inp); box.appendChild(d);
+  });
+  mostrarErro($('#rErro'), '');
+  $('#rodar').showModal();
+  const f = box.querySelector('input'); if(f) f.focus();
+}
+function fecharRodar(){
+  const d = $('#rodar'); if(d.open) d.close();
+  rd.consulta = null;
+}
+function confirmarRodar(){
+  const c = rd.consulta; if(!c) return;
+  // A janela foi aberta para outro banco (catálogo trocou): fecha sem rodar.
+  if(rd.gen !== st.catalogGen || !podeSalvar()) return fecharRodar();
+  const valores = c.params.map((p, i) => { const el = $('#rP' + i); return el ? el.value.trim() : ''; });
+  if(st.busy || !st.provider) return mostrarErro($('#rErro'), 'Espere a resposta atual terminar.');
+  const m = CD2Consultas.montarSql(c, valores);
+  if(!m.ok) return mostrarErro($('#rErro'), m.erro);
+  fecharRodar();
+  executarSalva(c, valores);
+}
+// Roda direto no banco, sem o modelo, e mostra o card na conversa. Rodou com resultado, os valores
+// usados (normalizados pelo montarSql) viram os da próxima vez.
+async function executarSalva(c, valores){
+  if(st.busy || !st.provider) return;
+  st.busy = true; st.ctl = new AbortController(); toggleBusy();
+  const hero = $('#hero'); if(hero) hero.remove();
+  addUser('Consulta salva: ' + String(c.nome || ''));
+  const el = addMsg('assistant'), body = document.createElement('div'); body.className = 'body';
+  body.innerHTML = '<span class="spin"></span> Rodando a consulta salva…'; el.appendChild(body); scrollDown();
+  try{
+    const s = st.dbStatus || {};
+    const r = await CD2Ask.rodarSalva({ consulta:c, valores, motor:s.engine || 'postgres',
+      runSql:CD2Ask.toolRunner(st.provider, { timeoutMs:15000 }), signal:st.ctl.signal });
+    renderAnswer(body, String(c.nome || ''), r, { consulta:c });
+    if(r.ok) lembrarValores(c, r.valores || valores);
+  }catch(e){
+    el.remove();
+    if(e.name !== 'AbortError') addNote('Erro: ' + (e.message || e), true); else addNote('Interrompido.');
+  }finally{
+    st.busy = false; st.ctl = null; toggleBusy();
+  }
+}
+function lembrarValores(c, valores){
+  const ps = Array.isArray(c.params) ? c.params : [];
+  if(!ps.length || ps.every((p, i) => String(p.valor) === String(valores[i]))) return;
+  gravarConsultas(l => l.map(x => (x.id === c.id && Array.isArray(x.params) && x.params.length === valores.length)
+    ? Object.assign({}, x, { params:x.params.map((p, i) => Object.assign({}, p, { valor:String(valores[i]) })) }) : x))
+    .then(ok => { if(!ok) addNote('Não deu para guardar os valores usados: ' + st.notasErro, true); });
+}
+
+/* janela Salvar consulta (o 👍 do card) */
+function abrirSalvar(r, botao, gen){
+  if(gen !== st.catalogGen || !podeSalvar()){
+    botao.disabled = true; botao.title = 'Esta resposta é de outra conexão com o banco.'; return;
+  }
+  sv.r = r; sv.botao = botao; sv.sel = null;
+  sv.linhas = CD2Consultas.acharLiterais(r.sqlBase).map(l => Object.assign({}, l, { nome:'', extra:false }));
+  // As datas já vêm marcadas; com nome sugerido, salvar é um clique no caso comum (período).
+  const datas = sv.linhas.filter(l => l.marcado);
+  datas.forEach((l, i) => { l.nome = datas.length === 2 ? (i ? 'Data final' : 'Data inicial') : datas.length === 1 ? 'Data' : 'Data ' + (i + 1); });
+  $('#svNome').value = String(r.titulo || '').slice(0, MAX_NOME_CONSULTA);
+  $('#svParams').hidden = !sv.linhas.length;
+  $('#svValor').value = ''; $('#svComo').value = '';
+  mostrarErro($('#svAddErro'), ''); mostrarErro($('#svErro'), '');
+  $('#svSalvar').disabled = false;
+  renderSalvarSql(); renderSalvarLinhas();
+  $('#salvar').showModal(); $('#svNome').focus();
+}
+function renderSalvarSql(){
+  const pre = $('#svSql'), sql = sv.r.sqlBase;
+  pre.textContent = '';
+  let pos = 0;
+  for(const l of sv.linhas){
+    if(l.inicio < pos) continue;
+    pre.appendChild(document.createTextNode(sql.slice(pos, l.inicio)));
+    const m = document.createElement('mark'); if(!l.marcado) m.className = 'off'; m.textContent = sql.slice(l.inicio, l.fim);
+    pre.appendChild(m); pos = l.fim;
+  }
+  pre.appendChild(document.createTextNode(sql.slice(pos)));
+}
+function renderSalvarLinhas(){
+  const tb = $('#svLinhas'); tb.innerHTML = '';
+  for(const l of sv.linhas){
+    const tr = document.createElement('tr'); if(l.extra) tr.className = 'extra';
+    tr.innerHTML = '<td><input type="checkbox"></td><td></td><td><input type="text" spellcheck="false" autocomplete="off"></td><td></td>';
+    const cb = tr.querySelector('input[type=checkbox]'), nome = tr.querySelector('input[type=text]');
+    tr.children[1].textContent = l.valor; tr.children[3].textContent = TIPO_ROTULO[l.tipo] || l.tipo;
+    cb.checked = l.marcado; cb.setAttribute('aria-label', 'Perguntar a cada vez o valor ' + l.valor);
+    nome.value = l.nome; nome.maxLength = MAX_NOME_PARAM; nome.setAttribute('aria-label', 'Perguntar como, para o valor ' + l.valor);
+    const ph = () => { nome.placeholder = l.marcado ? 'Perguntar como' : 'fica fixo'; };
+    ph();
+    cb.onchange = () => { l.marcado = cb.checked; ph(); renderSalvarSql(); };
+    // Escrever um nome já marca o valor para ser perguntado.
+    nome.addEventListener('input', () => { l.nome = nome.value; if(nome.value.trim() && !l.marcado){ l.marcado = cb.checked = true; ph(); renderSalvarSql(); } });
+    tb.appendChild(tr);
+  }
+}
+// Posição da seleção do mouse dentro do SQL mostrado (o texto do <pre> é o SQL, só com <mark> em volta).
+function selecaoNoSql(){
+  const pre = $('#svSql'), s = window.getSelection();
+  if(!s || !s.rangeCount || s.isCollapsed) return null;
+  const rg = s.getRangeAt(0);
+  if(!pre.contains(rg.startContainer) || !pre.contains(rg.endContainer)) return null;
+  const pos = (node, off) => { const r = document.createRange(); r.selectNodeContents(pre); r.setEnd(node, off); return r.toString().length; };
+  return { inicio:pos(rg.startContainer, rg.startOffset), fim:pos(rg.endContainer, rg.endOffset) };
+}
+function aoSelecionarSql(){
+  if(!$('#salvar').open || !sv.r) return;
+  const s = selecaoNoSql(); if(!s) return;
+  sv.sel = s; $('#svValor').value = sv.r.sqlBase.slice(s.inicio, s.fim); mostrarErro($('#svAddErro'), '');
+}
+function adicionarParam(){
+  const sql = sv.r.sqlBase, valor = $('#svValor').value, erro = $('#svAddErro');
+  mostrarErro(erro, '');
+  let res;
+  if(sv.sel && sql.slice(sv.sel.inicio, sv.sel.fim) === valor) res = CD2Consultas.paramDeTrecho(sql, sv.sel.inicio, sv.sel.fim);
+  else if(!valor.trim()) return mostrarErro(erro, 'Selecione um trecho da consulta ou digite o valor.');
+  else res = CD2Consultas.paramDeValor(sql, valor);
+  if(!res.ok) return mostrarErro(erro, res.erro);
+  const p = res.param, nome = $('#svComo').value.trim().slice(0, MAX_NOME_PARAM);
+  const igual = sv.linhas.find(l => l.inicio === p.inicio && l.fim === p.fim);
+  if(igual){ igual.marcado = true; if(nome) igual.nome = nome; }
+  else{
+    // Um pedaço de um valor da lista (ex.: só a cidade dentro de 'CURITIBA - PR') toma o lugar dele,
+    // desde que ele não esteja marcado: dois parâmetros no mesmo trecho não dá para montar.
+    const cruza = sv.linhas.filter(l => p.inicio < l.fim && l.inicio < p.fim);
+    if(cruza.some(l => l.marcado)) return mostrarErro(erro, 'Esse trecho cruza um valor já marcado. Desmarque o outro primeiro.');
+    sv.linhas = sv.linhas.filter(l => !cruza.includes(l)).concat([Object.assign({}, p, { marcado:true, nome, extra:true })]);
+    sv.linhas.sort((a, b) => a.inicio - b.inicio);
+  }
+  $('#svValor').value = ''; $('#svComo').value = ''; sv.sel = null;
+  renderSalvarSql(); renderSalvarLinhas();
+}
+async function confirmarSalvar(){
+  const err = $('#svErro'), r = sv.r; if(!r) return;
+  mostrarErro(err, '');
+  const nome = $('#svNome').value.trim();
+  if(!nome) return mostrarErro(err, 'Dê um nome à consulta.');
+  if(consultasSalvas().some(c => mesmoNome(c.nome, nome))) return mostrarErro(err, 'Já existe uma consulta com esse nome.');
+  const marcados = sv.linhas.filter(l => l.marcado);
+  if(marcados.some(l => !l.nome.trim())) return mostrarErro(err, 'Dê um nome a cada valor marcado.');
+  const c = { id:'c' + Date.now(), nome, sql:r.sqlBase, visual:r.visual, x:r.x, y:r.y,
+    params:marcados.map(l => ({ nome:l.nome.trim(), tipo:l.tipo, inicio:l.inicio, fim:l.fim, valor:l.valor })), criada:hojeIso() };
+  const m = CD2Consultas.montarSql(c, []);
+  if(!m.ok) return mostrarErro(err, m.erro);
+  const b = $('#svSalvar'); b.disabled = true;
+  const ok = await gravarConsultas(l => l.concat([c]));
+  b.disabled = false;
+  if(!ok) return mostrarErro(err, 'Não deu para salvar: ' + st.notasErro);
+  $('#salvar').close();
+  if(sv.botao){ sv.botao.textContent = '👍 Salva'; sv.botao.disabled = true; }
+  sv.r = null; sv.botao = null;
 }
 /* ---------- modo Demonstração: gráficos, roteiro e convite para conectar o banco ---------- */
 function demoCard(g, sobre, pergunta){
@@ -1023,6 +2173,7 @@ function addNote(t, err){
 function calarAvatares(){ document.querySelectorAll('.msg.falando').forEach(m => m.classList.remove('falando')); }
 function toggleBusy(){
   $('#bSend').style.display = st.busy ? 'none' : ''; $('#bStop').style.display = st.busy ? '' : 'none'; $('#input').disabled = st.busy;
+  document.querySelectorAll('.salvas__run').forEach(b => { b.disabled = st.busy; });
   if(!st.busy){ $('#input').focus(); calarAvatares(); }
 }
 function send(text){
@@ -1071,10 +2222,16 @@ function loadCtlKey(){
   }
   st.ctlKey = store.get('cd2.ctlKey', true) || k || null;
 }
-async function ctlRequest(method, path, body){
+// timeoutMs (opcional): desiste depois desse tempo (o fetch lança, como no cd2-ctl fora do ar).
+async function ctlRequest(method, path, body, timeoutMs){
   const headers = { Authorization:'Bearer ' + st.ctlKey };
   if(body) headers['Content-Type'] = 'application/json';
-  const r = await fetch(CD2Toolbox.ctlUrlFor(location) + path, { method, headers, body: body ? JSON.stringify(body) : undefined, cache:'no-store' });
+  let signal;
+  if(timeoutMs){
+    if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout) signal = AbortSignal.timeout(timeoutMs);
+    else{ const ac = new AbortController(); setTimeout(() => ac.abort(), timeoutMs); signal = ac.signal; }
+  }
+  const r = await fetch(CD2Toolbox.ctlUrlFor(location) + path, { method, headers, body: body ? JSON.stringify(body) : undefined, cache:'no-store', signal });
   let data = {};
   try{ data = (await r.json()) || {}; }catch(e){}
   return { status:r.status, data };
@@ -1196,7 +2353,8 @@ async function disconnectDb(ev){
   let r = null;
   try{ r = await ctlRequest('DELETE', '/config'); }catch(e){ st.ctlUp = false; }
   st.ctlBusy = false;
-  if(r && r.status === 200) st.ctlStatus = r.data;
+  // catalogGen++: varredura ou atualização em curso param caladas (era do banco que saiu), sem aviso de falha.
+  if(r && r.status === 200){ st.ctlStatus = r.data; st.catalogGen++; esconderFaixa(); st.notas = null; st.notasBanco = null; st.notasChave = null; zerarEntendimento(); fecharNotas(); syncBotaoNotas(); }
   st.dbStatus = null;
   if((store.get('cd2.mode') || (st.cfg.mcp && st.cfg.mcp.mode)) === 'toolbox'){ st.tools = []; st.provider = null; setPill('#pMcp', 'err', 'sem banco'); }
   fillDbForm(null); renderToolbox();
@@ -1281,7 +2439,7 @@ function instPerguntas(){ $('#iPago').hidden = !inst.pago; instTela('perguntas')
 async function abrirInstalar(){
   const r = await instPedir('GET', '/instalacao');
   if(!r || r.status !== 200) return instErro(instMsg(r));
-  inst.status = r.data;
+  inst.status = r.data; syncImportar();
   const p = await instPedir('GET', '/instalacao/progresso');
   if(p && p.status === 200 && p.data.fase === 'copiando'){ inst.medidor = null; instMostrarProgresso(p.data); instTela('instalando'); return instAcompanhar(); }
   if(p && p.status === 200 && p.data.fase === 'pronta') return instPronto(p.data);
@@ -1386,7 +2544,7 @@ async function iniciarInstalacao(){
   }
   const r = await instPedir('GET', '/instalacao');
   if(r && r.status === 200){
-    inst.status = r.data;
+    inst.status = r.data; syncImportar();
     const mostra = !!CD2Instalar.telaInicial(r.data);
     $('#pPendrive').hidden = !mostra; $('#bInstalar').hidden = !mostra;
     // Só a IA do pen drive escuta a chave que volta do pagamento noutra aba.
@@ -1468,6 +2626,32 @@ async function boot(){
 $('#bSend').onclick = () => send();
 $('#bStop').onclick = () => st.ctl && st.ctl.abort();
 $('#bNew').onclick = newChat;
+$('#bNotas').onclick = abrirNotas;
+$('#nVoltar').onclick = () => fecharNotas(true);
+$('#nBusca').addEventListener('input', renderListaNotas);
+$('#nExportar').onclick = exportarNotas;
+$('#nAtualizar').onclick = abrirAtualizar;
+$('#atCancelar').onclick = () => $('#atualizar').close();
+$('#atOk').onclick = confirmarAtualizar;
+// Enquanto apaga e grava, a janela não fecha: o resultado (ou o erro) aparece nela.
+$('#atualizar').addEventListener('cancel', e => { if(at.confirmando) e.preventDefault(); });
+$('#atualizar').addEventListener('close', () => { at.leitura++; at.diff = null; at.cat = null; });
+$('#nImportar').onclick = escolherArquivoNotas;
+$('#nArquivo').addEventListener('change', lerArquivoNotas);
+$('#impCancelar').onclick = () => $('#importar').close();
+$('#impOk').onclick = confirmarImportar;
+$('#importar').addEventListener('close', () => { imp.dados = null; imp.etapa = ''; });
+$('#sBusca').addEventListener('input', renderSalvas);
+$('#sMostrar').onclick = () => { const a = $('#salvas'), on = !a.classList.contains('aberta'); a.classList.toggle('aberta', on); $('#sMostrar').setAttribute('aria-expanded', String(on)); $('#sMostrar').textContent = on ? 'Esconder' : 'Mostrar'; };
+$('#svCancelar').onclick = () => $('#salvar').close();
+$('#svSalvar').onclick = confirmarSalvar;
+$('#svAdd').onclick = adicionarParam;
+$('#svValor').addEventListener('input', () => { sv.sel = null; });
+$('#svComo').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); adicionarParam(); } });
+$('#svValor').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); adicionarParam(); } });
+document.addEventListener('selectionchange', aoSelecionarSql);
+$('#rCancelar').onclick = () => $('#rodar').close();
+$('#rRodar').onclick = confirmarRodar;
 $('#bCfg').onclick = () => openCfg();
 $('#cfgClose').onclick = () => $('#dlg').close();
 $('#cfgSave').onclick = saveCfg;

@@ -12,6 +12,7 @@ import (
 
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/control"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbconf"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/notas"
 )
 
 // MaxBody é o maior corpo aceito em POST /config.
@@ -24,6 +25,12 @@ type Options struct {
 	CtlPort     int
 	// Instalacao liga as rotas /instalacao*; nil as deixa em 404.
 	Instalacao Instalacao
+	// Notas liga as rotas /notas*; nil as deixa em 404.
+	Notas *notas.Store
+	// Entendimento liga as rotas /entendimento; nil as deixa em 404.
+	Entendimento *notas.Store
+	// PodeImportar diz se POST /notas/importar é aceito (só na versão instalada).
+	PodeImportar func() bool
 }
 
 // Backend é o que a API controla (*control.Controller).
@@ -36,6 +43,9 @@ type Backend interface {
 type server struct {
 	b       Backend
 	inst    Instalacao
+	notas   *notas.Store
+	entend  *notas.Store
+	importa func() bool
 	auth    []byte
 	origins map[string]bool
 	hosts   map[string]bool
@@ -47,6 +57,9 @@ func Handler(opt Options, b Backend) http.Handler {
 	return &server{
 		b:       b,
 		inst:    opt.Instalacao,
+		notas:   opt.Notas,
+		entend:  opt.Entendimento,
+		importa: opt.PodeImportar,
 		auth:    []byte("Bearer " + opt.Key),
 		origins: map[string]bool{"http://127.0.0.1:" + h: true, "http://localhost:" + h: true},
 		hosts:   map[string]bool{"127.0.0.1:" + c: true, "localhost:" + c: true},
@@ -118,6 +131,18 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.instalacao(w, r)
+	case "/notas", "/notas/importar":
+		if s.notas == nil {
+			fail(w, http.StatusNotFound, "rota não encontrada")
+			return
+		}
+		s.notasRota(w, r)
+	case "/entendimento":
+		if s.entend == nil {
+			fail(w, http.StatusNotFound, "rota não encontrada")
+			return
+		}
+		s.entendimentoRota(w, r)
 	default:
 		fail(w, http.StatusNotFound, "rota não encontrada")
 	}
@@ -131,17 +156,22 @@ func notAllowed(w http.ResponseWriter, allow string) {
 // decodeJSON confere o Content-Type e lê o corpo (limite MaxBody, sem campos desconhecidos).
 // Se falhar, já respondeu e devolve false.
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
+	return decodeJSONLimite(w, r, v, MaxBody, "corpo: acima de 8 KB")
+}
+
+// decodeJSONLimite é o decodeJSON com limite e mensagem de 413 próprios.
+func decodeJSONLimite(w http.ResponseWriter, r *http.Request, v any, limite int64, msg413 string) bool {
 	mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mt != "application/json" {
 		fail(w, http.StatusUnsupportedMediaType, "use Content-Type: application/json")
 		return false
 	}
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, MaxBody))
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, limite))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
-			fail(w, http.StatusRequestEntityTooLarge, "corpo: acima de 8 KB")
+			fail(w, http.StatusRequestEntityTooLarge, msg413)
 			return false
 		}
 		fail(w, http.StatusBadRequest, "corpo: JSON inválido")

@@ -6,7 +6,9 @@
 const isNode = typeof module !== 'undefined' && module.exports;
 const Chart = isNode ? require('./chart.js') : root.CD2Chart;
 const Cat = isNode ? require('./catalog.js') : root.CD2Catalog;
+const Notas = isNode ? require('./notas.js') : root.CD2Notas;
 const Tb = isNode ? require('./toolbox.js') : root.CD2Toolbox;
+const Consultas = isNode ? require('./consultas.js') : root.CD2Consultas;
 
 const VISUALS = ['barra', 'linha', 'pizza', 'tabela', 'numero'];
 const MENSAGENS = {
@@ -191,10 +193,14 @@ function buildMessages(o){
     return '; ' + p.papel + (c.data ? '; data: ' + limpo(c.data) : '') + (c.valor ? '; valor: ' + limpo(c.valor) : '') + (c.quantidade ? '; quantidade: ' + limpo(c.quantidade) : '');
   };
   // Descrição feita pelo modelo a partir da amostra: só texto, sem quebra de linha, até 160 caracteres.
-  const desc = t => t.perfil && t.perfil.descricao
-    ? 'descrição: ' + String(t.perfil.descricao).replace(/[\u0000-\u001f\u007f\s]+/g, ' ').trim().slice(0, 160) + ' | colunas: ' : '';
-  const tabs = o.tabelas.map(t => '- ' + pre + limpo(t.name) + ' (' + tam(t) + papel(t) + '): ' + desc(t)
-    + t.columns.map(c => limpo(c.name) + ' ' + limpo(c.type)).join(', ')).join('\n');
+  const sane = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\s]+/g, ' ').trim().slice(0, max);
+  const desc = t => (t.nota ? 'nota da TI: ' + sane(t.nota, Notas.LIMITE.tabela) + ' | ' : '')
+    + (t.perfil && t.perfil.descricao ? 'descrição: ' + sane(t.perfil.descricao, 160) + ' | ' : '')
+    + (t.nota || (t.perfil && t.perfil.descricao) ? 'colunas: ' : '');
+  const col = c => limpo(c.name) + ' ' + limpo(c.type) + (c.nota ? ' (nota da TI: ' + sane(c.nota, Notas.LIMITE.campo) + ')' : '');
+  // As notas da TI têm teto no prompt; passando dele, Notas.cortar tira as menos relevantes.
+  const tabs = Notas.cortar(o.tabelas, Notas.LIMITE.prompt).map(t => '- ' + pre + limpo(t.name) + ' (' + tam(t) + papel(t) + '): ' + desc(t)
+    + t.columns.map(col).join(', ')).join('\n');
   const lig = Cat.links(o.tabelas);
   const sys = [
     'Você transforma uma pergunta em uma consulta SQL de leitura e diz como mostrar o resultado.',
@@ -271,6 +277,7 @@ async function ask(o){
     if(!readsListedTable(g.sql, tabelas)){ falha = 'sql'; ultimoSql = g.sql; anterior = { sql:g.sql, erro:'A consulta precisa ler uma das tabelas listadas.' }; continue; }
     const dobra = somaDoCabecalho(g.sql, tabelas);
     if(dobra){ falha = 'sql'; ultimoSql = g.sql; anterior = { sql:g.sql, erro:dobra }; continue; }
+    const sqlBase = g.sql;
     const sql = Tb.prepareSql(g.sql, o.motor);
     ultimoSql = sql;
     const r = await o.runSql(sql, o.signal);
@@ -284,11 +291,40 @@ async function ask(o){
     const colunas = Object.keys(r.rows[0]);
     const v = pickVisual(req, colunas, r.rows);
     const out = { ok:true, visual:v.visual, x:v.x, y:v.y, titulo:safeTitle(req.titulo, o.pergunta),
-      frase:frase({ visual:v.visual, x:v.x, y:v.y, linhas:v.linhas, todas:r.rows }), colunas, linhas:v.linhas, todas:r.rows, sql };
+      frase:frase({ visual:v.visual, x:v.x, y:v.y, linhas:v.linhas, todas:r.rows }), colunas, linhas:v.linhas, todas:r.rows, sql, sqlBase };
     if(v.aviso) out.aviso = v.aviso;
     return out;
   }
   return falha === 'sql' ? { ok:false, motivo:'sql', sql:ultimoSql } : { ok:false, motivo:'modelo' };
+}
+
+// Consulta salva: monta o SQL com os valores, passa pela mesma guarda e roda direto, sem o modelo.
+// O visual salvo vai para o pickVisual, que ainda decide pelo que o banco devolveu agora.
+async function rodarSalva(o){
+  const c = (o && o.consulta) || {};
+  const m = Consultas.montarSql(c, o.valores);
+  if(!m.ok) return { ok:false, motivo:'param', erro:m.erro };
+  const g = Tb.guardSql(m.sql);
+  // barrado: o guardSql recusou o SQL montado (não foi ao banco); a tela explica o porquê.
+  if(!g.ok) return { ok:false, motivo:'sql', sql:m.sql, barrado:true };
+  const sql = Tb.prepareSql(g.sql, o.motor);
+  checkAbort(o.signal);
+  const r = await o.runSql(sql, o.signal);
+  checkAbort(o.signal);
+  if(!r.ok){
+    if(r.timeout) return { ok:false, motivo:(r.front && (o.motor === 'sqlserver' || o.motor === 'oracle' || o.motor === 'firebird')) ? 'timeout_front' : 'timeout', sql };
+    return { ok:false, motivo:'sql', sql };
+  }
+  if(!r.rows.length || r.rows.every(l => Object.values(l).every(v => v == null || v === ''))) return { ok:false, motivo:'vazio', sql };
+  const colunas = Object.keys(r.rows[0]);
+  const v = pickVisual({ visual:c.visual, x:c.x, y:c.y }, colunas, r.rows);
+  const params = Array.isArray(c.params) ? c.params : [];
+  const vs = Array.isArray(o.valores) ? o.valores : [];
+  const out = { ok:true, visual:v.visual, x:v.x, y:v.y, titulo:String(c.nome || ''),
+    frase:frase({ visual:v.visual, x:v.x, y:v.y, linhas:v.linhas, todas:r.rows }), colunas, linhas:v.linhas, todas:r.rows, sql,
+    valores:Array.isArray(m.valores) ? m.valores : params.map((p, i) => vs[i] == null ? p.valor : vs[i]) };
+  if(v.aviso) out.aviso = v.aviso;
+  return out;
 }
 
 function modelCaller(o){
@@ -326,6 +362,6 @@ function toolRunner(client, o){
   };
 }
 
-const api = { VISUALS, MENSAGENS, SCHEMA, parseRows, parseModelJson, isTimeout, pickVisual, frase, buildMessages, somaDoCabecalho, ask, modelCaller, toolRunner };
+const api = { VISUALS, MENSAGENS, SCHEMA, parseRows, parseModelJson, isTimeout, pickVisual, frase, buildMessages, somaDoCabecalho, ask, rodarSalva, modelCaller, toolRunner };
 if(isNode) module.exports = api; else root.CD2Ask = api;
 })(typeof window !== 'undefined' ? window : globalThis);
