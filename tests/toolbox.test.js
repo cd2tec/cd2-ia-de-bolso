@@ -245,3 +245,11 @@ test('motorArquivo, planilhasLinha e ignoradasLinhas', () => {
   // item nulo na lista não quebra: a linha dele é omitida
   assert.deepEqual(T.ignoradasLinhas({ ignoradas:[null, { arquivo:'a.xlsx', aba:'', motivo:'aba vazia' }] }), ['a.xlsx: aba vazia']);
 });
+test('planilhasLinha termina com a hora da leitura quando lido_em é data válida', () => {
+  // A hora sai no fuso de quem roda o teste: monta o HH:MM esperado do mesmo jeito.
+  const lido = '2026-10-23T14:05:09.123-03:00', d = new Date(lido);
+  const hhmm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  assert.equal(T.planilhasLinha({ arquivos:2, tabelas:3, lido_em:lido }), '2 arquivos, 3 abas viraram tabelas às ' + hhmm);
+  for(const ruim of [undefined, null, '', 'ontem', '0001-01-01T00:00:00Z'])
+    assert.equal(T.planilhasLinha({ arquivos:1, tabelas:1, lido_em:ruim }), '1 arquivo, 1 aba virou tabela', String(ruim));
+});

@@ -1084,6 +1084,11 @@ async function reabrirToolbox(){
   st.dbStatus = CD2Toolbox.parseStatus(statusTxt);
   pilulaToolbox();
 }
+// O toolbox caiu e não voltou (ou a sessão nova não abriu): a sessão MCP de antes morreu com ele. Mesmo
+// estado que o saveDb deixa quando o banco não sobe, para a Conversa não perguntar a um toolbox morto.
+function semSessaoToolbox(){
+  st.tools = []; st.provider = null; st.dbStatus = null; setPill('#pMcp', 'err', 'sem banco'); syncBotaoNotas();
+}
 // arranque (true só na abertura da página): tenta o que estiver de pé e, sem nada, abre a Demonstração.
 // Sem arranque (Salvar e conectar, sair do Archeo): conecta no modo guardado e mostra a falha.
 async function connectTools(arranque){
@@ -1890,22 +1895,39 @@ async function abrirAtualizar(){
   // Planilhas e DBF: o toolbox trabalha numa cópia da pasta. O cd2-ctl relê a pasta e reinicia o
   // toolbox (se a releitura falhar, a cópia antiga continua no ar), e o catálogo vem da sessão nova.
   if(motorPasta() && client && client !== demo){
+    // Reler derruba o toolbox por uns segundos: a pergunta em andamento perderia a resposta.
+    if(st.busy) return etapaAtualizar('erro', 'Espere a resposta terminar para atualizar.');
     etapaAtualizar('relendo');
+    // O banco mudou no meio: a janela é desta leitura e ficaria presa em "Relendo", com Cancelar desabilitado.
+    const largar = () => { if(leitura === at.leitura && d.open) d.close(); };
     let r = null;
-    try{ r = await ctlRequest('POST', '/reler', null, 120000); }catch(e){}
-    if(gen !== st.catalogGen) return;
-    // 200 traz o Status (com erro preenchido quando a releitura falhou); 401, 409 e 503 trazem só o erro.
-    const ok = !!(r && r.status === 200);
-    if(ok){ st.ctlStatus = r.data; renderToolbox(); }
-    // Com o toolbox de pé, a sessão é reaberta mesmo com erro ou com a janela já fechada: ele pode ter
-    // reiniciado (caiu na troca e voltou com a mesma pasta), e a Conversa precisa continuar respondendo.
-    let reaberto = false;
-    if(ok && r.data.estado === 'rodando'){ try{ await reabrirToolbox(); reaberto = true; }catch(e){} }
-    if(leitura !== at.leitura || gen !== st.catalogGen || !d.open) return;
-    if(!r) return etapaAtualizar('erro', 'O controle do banco não respondeu. Feche e abra a IA de Bolso pelo atalho INICIAR. Nenhuma nota foi apagada.');
-    if(!ok || r.data.erro) return etapaAtualizar('erro', (r.data && r.data.erro || 'Não consegui reler a pasta.') + ' Nenhuma nota foi apagada.');
-    if(!reaberto) return etapaAtualizar('erro', 'A pasta foi relida, mas não consegui falar com o toolbox de novo. Feche e abra a IA de Bolso pelo atalho INICIAR. Nenhuma nota foi apagada.');
-    client = st.provider;
+    // Sem prazo, como o POST /config: uma pasta grande leva minutos, e cortar a espera no meio deixaria a
+    // tela sem saber se o toolbox voltou.
+    try{ r = await ctlRequest('POST', '/reler', null); }catch(e){}
+    if(gen !== st.catalogGen) return largar();
+    // Caiu a rede no meio: o cd2-ctl pode ter trocado a cópia e reiniciado o toolbox mesmo assim. Espera
+    // ele sair de "subindo" para saber se a sessão tem de ser reaberta.
+    if(!r){ await esperarCtl(); renderToolbox(); if(gen !== st.catalogGen) return largar(); }
+    // 404: cd2-ctl antigo, sem /reler. Lê o catálogo da sessão de sempre, como antes desta rota existir.
+    if(!(r && r.status === 404)){
+      // 200 traz o Status (com erro preenchido quando a releitura falhou); 401, 409 e 503 trazem só o erro.
+      const ok = !!(r && r.status === 200);
+      if(ok){ st.ctlStatus = r.data; renderToolbox(); }
+      const estado = ok ? r.data.estado : (!r && st.ctlStatus ? st.ctlStatus.estado : '');
+      // Com o toolbox de pé, a sessão é reaberta mesmo com erro ou com a janela já fechada: ele pode ter
+      // reiniciado (caiu na troca e voltou com a mesma pasta), e a Conversa precisa continuar respondendo.
+      // Fora do ar, ou sem conseguir reabrir, a sessão antiga morreu com ele.
+      let reaberto = false;
+      if(estado === 'rodando'){
+        try{ await reabrirToolbox(); reaberto = true; }catch(e){ if(gen === st.catalogGen) semSessaoToolbox(); }
+      }else if(estado) semSessaoToolbox();
+      if(gen !== st.catalogGen) return largar();
+      if(leitura !== at.leitura || !d.open) return;
+      if(!r) return etapaAtualizar('erro', 'O controle do banco não respondeu. Feche e abra a IA de Bolso pelo atalho INICIAR. Nenhuma nota foi apagada.');
+      if(!ok || r.data.erro) return etapaAtualizar('erro', (r.data && r.data.erro || 'Não consegui reler a pasta.') + ' Nenhuma nota foi apagada.');
+      if(!reaberto) return etapaAtualizar('erro', 'A pasta foi relida, mas não consegui falar com o toolbox de novo. Feche e abra a IA de Bolso pelo atalho INICIAR. Nenhuma nota foi apagada.');
+      client = st.provider;
+    }
     etapaAtualizar('lendo');
   }
   let cat = null;

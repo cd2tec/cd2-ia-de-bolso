@@ -171,7 +171,14 @@ function planilhasLinha(p){
   const a = Number(p && p.arquivos) || 0, t = Number(p && p.tabelas) || 0;
   const arq = a + (a === 1 ? ' arquivo' : ' arquivos');
   const abas = t === 0 ? 'nenhuma aba virou tabela' : (t === 1 ? '1 aba virou tabela' : t + ' abas viraram tabelas');
-  return arq + ', ' + abas;
+  return arq + ', ' + abas + horaDaLeitura(p && p.lido_em);
+}
+// " às HH:MM" (hora local) de lido_em; '' quando não é data válida. O zero do Go (ano 1) também fica de fora.
+function horaDaLeitura(lido){
+  const d = typeof lido === 'string' && lido ? new Date(lido) : null;
+  if(!d || isNaN(d.getTime()) || d.getFullYear() < 2000) return '';
+  const dois = n => String(n).padStart(2, '0');
+  return ' às ' + dois(d.getHours()) + ':' + dois(d.getMinutes());
 }
 // Uma linha por aba (ou arquivo inteiro, com aba vazia) deixada de fora. Nome de arquivo e de aba vêm do disco: só texto.
 function ignoradasLinhas(p){
