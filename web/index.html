@@ -870,6 +870,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 
 <dialog id="atualizar" aria-labelledby="atTitulo">
   <h2 id="atTitulo">Atualizar com o banco</h2>
+  <p class="hint" id="atRelendo" hidden></p>
   <p class="hint" id="atLendo">Lendo o banco de novo…</p>
   <p class="imp__erro" id="atErro" hidden></p>
   <p class="imp__erro" id="atIgual" hidden>O entendimento já está igual ao banco.</p>
@@ -1036,18 +1037,15 @@ async function conectarModo(mode, exigirBanco){
   const url = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
   const tok = store.get('cd2.tok', true) || '';
   if(mode === 'toolbox'){
-    const turl = CD2Toolbox.urlFor(location);
-    const c = new McpClient(turl, { token: async () => null, origin: location.origin });
-    st.tools = await c.init(); st.provider = c;
-    const statusTxt = await c.call('db_connection_status', {});
+    const { c, tools, statusTxt } = await sessaoToolbox();
+    st.tools = tools; st.provider = c;
     st.dbStatus = CD2Toolbox.parseStatus(statusTxt);
     let catalogoTxt = null;
     if(exigirBanco){
       catalogoTxt = await c.call('db_catalog', {});
       if(!CD2Toolbox.bancoAtivo(statusTxt, CD2Ask.parseRows(catalogoTxt))) throw new Error('Sem conexão com o banco.');
     }
-    const eng = st.dbStatus ? CD2Toolbox.engineLabel(st.dbStatus.engine) : 'Banco de dados';
-    setPill('#pMcp', 'ok', eng + ': ' + st.tools.length + ' ferramentas');
+    pilulaToolbox();
     st.catalogoFalhou = false;
     st.catalogPromise = loadCatalog(c, st.catalogGen, catalogoTxt);
   }else if(mode === 'mcp'){
@@ -1063,6 +1061,28 @@ async function conectarModo(mode, exigirBanco){
     setPill('#pMcp', 'gold', 'Demonstração: ' + st.tools.length + ' ferramentas');
   }
   syncBotaoNotas();
+}
+// Sessão MCP nova com o toolbox (initialize, tools/list e db_connection_status), sem mexer no estado da tela.
+async function sessaoToolbox(){
+  const c = new McpClient(CD2Toolbox.urlFor(location), { token: async () => null, origin: location.origin });
+  const tools = await c.init();
+  const statusTxt = await c.call('db_connection_status', {});
+  return { c, tools, statusTxt };
+}
+function pilulaToolbox(){
+  const eng = st.dbStatus ? CD2Toolbox.engineLabel(st.dbStatus.engine) : 'Banco de dados';
+  setPill('#pMcp', 'ok', eng + ': ' + st.tools.length + ' ferramentas');
+}
+// Depois do /reler o cd2-ctl reinicia o toolbox e a sessão MCP antiga morre com ele: abre outra no
+// lugar, sem ler o catálogo nem mexer em catálogo, notas e entendimento (quem compara e troca o
+// catálogo é o "Atualizar com o banco"). Lança se não conectar ou se o banco mudou no meio.
+async function reabrirToolbox(){
+  const gen = st.catalogGen;
+  const { c, tools, statusTxt } = await sessaoToolbox();
+  if(gen !== st.catalogGen) throw new Error('O banco mudou.');
+  st.tools = tools; st.provider = c;
+  st.dbStatus = CD2Toolbox.parseStatus(statusTxt);
+  pilulaToolbox();
 }
 // arranque (true só na abertura da página): tenta o que estiver de pé e, sem nada, abre a Demonstração.
 // Sem arranque (Salvar e conectar, sair do Archeo): conecta no modo guardado e mostra a falha.
@@ -1360,7 +1380,10 @@ async function concluirEntendimento(cat, gen, guardado){
 }
 // Veredito de varejo no documento: sem evidência (faltam descrições) fica verificado:false, para um
 // Atualizar que descreva as tabelas verificar de novo; com evidência é final e o aviso sai uma vez.
+// Nas planilhas o veredito já nasce final e sem aviso: planilha de controle não é ERP.
 function verificarVarejo(cat, doc){
+  const fixo = CD2Entendimento.varejoNaoSeAplica(motorPasta());
+  if(fixo){ doc.varejo = fixo; return; }
   const r = CD2Entendimento.pareceVarejo(cat);
   if(r.semEvidencia){ doc.varejo = { verificado:false }; return; }
   doc.varejo = { verificado:true, parece:r.parece };
@@ -1841,19 +1864,50 @@ async function salvarTelaNotas(){
 // catálogo mantendo o perfil guardado e, em segundo plano, entende só as tabelas novas e as sem descrição.
 // at.alvo: nomes das tabelas que a atualização em segundo plano está lendo (null fora dela).
 const at = { diff:null, cat:null, gen:0, chaveNotas:'', leitura:0, confirmando:false, vez:0, alvo:null };
+// Motor do banco do toolbox quando ele vem de uma pasta (excel, dbf); '' nos outros casos, inclusive
+// no Archeo e na Demonstração (o cd2-ctl pode ter uma pasta configurada sem ser ela a conectada).
+function motorPasta(){
+  const m = st.ctlStatus && st.ctlStatus.motor;
+  return modoAtual() === 'toolbox' && CD2Toolbox.motorArquivo(m) ? m : '';
+}
 function syncAtualizar(){
   const b = $('#nAtualizar'); if(!b) return;
+  const motor = motorPasta();
   b.disabled = !!at.alvo;
   b.title = at.alvo ? 'A IA ainda está entendendo as tabelas novas. Dá para atualizar de novo quando ela terminar.'
+    : motor === 'excel' ? 'Reler as planilhas e trazer abas e colunas novas, sem perder as notas'
+    : motor === 'dbf' ? 'Reler os arquivos e trazer tabelas e colunas novas, sem perder as notas'
     : 'Ler o banco de novo e trazer as tabelas e campos novos, sem perder as notas';
 }
 const SEM_CHAVE_ATUALIZAR = 'Não consigo guardar o entendimento deste banco agora (o controle do banco não respondeu). Feche e abra a IA de Bolso pelo atalho INICIAR e tente de novo. Nenhuma nota foi apagada.';
 async function abrirAtualizar(){
   if(!st.catalog || !st.notas || !st.entendimentoPronto || at.alvo) return;
-  const d = $('#atualizar'), leitura = ++at.leitura, gen = st.catalogGen, client = st.provider;
+  const d = $('#atualizar'), leitura = ++at.leitura, gen = st.catalogGen;
+  let client = st.provider;
   at.diff = null; at.cat = null; at.gen = gen; at.chaveNotas = st.notasChave || '';
   etapaAtualizar('lendo');
   if(!d.open) d.showModal();
+  // Planilhas e DBF: o toolbox trabalha numa cópia da pasta. O cd2-ctl relê a pasta e reinicia o
+  // toolbox (se a releitura falhar, a cópia antiga continua no ar), e o catálogo vem da sessão nova.
+  if(motorPasta() && client && client !== demo){
+    etapaAtualizar('relendo');
+    let r = null;
+    try{ r = await ctlRequest('POST', '/reler', null, 120000); }catch(e){}
+    if(gen !== st.catalogGen) return;
+    // 200 traz o Status (com erro preenchido quando a releitura falhou); 401, 409 e 503 trazem só o erro.
+    const ok = !!(r && r.status === 200);
+    if(ok){ st.ctlStatus = r.data; renderToolbox(); }
+    // Com o toolbox de pé, a sessão é reaberta mesmo com erro ou com a janela já fechada: ele pode ter
+    // reiniciado (caiu na troca e voltou com a mesma pasta), e a Conversa precisa continuar respondendo.
+    let reaberto = false;
+    if(ok && r.data.estado === 'rodando'){ try{ await reabrirToolbox(); reaberto = true; }catch(e){} }
+    if(leitura !== at.leitura || gen !== st.catalogGen || !d.open) return;
+    if(!r) return etapaAtualizar('erro', 'O controle do banco não respondeu. Feche e abra a IA de Bolso pelo atalho INICIAR. Nenhuma nota foi apagada.');
+    if(!ok || r.data.erro) return etapaAtualizar('erro', (r.data && r.data.erro || 'Não consegui reler a pasta.') + ' Nenhuma nota foi apagada.');
+    if(!reaberto) return etapaAtualizar('erro', 'A pasta foi relida, mas não consegui falar com o toolbox de novo. Feche e abra a IA de Bolso pelo atalho INICIAR. Nenhuma nota foi apagada.');
+    client = st.provider;
+    etapaAtualizar('lendo');
+  }
   let cat = null;
   try{
     if(client && client !== demo){
@@ -1868,14 +1922,17 @@ async function abrirAtualizar(){
   at.cat = cat; at.diff = CD2Entendimento.comparar(cat, st.entendimento, st.notas);
   etapaAtualizar(at.diff.nadaMudou ? 'igual' : 'resumo');
 }
-// Uma janela, quatro etapas: 'lendo', 'erro', 'igual' (nada mudou) e 'resumo'.
+// Uma janela, cinco etapas: 'relendo' (o cd2-ctl relê a pasta), 'lendo', 'erro', 'igual' (nada mudou) e 'resumo'.
+// Relendo, Cancelar fica desabilitado e o Esc não fecha: o cd2-ctl não cancela a releitura.
 function etapaAtualizar(etapa, erro){
   const ok = $('#atOk'), cancelar = $('#atCancelar');
+  $('#atRelendo').hidden = etapa !== 'relendo';
   $('#atLendo').hidden = etapa !== 'lendo'; $('#atErro').hidden = etapa !== 'erro';
   $('#atIgual').hidden = etapa !== 'igual'; $('#atResumo').hidden = etapa !== 'resumo';
-  $('#atMsg').textContent = ''; ok.disabled = false; cancelar.disabled = false;
+  $('#atMsg').textContent = ''; ok.disabled = false; cancelar.disabled = etapa === 'relendo';
   ok.hidden = etapa !== 'resumo';
-  cancelar.textContent = etapa === 'resumo' || etapa === 'lendo' ? 'Cancelar' : 'Fechar';
+  cancelar.textContent = etapa === 'resumo' || etapa === 'lendo' || etapa === 'relendo' ? 'Cancelar' : 'Fechar';
+  if(etapa === 'relendo') $('#atRelendo').textContent = motorPasta() === 'excel' ? 'Relendo as planilhas…' : 'Relendo os arquivos .dbf…';
   if(etapa === 'erro') $('#atErro').textContent = erro;
   if(etapa === 'resumo') renderResumoAtualizar();
   (etapa === 'resumo' ? ok : cancelar).focus();
@@ -2530,6 +2587,7 @@ async function refreshCtl(timeoutMs){
     if(r.status === 200){ st.ctlUp = true; st.ctlStatus = r.data; }
     else if(r.status === 401) st.ctlStale = true;
   }catch(e){}
+  syncAtualizar();
 }
 function readDbForm(){ const f = {}; for(const k in DB_FIELDS) f[k] = $(DB_FIELDS[k]).value; return f; }
 // Exemplos por motor e porta padrão. A senha guarda o aviso de "senha salva" do fillDbForm.
@@ -2590,6 +2648,7 @@ function renderToolbox(){
   for(const k in DB_FIELDS) $(DB_FIELDS[k]).disabled = !on;
   $('#bDbOff').style.display = (on && cs && cs.motor) ? '' : 'none';
   $('#bPerfilPdf').style.display = st.catalog ? '' : 'none';
+  syncAtualizar();  // o título do ↻ Atualizar depende do motor
 }
 // Abre a guia Configurações (no modo pedido, se vier um). Já aberta, só troca o modo: não apaga o que foi digitado.
 function openCfg(forcar){
@@ -2941,8 +3000,8 @@ $('#nExportar').onclick = exportarNotas;
 $('#nAtualizar').onclick = abrirAtualizar;
 $('#atCancelar').onclick = () => $('#atualizar').close();
 $('#atOk').onclick = confirmarAtualizar;
-// Enquanto apaga e grava, a janela não fecha: o resultado (ou o erro) aparece nela.
-$('#atualizar').addEventListener('cancel', e => { if(at.confirmando) e.preventDefault(); });
+// Enquanto relê a pasta, ou apaga e grava, a janela não fecha: o resultado (ou o erro) aparece nela.
+$('#atualizar').addEventListener('cancel', e => { if(at.confirmando || !$('#atRelendo').hidden) e.preventDefault(); });
 $('#atualizar').addEventListener('close', () => { at.leitura++; at.diff = null; at.cat = null; });
 $('#nImportar').onclick = escolherArquivoNotas;
 $('#nArquivo').addEventListener('change', lerArquivoNotas);

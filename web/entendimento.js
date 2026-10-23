@@ -262,6 +262,10 @@ function pareceVarejo(catalog){
   return { parece:!(grupos <= 1 && !movVenda), grupos, semEvidencia:false };
 }
 
-const api = { TEXTO_VAREJO, capturar, aplicar, comparar, limparNotas, mesclar, pareceVarejo };
+// Planilha de controle não é ERP: no motor excel o aviso de varejo não se aplica, e o veredito já nasce
+// final (verificado:true) e sem aviso (parece:true). Nos outros motores, null: verifica pelo catálogo.
+function varejoNaoSeAplica(motor){ return motor === 'excel' ? { verificado:true, parece:true } : null; }
+
+const api = { TEXTO_VAREJO, capturar, aplicar, comparar, limparNotas, mesclar, pareceVarejo, varejoNaoSeAplica };
 if(isNode) module.exports = api; else root.CD2Entendimento = api;
 })(typeof window !== 'undefined' ? window : globalThis);
