@@ -220,6 +220,7 @@ test('buildMessages: dialeto e exemplos por motor, tabelas listadas, tentativa a
   const sys = m => A.buildMessages({ pergunta:'p', tabelas, motor:m })[0].content;
   assert.match(sys('postgres'), /LIMIT 10/); assert.match(sys('sqlserver'), /TOP \(10\)/); assert.match(sys('oracle'), /FETCH FIRST 10 ROWS ONLY/); assert.match(sys('firebird'), /ROWS 10/); assert.match(sys('dbf'), /LIMIT 10/);
   assert.match(sys('dbf'), /strftime/);
+  assert.match(sys('excel'), /LIMIT 10/); assert.match(sys('excel'), /strftime/); assert.match(sys('excel'), /arquivo__aba/);
   assert.match(sys('firebird'), /sem WITH/);
   assert.match(sys('mariadb'), /DATE_FORMAT/); assert.match(sys('postgres'), /venda \(cerca de 100 linhas\): dt_venda date, valor numeric, loja varchar\(20\)/);
   const u = A.buildMessages({ pergunta:'p', tabelas, motor:'postgres', anterior:{ sql:'SELECT x', erro:'boom' } })[1].content;
@@ -302,6 +303,7 @@ test('buildMessages: qualifica a tabela com o schema quando ele não é o padrã
   assert.match(sys({ motor:'sqlserver', schema:'vendas' }), /- vendas\.venda \(/);
   assert.match(sys({ motor:'sqlserver', schema:'DBO' }), /- venda \(/);
   assert.match(sys({ motor:'mariadb', schema:'loja_db' }), /- venda \(/);
+  assert.match(sys({ motor:'excel', schema:'x', usuario:'u' }), /- venda \(/);
   assert.match(sys({ motor:'oracle', schema:'CONSINCO', usuario:'LEITURA' }), /- CONSINCO\.venda \(/);
   assert.match(sys({ motor:'oracle', schema:'CONSINCO', usuario:'consinco' }), /- venda \(/);
 });

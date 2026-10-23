@@ -10,7 +10,8 @@ const ENGINES = {
   mariadb:   { label:'MariaDB / MySQL', port:3306 },
   sqlserver: { label:'SQL Server',      port:1433 },
   firebird:  { label:'Firebird',        port:3050 },
-  dbf:       { label:'DBF',             port:0 }
+  dbf:       { label:'DBF',             port:0 },
+  excel:     { label:'Planilhas Excel', port:0 }
 };
 // Exemplos dos campos do formulário do banco. Só exemplos genéricos: nada de
 // host, usuário ou senha reais, que circulariam com o pen drive.
@@ -20,7 +21,8 @@ const PLACEHOLDERS = {
   mariadb:   { host:'ex.: mysql.empresa.local', base:'ex.: erp',      usuario:'ex.: leitura_ro' },
   sqlserver: { host:'ex.: mssql.empresa.local', base:'ex.: ERP',      usuario:'ex.: leitura_ro' },
   firebird:  { host:'ex.: 192.168.0.10',        base:'ex.: C:\\dados\\erp.fdb', usuario:'ex.: LEITURA_RO' },
-  dbf:       { host:'ex.: nao usado',            base:'ex.: C:\\dados\\loja',    usuario:'ex.: nao usado' }
+  dbf:       { host:'ex.: nao usado',            base:'ex.: C:\\dados\\loja',    usuario:'ex.: nao usado' },
+  excel:     { host:'ex.: nao usado',            base:'ex.: C:\\Controle da loja', usuario:'ex.: nao usado' }
 };
 const TOOL_DESCRIPTIONS = {
   db_catalog:           'Lê o mapa do banco (tabelas e colunas) para o roteiro de relatórios.',
@@ -122,7 +124,7 @@ function readKeyFromHash(hash){
 function defaultsFor(motor, usuario, base){
   const e = ENGINES[motor];
   if(!e) return { porta:'', schema:'' };
-  const schema = { postgres:'public', oracle:String(usuario || '').toUpperCase(), mariadb:String(base || ''), sqlserver:'dbo', firebird:'', dbf:'' }[motor];
+  const schema = { postgres:'public', oracle:String(usuario || '').toUpperCase(), mariadb:String(base || ''), sqlserver:'dbo', firebird:'', dbf:'', excel:'' }[motor];
   return { porta:e.port, schema };
 }
 // Exemplos do formulário para o motor. O schema repete a regra do defaultsFor e,
@@ -131,7 +133,7 @@ function placeholdersFor(motor, usuario, base){
   const p = PLACEHOLDERS[motor];
   if(!p) return { host:'', base:'', usuario:'', senha:'', schema:'' };
   const d = defaultsFor(motor, usuario, base);
-  const fallback = { oracle:'LEITURA_RO', mariadb:'erp', firebird:'nao usado', dbf:'nao usado' }[motor] || '';
+  const fallback = { oracle:'LEITURA_RO', mariadb:'erp', firebird:'nao usado', dbf:'nao usado', excel:'nao usado' }[motor] || '';
   return { host:p.host, base:p.base, usuario:p.usuario, senha:'Senha da conta de leitura', schema:'ex.: ' + (d.schema || fallback) };
 }
 // Porta ao trocar de motor: vazia ou ainda na porta padrão de algum motor vira a
@@ -162,7 +164,22 @@ function ctlStatusLines(cs){
   ];
 }
 
+// Motores que leem uma pasta de arquivos em vez de falar com um servidor.
+function motorArquivo(motor){ return motor === 'excel' || motor === 'dbf'; }
+// Relatório da última leitura das planilhas (campo planilhas do /status do cd2-ctl).
+function planilhasLinha(p){
+  const a = Number(p && p.arquivos) || 0, t = Number(p && p.tabelas) || 0;
+  const arq = a + (a === 1 ? ' arquivo' : ' arquivos');
+  const abas = t === 0 ? 'nenhuma aba virou tabela' : (t === 1 ? '1 aba virou tabela' : t + ' abas viraram tabelas');
+  return arq + ', ' + abas;
+}
+// Uma linha por aba (ou arquivo inteiro, com aba vazia) deixada de fora. Nome de arquivo e de aba vêm do disco: só texto.
+function ignoradasLinhas(p){
+  const lista = (p && Array.isArray(p.ignoradas)) ? p.ignoradas : [];
+  return lista.map(i => String(i.arquivo == null ? '' : i.arquivo) + (i.aba ? ' › ' + i.aba : '') + ': ' + String(i.motivo == null ? '' : i.motivo));
+}
+
 const api = { ENGINES, TOOL_DESCRIPTIONS, engineLabel, urlFor, guardSql, prepareSql, parseStatus, bancoAtivo, statusLines,
-  UNSAFE_PORTS, ctlUrlFor, readKeyFromHash, defaultsFor, placeholdersFor, portFor, configPayload, ctlStatusLines };
+  UNSAFE_PORTS, ctlUrlFor, readKeyFromHash, defaultsFor, placeholdersFor, portFor, configPayload, ctlStatusLines, motorArquivo, planilhasLinha, ignoradasLinhas };
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else root.CD2Toolbox = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -279,7 +279,8 @@ input[type=radio]{accent-color:var(--ink-brand);width:18px;height:18px;margin:0}
 select{width:100%;height:44px;background:var(--surface-raised);color:var(--ink);border:1px solid var(--border-field);border-radius:var(--radius-sm);padding:0 var(--space-3);font:400 15px/24px var(--font-sans)}
 input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-muted);cursor:not-allowed}
 .lnk{font:600 13px/20px var(--font-sans);color:var(--ink-brand)}
-#tbLog{margin:var(--space-3) 0 0}
+#tbLog,#tbIgnoradas{margin:var(--space-3) 0 0}
+#tbIgnoradas ul.inner{margin-bottom:0;padding-left:var(--space-6);overflow-wrap:anywhere}
 /* boas-vindas: abre toda vez que o harness inicia */
 .welcome p{margin:0 0 var(--space-4);font:400 15px/24px var(--font-sans);color:var(--ink)}
 .welcome__warn{margin:var(--space-6) 0;padding:var(--space-4);border-radius:var(--radius-md);background:var(--surface-100);border:1px solid var(--border)}
@@ -629,6 +630,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
           <option value="sqlserver">SQL Server</option>
           <option value="firebird">Firebird</option>
           <option value="dbf">DBF</option>
+          <option value="excel">Planilhas Excel</option>
         </select></div>
       <div><label for="dbHost">Host</label><input type="text" id="dbHost" spellcheck="false" autocomplete="off"></div>
       <div><label for="dbPorta">Porta</label><input type="text" id="dbPorta" inputmode="numeric" autocomplete="off"></div>
@@ -640,6 +642,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
     <div class="hint">Use uma conta somente leitura. A senha fica só neste computador e nunca volta para a tela.</div>
     <dl class="kv" id="tbStatus"></dl>
     <div class="hint" id="tbHint"></div>
+    <details class="tool" id="tbIgnoradas" style="display:none"><summary></summary><ul class="inner"></ul></details>
     <details class="tool" id="tbLog" style="display:none"><summary>Log do toolbox</summary><div class="inner"></div></details>
     <div class="hint"><a href="#" class="lnk" id="bPerfilPdf" style="display:none">Exportar o que a IA de Bolso entende do banco (PDF)</a></div>
     <div class="hint"><a href="#" class="lnk" id="bDbOff" style="display:none">Desconectar do banco</a></div>
@@ -2537,7 +2540,7 @@ function syncDbForm(){
   $('#dbHost').placeholder = p.host; $('#dbBase').placeholder = p.base; $('#dbUsuario').placeholder = p.usuario;
   $('#dbPorta').placeholder = String(d.porta); $('#dbSchema').placeholder = p.schema;
   if(!st.dbSenhaSalva) $('#dbSenha').placeholder = p.senha;
-  $('#dbBaseLabel').textContent = m === 'oracle' ? 'Service name' : (m === 'firebird' ? 'Arquivo do banco' : (m === 'dbf' ? 'Pasta dos arquivos' : 'Base de dados'));
+  $('#dbBaseLabel').textContent = m === 'oracle' ? 'Service name' : (m === 'firebird' ? 'Arquivo do banco' : (m === 'dbf' ? 'Pasta dos arquivos' : (m === 'excel' ? 'Pasta das planilhas' : 'Base de dados')));
 }
 function onDbMotorChange(){ $('#dbPorta').value = CD2Toolbox.portFor($('#dbMotor').value, $('#dbPorta').value); syncDbForm(); }
 // Preenche com o /status (ou limpa, com s nulo). A senha nunca vem: só o aviso de que há uma salva.
@@ -2552,8 +2555,8 @@ function fillDbForm(s){
   syncDbForm();
 }
 function renderToolbox(){
-  const cs = st.ctlStatus, hint = $('#tbHint'), dl = $('#tbStatus'), logBox = $('#tbLog');
-  dl.innerHTML = ''; hint.innerHTML = ''; logBox.style.display = 'none';
+  const cs = st.ctlStatus, hint = $('#tbHint'), dl = $('#tbStatus'), logBox = $('#tbLog'), ignBox = $('#tbIgnoradas');
+  dl.innerHTML = ''; hint.innerHTML = ''; logBox.style.display = 'none'; ignBox.style.display = 'none';
   const warn = t => { hint.innerHTML = '<span class="tag tag--atencao">Atenção</span> '; hint.appendChild(document.createTextNode(t)); };
   const lines = rows => {
     for(const [k, v] of rows){
@@ -2566,6 +2569,17 @@ function renderToolbox(){
   else if(st.ctlBusy || cs.estado === 'subindo') hint.textContent = 'Conectando ao banco...';
   else{
     if(cs.estado === 'rodando') lines(st.dbStatus ? CD2Toolbox.statusLines(st.dbStatus) : CD2Toolbox.ctlStatusLines(cs));
+    // Relatório da leitura das planilhas, só no motor excel: depois de desconectar, o /status ainda pode trazer o antigo.
+    // Também na falha de importação, que é quando saber quais abas ficaram de fora mais ajuda.
+    if((cs.estado === 'rodando' || cs.erro) && cs.motor === 'excel' && cs.planilhas){
+      lines([['Planilhas lidas', CD2Toolbox.planilhasLinha(cs.planilhas)]]);
+      const ign = CD2Toolbox.ignoradasLinhas(cs.planilhas);
+      if(ign.length){
+        ignBox.style.display = ''; ignBox.querySelector('summary').textContent = 'Abas deixadas de fora (' + ign.length + ')';
+        const ul = ignBox.querySelector('ul'); ul.textContent = '';
+        for(const t of ign){ const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); }
+      }
+    }
     if(cs.erro){
       warn(cs.erro);
       if(cs.log && cs.log.length){ logBox.style.display = ''; logBox.querySelector('.inner').textContent = cs.log.join('\n'); }
