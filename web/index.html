@@ -2569,9 +2569,10 @@ function renderToolbox(){
   else if(st.ctlBusy || cs.estado === 'subindo') hint.textContent = 'Conectando ao banco...';
   else{
     if(cs.estado === 'rodando') lines(st.dbStatus ? CD2Toolbox.statusLines(st.dbStatus) : CD2Toolbox.ctlStatusLines(cs));
-    // Relatório da leitura das planilhas, só no motor excel: depois de desconectar, o /status ainda pode trazer o antigo.
-    // Também na falha de importação, que é quando saber quais abas ficaram de fora mais ajuda.
-    if((cs.estado === 'rodando' || cs.erro) && cs.motor === 'excel' && cs.planilhas){
+    // Relatório da leitura das planilhas: o cd2-ctl o manda quando houve tentativa de ler a pasta e o zera ao desconectar.
+    // Vem também na falha de importação, em qualquer motor e estado (inclusive sem banco, na primeira conexão, ou rodando
+    // com a conexão anterior), que é quando saber quais abas ficaram de fora mais ajuda.
+    if(cs.planilhas){
       lines([['Planilhas lidas', CD2Toolbox.planilhasLinha(cs.planilhas)]]);
       const ign = CD2Toolbox.ignoradasLinhas(cs.planilhas);
       if(ign.length){

@@ -41,6 +41,9 @@ type fakeRunner struct {
 	reloads   []string
 	reloadErr error
 	planilhas *excel.Relatorio
+	// relPorSenha, quando preenchido, troca planilhas a cada Start pela senha da config (nulo se não
+	// houver), com sucesso ou falha: é o supervisor real, que guarda o relatório da última tentativa.
+	relPorSenha map[string]*excel.Relatorio
 }
 
 func (f *fakeRunner) Start(cfg dbconf.Config) error {
@@ -56,6 +59,9 @@ func (f *fakeRunner) Start(cfg dbconf.Config) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.active--
+	if f.relPorSenha != nil {
+		f.planilhas = f.relPorSenha[cfg.Password]
+	}
 	if err != nil {
 		return err
 	}
@@ -577,5 +583,89 @@ func TestStatusLevaPlanilhas(t *testing.T) {
 	}
 	if b, _ := json.Marshal(st); strings.Contains(string(b), "planilhas") {
 		t.Errorf("JSON sem relatório não deveria ter a chave: %s", b)
+	}
+}
+
+// Primeira conexão que falha: o rollback zera a conexão, mas o relatório da tentativa fica.
+func TestApplyFalhaSemAnteriorGuardaPlanilhas(t *testing.T) {
+	rel := &excel.Relatorio{Arquivos: 1, Ignoradas: []excel.Ignorada{{Arquivo: "a.xlsx", Motivo: "aba vazia"}}}
+	run := &fakeRunner{planilhas: rel, fail: map[string]error{"": boom}}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	st, err := c.Apply(inputArquivo("excel", "/planilhas"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Estado != SemBanco || st.Erro == "" || st.Planilhas != rel {
+		t.Errorf("status %+v", st)
+	}
+	if got := c.Status().Planilhas; got != rel {
+		t.Errorf("planilhas %p, quero %p", got, rel)
+	}
+}
+
+// Com conexão anterior, o Start(prev) do rollback troca o relatório do runner; o da tentativa vale.
+func TestApplyFalhaComAnteriorGuardaPlanilhasDaTentativa(t *testing.T) {
+	rel := &excel.Relatorio{Arquivos: 2, Ignoradas: []excel.Ignorada{{Arquivo: "b.xlsx", Motivo: "o arquivo não abriu"}}}
+	run := &fakeRunner{
+		fail:        map[string]error{"ruim": boom},
+		relPorSenha: map[string]*excel.Relatorio{"ruim": rel},
+	}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	if _, err := c.Apply(input("s1")); err != nil {
+		t.Fatal(err)
+	}
+	if c.Status().Planilhas != nil {
+		t.Fatalf("postgres com planilhas: %+v", c.Status().Planilhas)
+	}
+	st, err := c.Apply(input("ruim"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Estado != Rodando || st.Erro == "" || st.Planilhas != rel {
+		t.Errorf("status %+v", st)
+	}
+	if run.Planilhas() != nil {
+		t.Errorf("o fake deveria ter trocado para nulo no rollback")
+	}
+}
+
+func TestClearZeraPlanilhas(t *testing.T) {
+	rel := &excel.Relatorio{Arquivos: 1, Tabelas: 1}
+	run := &fakeRunner{planilhas: rel}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	if _, err := c.Apply(inputArquivo("excel", "/planilhas")); err != nil {
+		t.Fatal(err)
+	}
+	if c.Status().Planilhas != rel {
+		t.Fatalf("Apply não guardou o relatório")
+	}
+	if st := c.Clear(); st.Planilhas != nil {
+		t.Errorf("Clear deixou planilhas: %+v", st.Planilhas)
+	}
+	if c.Status().Planilhas != nil {
+		t.Errorf("Status depois do Clear com planilhas")
+	}
+}
+
+func TestRelerFalhaGuardaPlanilhasDaTentativa(t *testing.T) {
+	rel := &excel.Relatorio{Arquivos: 3, Ignoradas: []excel.Ignorada{{Arquivo: "c.xlsx", Motivo: "aba vazia"}}}
+	run := &fakeRunner{reloadErr: &toolbox.StartError{Msg: "x"}}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	if _, err := c.Apply(inputArquivo("excel", "/planilhas")); err != nil {
+		t.Fatal(err)
+	}
+	run.mu.Lock()
+	run.planilhas = rel // o Reload que falha deixa o relatório da tentativa no runner
+	run.mu.Unlock()
+	st, err := c.Reler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Estado != Rodando || st.Erro != "x" || st.Planilhas != rel {
+		t.Errorf("status %+v", st)
 	}
 }

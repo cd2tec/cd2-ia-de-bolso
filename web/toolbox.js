@@ -176,7 +176,7 @@ function planilhasLinha(p){
 // Uma linha por aba (ou arquivo inteiro, com aba vazia) deixada de fora. Nome de arquivo e de aba vêm do disco: só texto.
 function ignoradasLinhas(p){
   const lista = (p && Array.isArray(p.ignoradas)) ? p.ignoradas : [];
-  return lista.map(i => String(i.arquivo == null ? '' : i.arquivo) + (i.aba ? ' › ' + i.aba : '') + ': ' + String(i.motivo == null ? '' : i.motivo));
+  return lista.filter(i => i && typeof i === 'object').map(i => String(i.arquivo == null ? '' : i.arquivo) + (i.aba ? ' › ' + i.aba : '') + ': ' + String(i.motivo == null ? '' : i.motivo));
 }
 
 const api = { ENGINES, TOOL_DESCRIPTIONS, engineLabel, urlFor, guardSql, prepareSql, parseStatus, bancoAtivo, statusLines,

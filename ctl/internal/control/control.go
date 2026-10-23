@@ -70,6 +70,9 @@ type Controller struct {
 	estado string
 	erro   string
 	log    []string
+	// planilhas é o relatório da última tentativa de ler a pasta de planilhas, tirado logo depois dela
+	// e antes de qualquer rollback: se a tentativa falhou, o rollback não o troca nem o apaga.
+	planilhas *excel.Relatorio
 }
 
 // New começa em sem_banco; chame BootAsync para ler o db.env.
@@ -83,6 +86,14 @@ func (c *Controller) set(cur *dbconf.Config, estado, erro string, log []string) 
 	c.cur, c.estado, c.erro, c.log = cur, estado, erro, log
 }
 
+// guardaPlanilhas tira o retrato do relatório que o runner tem agora.
+func (c *Controller) guardaPlanilhas() {
+	rel := c.run.Planilhas()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.planilhas = rel
+}
+
 func (c *Controller) current() *dbconf.Config {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -92,12 +103,12 @@ func (c *Controller) current() *dbconf.Config {
 // Status monta a resposta. Se o toolbox morreu depois de pronto, diz falhou.
 func (c *Controller) Status() Status {
 	c.mu.Lock()
-	cur, estado, erro, log := c.cur, c.estado, c.erro, c.log
+	cur, estado, erro, log, planilhas := c.cur, c.estado, c.erro, c.log, c.planilhas
 	c.mu.Unlock()
 	if estado == Rodando && !c.run.Running() {
 		estado, erro, log = Falhou, MsgStopped, nil
 	}
-	st := Status{Estado: estado, Erro: erro, Log: log, Planilhas: c.run.Planilhas()}
+	st := Status{Estado: estado, Erro: erro, Log: log, Planilhas: planilhas}
 	if cur != nil {
 		st.Motor, st.Host, st.Base, st.Usuario, st.Schema = cur.Engine, cur.Host, cur.Name, cur.User, cur.Schema
 		st.Porta, _ = strconv.Atoi(cur.Port)
@@ -135,7 +146,9 @@ func (c *Controller) boot() {
 		return
 	}
 	c.set(&cfg, Subindo, "", nil)
-	if err := c.run.Start(cfg); err != nil {
+	err = c.run.Start(cfg)
+	c.guardaPlanilhas()
+	if err != nil {
 		msg, log := describe(err)
 		c.set(&cfg, Falhou, msg, log)
 		return
@@ -166,10 +179,13 @@ func (c *Controller) Apply(in dbconf.Input) (Status, error) {
 	}
 	c.set(prev, Subindo, "", nil)
 	if err := c.run.Stop(); err != nil {
+		c.guardaPlanilhas()
 		c.rollback(prev, err)
 		return c.Status(), nil
 	}
-	if err := c.run.Start(cand); err != nil {
+	err = c.run.Start(cand)
+	c.guardaPlanilhas() // antes do rollback: o Start(prev) troca o relatório do runner
+	if err != nil {
 		c.rollback(prev, err)
 		return c.Status(), nil
 	}
@@ -197,6 +213,7 @@ func (c *Controller) Reler() (Status, error) {
 	}
 	c.set(cur, Subindo, "", nil)
 	err := c.run.Reload(*cur)
+	c.guardaPlanilhas()
 	switch {
 	case err == nil:
 		c.set(cur, Rodando, "", nil)
@@ -236,6 +253,9 @@ func (c *Controller) Clear() Status {
 		return c.closedStatus()
 	}
 	_ = c.run.Stop()
+	c.mu.Lock()
+	c.planilhas = nil
+	c.mu.Unlock()
 	if err := dbconf.Remove(c.envPath); err != nil {
 		c.set(c.current(), Falhou, "Não consegui apagar o db.env: "+err.Error(), nil)
 		return c.Status()

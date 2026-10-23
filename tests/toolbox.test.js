@@ -242,4 +242,6 @@ test('motorArquivo, planilhasLinha e ignoradasLinhas', () => {
   assert.deepEqual(T.ignoradasLinhas({ ignoradas:[{ arquivo:'vendas 2026.xlsx', aba:'Rascunho', motivo:'aba oculta' }, { arquivo:'ruim.xlsx', aba:'', motivo:'o arquivo não abriu' }] }),
     ['vendas 2026.xlsx › Rascunho: aba oculta', 'ruim.xlsx: o arquivo não abriu']);
   assert.deepEqual(T.ignoradasLinhas({}), []);
+  // item nulo na lista não quebra: a linha dele é omitida
+  assert.deepEqual(T.ignoradasLinhas({ ignoradas:[null, { arquivo:'a.xlsx', aba:'', motivo:'aba vazia' }] }), ['a.xlsx: aba vazia']);
 });
