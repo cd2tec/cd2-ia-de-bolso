@@ -133,8 +133,9 @@ func acharCabecalho(grade [][]Celula) int {
 	return -1
 }
 
-// ehCandidata: a linha tem pelo menos 2 células e 2 delas de texto, e logo abaixo (até 2 linhas de
-// distância, para tolerar uma linha em branco) vem uma linha com dado dentro da largura dela.
+// ehCandidata: a linha tem pelo menos 2 células e 2 delas com cara de título (ver pareceParteDeTitulo),
+// e logo abaixo (até 2 linhas de distância, para tolerar uma linha em branco) vem uma linha com dado
+// dentro da largura dela.
 func ehCandidata(grade [][]Celula, i int) bool {
 	naoVazias, textos := 0, 0
 	for _, c := range grade[i] {
@@ -142,7 +143,7 @@ func ehCandidata(grade [][]Celula, i int) bool {
 			continue
 		}
 		naoVazias++
-		if c.Tipo == Texto || pareceAno(c) {
+		if pareceParteDeTitulo(c) {
 			textos++
 		}
 	}
@@ -165,9 +166,18 @@ func ehCandidata(grade [][]Celula, i int) bool {
 	return false
 }
 
-// pareceAno: cabeçalho como [Produto, 2024, 2025] é comum e o Excel guarda o ano como número.
-func pareceAno(c Celula) bool {
-	return c.Tipo == Numero && len(c.Texto) == 4 && c.Num >= 1900 && c.Num <= 2100 && c.Num == math.Trunc(c.Num)
+// pareceParteDeTitulo diz se a célula pode ser nome de coluna na hora de candidatar a linha. Além de
+// Texto, aceita Data e inteiro de 1900 a 2100: planilha de comparação por ano ([Produto, 2024, 2025]) e
+// controle diário ([Vendedor, 01/09, 02/09]) têm só uma célula de texto no cabeçalho, e o Excel guarda
+// ano como número e dia como data. Número qualquer ([Vendedor, 100, 200]) continua sendo dado.
+func pareceParteDeTitulo(c Celula) bool {
+	switch c.Tipo {
+	case Texto, Data:
+		return true
+	case Numero:
+		return len(c.Texto) == 4 && c.Num >= 1900 && c.Num <= 2100 && c.Num == math.Trunc(c.Num)
+	}
+	return false
 }
 
 func linhaVazia(l []Celula) bool {

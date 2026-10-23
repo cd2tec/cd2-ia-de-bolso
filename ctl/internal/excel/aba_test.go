@@ -82,7 +82,7 @@ func TestTituloMescladoLargoECabecalhoNaLinha2(t *testing.T) {
 }
 
 // Ano no cabeçalho é comum ([Produto, 2024, 2025]): para candidatar a linha, um número que parece ano
-// conta como texto; senão só "Produto" seria texto e a linha seria rejeitada.
+// conta como texto (idem Data, no teste abaixo); senão só "Produto" seria texto e a linha seria rejeitada.
 func TestCabecalhoComAnoNasColunas(t *testing.T) {
 	grade := [][]Celula{
 		{txt("Produto"), num(2024), num(2025)},
@@ -93,6 +93,24 @@ func TestCabecalhoComAnoNasColunas(t *testing.T) {
 		t.Fatal(motivo)
 	}
 	esperaColunas(t, cols, col("Produto", "TEXT"), col("T_2024", "INTEGER"), col("T_2025", "INTEGER"))
+}
+
+// Controle diário por data: [Vendedor, 01/09, 02/09], com as datas guardadas como Data pelo Excel.
+func TestCabecalhoComDatasNasColunas(t *testing.T) {
+	d1 := Celula{Tipo: Data, Data: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), Texto: "01/09"}
+	d2 := Celula{Tipo: Data, Data: time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC), Texto: "02/09"}
+	grade := [][]Celula{
+		{txt("Vendedor"), d1, d2},
+		{txt("Ana"), num(10), num(20)},
+	}
+	cols, linhas, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	esperaColunas(t, cols, col("Vendedor", "TEXT"), col("T_01_09", "INTEGER"), col("T_02_09", "INTEGER"))
+	if len(linhas) != 1 {
+		t.Fatalf("linhas: %v", linhas)
+	}
 }
 
 func TestSoUmaCelulaDeTextoNaoECabecalho(t *testing.T) {
