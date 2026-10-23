@@ -106,13 +106,25 @@ const ROTEIRO = [
     ] },
     { p:'Com o banco conectado, as ferramentas viram outras: eu listo as tabelas do seu ERP, leio a estrutura de cada uma e monto a consulta para responder qualquer pergunta sobre os seus dados, não só essas cinco.' }
   ] },
+  // Antes de 'conectar': "não tenho acesso a um banco" também casaria lá.
+  { id:'planilhas', casa:/planilha|excel|xlsx|nao (tenho|tem|temos) (acesso a (um )?)?(banco|erp|sistema)|sem (banco|erp|sistema)/,
+    fecho:'as planilhas nunca são alteradas, porque eu leio uma cópia delas', blocos:[
+    { p:'Não tem acesso a um banco? Comece com as suas **planilhas do Excel**. Se o controle da loja está numa pasta de planilhas, eu converso com elas do mesmo jeito.' },
+    { lista:[
+      'Abra a guia **Configurações** e escolha **MCP Nativo para Banco de dados**.',
+      'Em **Motor**, escolha **Planilhas Excel**.',
+      'Em **Pasta das planilhas**, informe a pasta com os arquivos `.xlsx`.',
+      'Clique em **Salvar e conectar**.'
+    ], numerada:true },
+    { p:'Cada aba vira uma tabela. Eu acho o cabeçalho sozinha, mesmo com título em cima, e deixo de fora linhas de total e abas ocultas. As planilhas não são alteradas: eu leio uma cópia. Mudou a planilha? Clique em **↻ Atualizar com o banco**, na guia Conhecimento.' }
+  ] },
   { id:'conectar', casa:/conect|configur|ligar|banco de dados|meu banco|meu erp|dados reais|de verdade/,
     fecho:'o ideal é usar um usuário do banco só de leitura', blocos:[
     { p:'Para eu trabalhar com os números da sua loja, é rápido:' },
     { lista:[
       'Abra a guia **Configurações**, logo abaixo do topo da tela.',
       'Escolha **MCP Nativo para Banco de dados**.',
-      'Preencha o motor (PostgreSQL, Oracle, MariaDB/MySQL ou SQL Server), o endereço do servidor, a porta, a base, o usuário e a senha.',
+      'Preencha o motor (PostgreSQL, Oracle, MariaDB/MySQL, SQL Server, Firebird ou DBF), o endereço do servidor, a porta, a base, o usuário e a senha. Sem banco? Escolha **Planilhas Excel** e informe só a pasta das planilhas.',
       'Clique em **Salvar e conectar**.'
     ], numerada:true },
     { p:'Dica: peça ao TI um **usuário somente leitura** para mim. Minhas ferramentas já são só de leitura, mas essa é a trava extra do lado do banco.' },
@@ -151,7 +163,7 @@ function instrucao(r){
 }
 
 const CONVITE = { titulo:'Quer ver isso com os números da sua loja?',
-  texto:'A IA de Bolso foi feita para analisar ERPs de varejo. Conecte o banco de dados do seu ERP em Configurações, de preferência com um usuário somente leitura.' };
+  texto:'A IA de Bolso foi feita para analisar ERPs de varejo. Conecte o banco de dados do seu ERP em Configurações, de preferência com um usuário somente leitura. Sem ERP? Aponte a pasta das suas planilhas do Excel.' };
 
 // Barra de consultas salvas na Demonstração: exemplos montados com os gráficos fictícios acima.
 const EXEMPLOS_TOPO = 'Exemplos. Com o seu banco, você salva com 👍 as perguntas que mais usa e vê o resultado atualizado num clique.';
