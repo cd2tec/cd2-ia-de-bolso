@@ -9,7 +9,7 @@
 
 **A IA da CD2 rodando 100% no seu computador, direto do pen drive.**
 
-Plugou, clicou, conversou. A IA de Bolso abre uma janela com a identidade da CD2 e conversa com um modelo de IA rodando no próprio computador, sem instalar nada e sem mandar dados para a nuvem. Quando houver rede, conecta a um MCP do Archeo para consultar dados reais.
+Plugou, clicou, conversou. A IA de Bolso abre uma janela com a identidade da CD2 e conversa com um modelo de IA rodando no próprio computador, sem instalar nada e sem mandar dados para a nuvem. Conecta no banco do seu sistema, numa pasta de planilhas do Excel (para quem ainda controla a loja em planilha) ou, quando houver rede, num MCP do Archeo, para consultar dados reais.
 
 [Site do projeto](https://cd2tec.github.io/cd2-ia-de-bolso/) · [Passo a passo do pen drive](docs/criar-pendrive.md) · [Baixar cd2tech-iadebolso.zip](https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/cd2tech-iadebolso.zip) · [Dar uma estrela](https://github.com/cd2tec/cd2-ia-de-bolso)
 
@@ -128,7 +128,7 @@ O teste pelo pen drive continua livre e completo. As condições completas estã
 
 ## 3. Conectar a um banco de dados
 
-O pen drive leva o [MCP Toolbox for Databases](https://github.com/googleapis/mcp-toolbox) (v1.14.0, um binário por sistema em `bin/toolbox/`) e o `cd2-ctl`, um controle pequeno feito aqui (código em `ctl/`, um binário por sistema em `bin/ctl/`). A conexão é feita pela tela: botão **Configurações**, modo **MCP Nativo para Banco de dados**, preencha motor, host, porta, base (service name no Oracle, caminho do arquivo `.fdb` no Firebird, pasta dos arquivos `.dbf` no DBF), usuário, senha e schema, e clique em **Salvar e conectar**. O toolbox reinicia sozinho com a conexão nova. Se ela falhar, a anterior continua valendo e a tela mostra o motivo e o fim do log. **Desconectar do banco** apaga a conexão deste computador.
+O pen drive leva o [MCP Toolbox for Databases](https://github.com/googleapis/mcp-toolbox) (v1.14.0, um binário por sistema em `bin/toolbox/`) e o `cd2-ctl`, um controle pequeno feito aqui (código em `ctl/`, um binário por sistema em `bin/ctl/`). A conexão é feita pela tela: botão **Configurações**, modo **MCP Nativo para Banco de dados**, preencha motor, host, porta, base (service name no Oracle, caminho do arquivo `.fdb` no Firebird, pasta dos arquivos `.dbf` no DBF, pasta das planilhas `.xlsx` no Planilhas Excel), usuário, senha e schema, e clique em **Salvar e conectar**. O toolbox reinicia sozinho com a conexão nova. Se ela falhar, a anterior continua valendo e a tela mostra o motivo e o fim do log. **Desconectar do banco** apaga a conexão deste computador.
 
 | Motor | Porta padrão | Schema padrão | Conta de leitura recomendada |
 |---|---|---|---|
@@ -137,7 +137,21 @@ O pen drive leva o [MCP Toolbox for Databases](https://github.com/googleapis/mcp
 | MariaDB / MySQL | 3306 | nome da base | `GRANT SELECT ON base.* TO ...` |
 | SQL Server | 1433 | `dbo` | membro só de `db_datareader` |
 | Firebird | 3050 | não usa | conta com só `SELECT` nas tabelas; no campo da base vai o caminho do arquivo `.fdb` |
-| DBF | não usa | não usa | não tem servidor: no campo da base vai a pasta com os arquivos `.dbf`; a leitura copia as tabelas e não altera o arquivo |
+| DBF | não usa | não usa | não tem servidor: no campo da base vai a pasta com os arquivos `.dbf`; a leitura copia as tabelas e não altera o arquivo; o **↻ Atualizar com o banco** da guia Conhecimento relê a pasta |
+| Planilhas Excel | não usa | não usa | sem servidor: no campo da base vai a pasta com os arquivos `.xlsx`/`.xlsm`; cada aba vira uma tabela (nome `arquivo__aba` quando o arquivo tem mais de uma aba); a leitura copia e não altera a planilha |
+
+### Sem banco? Comece com uma planilha
+
+Quem controla a loja em planilhas do Excel não precisa de banco nem de servidor:
+
+1. Em **Configurações**, escolha **MCP Nativo para Banco de dados**.
+2. Em **Motor**, escolha **Planilhas Excel**.
+3. Em **Pasta das planilhas**, informe a pasta com os arquivos `.xlsx` (ex.: `C:\Controle da loja`). Os outros campos ficam em branco.
+4. Clique em **Salvar e conectar** e pergunte como faria com um banco: "quanto vendi em setembro?".
+
+Cada aba vira uma tabela. A IA de Bolso lê uma cópia: a planilha nunca é alterada, e pode continuar aberta no Excel. Mudou a planilha? Clique em **↻ Atualizar com o banco**, na guia Conhecimento.
+
+Nas planilhas, o cabeçalho é procurado nas 30 primeiras linhas de cada aba: título em cima é ignorado, linha de total e aba oculta ficam de fora, e coluna sem nome vira `Coluna_D` (a letra da coluna no Excel). `.xls` antigo e `.csv` não são lidos: abra no Excel e salve como `.xlsx`. O que ficou de fora aparece em Configurações, com o motivo. Nas planilhas e no DBF, o botão **↻ Atualizar com o banco**, da guia Conhecimento, relê a pasta antes de comparar. Se a releitura falhar, a cópia anterior continua valendo e nenhuma nota é apagada.
 
 A IA ganha sete ferramentas somente leitura: `db_connection_status`, `db_catalog` (o mapa do banco para os relatórios), `db_list_tables`, `db_describe_table`, `db_search_columns`, `db_sample_table` (até 20 linhas) e `db_read_only_query` (SELECT avulso, até 200 linhas). O botão **Configurações** mostra a conexão ativa e exporta em PDF o que a IA de Bolso entende do banco.
 

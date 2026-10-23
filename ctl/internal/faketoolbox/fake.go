@@ -25,6 +25,7 @@ type Report struct {
 	Host     string   `json:"host"`
 	Password string   `json:"password"`
 	HasKey   bool     `json:"has_key"`
+	Sqlite   string   `json:"sqlite"`
 }
 
 // unescape desfaz o escape YAML (\\ e \"), para o falso imprimir também a senha crua.
@@ -51,7 +52,7 @@ func Main() {
 	if f := os.Getenv(ReportVar); f != "" {
 		b, _ := json.Marshal(Report{
 			Args: os.Args[1:], Engine: os.Getenv("CD2_DB_ENGINE"), Host: os.Getenv("CD2_DB_HOST"),
-			Password: pw, HasKey: os.Getenv("CD2_CTL_KEY") != "",
+			Password: pw, HasKey: os.Getenv("CD2_CTL_KEY") != "", Sqlite: os.Getenv("CD2_DB_SQLITE"),
 		})
 		_ = os.WriteFile(f, b, 0o600)
 	}

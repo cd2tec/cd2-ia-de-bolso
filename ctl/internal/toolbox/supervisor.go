@@ -18,6 +18,7 @@ import (
 
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbconf"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbf"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/excel"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/secret"
 )
 
@@ -46,15 +47,16 @@ type StartError struct {
 
 func (e *StartError) Error() string { return e.Msg }
 
-// Supervisor cuida de um toolbox por vez. Start e Stop não são concorrentes entre si (quem chama
-// serializa); Running pode ser chamado a qualquer hora.
+// Supervisor cuida de um toolbox por vez. Start, Reload e Stop não são concorrentes entre si
+// (quem chama serializa); Running e Planilhas podem ser chamados a qualquer hora.
 type Supervisor struct {
 	opt    Options
 	copied bool
 
-	mu   sync.Mutex
-	cmd  *exec.Cmd
-	done chan struct{}
+	mu        sync.Mutex
+	cmd       *exec.Cmd
+	done      chan struct{}
+	planilhas *excel.Relatorio // relatório da última importação Excel; nulo nos outros motores
 }
 
 // New aplica os prazos padrão (15 s e 5 s) quando vêm zerados.
@@ -86,17 +88,94 @@ func (s *Supervisor) Running() bool {
 	}
 }
 
+// Planilhas devolve o relatório da última importação de planilhas Excel, seja ela de um Start ou
+// de um Reload, inclusive quando essa importação falhou: é assim que a tela mostra o que ficou de
+// fora da tentativa. Nulo nos outros motores, inclusive DBF.
+func (s *Supervisor) Planilhas() *excel.Relatorio {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.planilhas
+}
+
 // Start sobe o toolbox com cfg e só volta quando ele está pronto (nil) ou falhou (*StartError,
-// já com o processo derrubado).
+// já com o processo derrubado). Nos motores de arquivo, importa a pasta antes de subir.
 func (s *Supervisor) Start(cfg dbconf.Config) error {
 	if s.Running() {
 		return &StartError{Msg: "O toolbox já está rodando."}
 	}
-	if cfg.Engine == "dbf" {
-		if err := dbf.Import(cfg.Name, s.sqlitePath()); err != nil {
-			return &StartError{Msg: err.Error()}
+	troca, err := s.importar(cfg)
+	if err != nil {
+		return err
+	}
+	if troca != nil {
+		if err := troca(); err != nil {
+			return err
 		}
 	}
+	return s.subir(cfg)
+}
+
+// Reload relê a pasta de um motor de arquivo com o toolbox no ar. A nova cópia é montada ao
+// lado (.novo); se a importação falhar, devolve *StartError e o toolbox segue com a cópia
+// anterior. Só depois de a nova estar inteira derruba o toolbox, troca a cópia e sobe de novo.
+func (s *Supervisor) Reload(cfg dbconf.Config) error {
+	if !dbconf.EngineArquivo(cfg.Engine) {
+		return &StartError{Msg: "Esta conexão não é de arquivos."}
+	}
+	troca, err := s.importar(cfg)
+	if err != nil {
+		return err
+	}
+	if err := s.Stop(); err != nil {
+		removeSqlite(s.sqlitePath(cfg.Engine) + ".novo")
+		return &StartError{Msg: "Não consegui parar o toolbox para trocar a cópia: " + err.Error()}
+	}
+	if err := troca(); err != nil {
+		return err
+	}
+	return s.subir(cfg)
+}
+
+// importar grava a cópia SQLite de um motor de arquivo em <sqlite>.novo, guarda o relatório das
+// planilhas (também quando a importação falha) e devolve a função que põe a cópia nova no
+// lugar da anterior. Nos outros motores, zera o relatório e devolve troca nula.
+func (s *Supervisor) importar(cfg dbconf.Config) (troca func() error, err error) {
+	if !dbconf.EngineArquivo(cfg.Engine) {
+		s.mu.Lock()
+		s.planilhas = nil
+		s.mu.Unlock()
+		return nil, nil
+	}
+	destino := s.sqlitePath(cfg.Engine)
+	novo := destino + ".novo"
+	removeSqlite(novo)
+	var rel *excel.Relatorio
+	if cfg.Engine == "excel" {
+		rel, err = excel.Import(cfg.Name, novo)
+	} else {
+		err = dbf.Import(cfg.Name, novo)
+	}
+	s.mu.Lock()
+	s.planilhas = rel
+	s.mu.Unlock()
+	if err != nil {
+		removeSqlite(novo)
+		return nil, &StartError{Msg: err.Error()}
+	}
+	return func() error {
+		// só troca a cópia anterior depois de a nova estar inteira
+		_ = os.Remove(destino + "-wal")
+		_ = os.Remove(destino + "-shm")
+		if err := os.Rename(novo, destino); err != nil {
+			removeSqlite(novo)
+			return &StartError{Msg: "Não consegui gravar a cópia: " + err.Error()}
+		}
+		return nil
+	}, nil
+}
+
+// subir prepara o binário, abre o toolbox.log, inicia o processo e espera ficar pronto.
+func (s *Supervisor) subir(cfg dbconf.Config) error {
 	bin, err := s.prepareBinary()
 	if err != nil {
 		return &StartError{Msg: "Não consegui preparar o toolbox: " + err.Error()}
@@ -187,14 +266,22 @@ func (s *Supervisor) env(cfg dbconf.Config) []string {
 	c := cfg
 	c.Password = secret.YamlDQ(cfg.Password)
 	env = append(env, c.Env()...)
-	if cfg.Engine == "dbf" {
-		env = append(env, "CD2_DB_SQLITE="+s.sqlitePath())
+	if dbconf.EngineArquivo(cfg.Engine) {
+		env = append(env, "CD2_DB_SQLITE="+s.sqlitePath(cfg.Engine))
 	}
 	return env
 }
 
-func (s *Supervisor) sqlitePath() string {
-	return filepath.Join(s.opt.CacheDir, "dbf.sqlite")
+// sqlitePath é a cópia SQLite que o toolbox consulta: excel.sqlite ou dbf.sqlite no cache.
+func (s *Supervisor) sqlitePath(engine string) string {
+	return filepath.Join(s.opt.CacheDir, engine+".sqlite")
+}
+
+// removeSqlite apaga um SQLite e os arquivos -wal e -shm que ficaram ao lado dele.
+func removeSqlite(path string) {
+	for _, suf := range []string{"", "-wal", "-shm"} {
+		_ = os.Remove(path + suf)
+	}
 }
 
 // livenessTimeout limita só o GET / (o toolbox responde na hora quando está no ar). O initialize

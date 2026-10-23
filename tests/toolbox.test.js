@@ -205,7 +205,7 @@ test('portFor: porta padrão do motor, sem sobrescrever porta digitada', () => {
 // views de fora em banco com muitas tabelas vazias, e são elas que alguém montou para relatório.
 test('db_catalog: nos motores, views vêm antes da ordem por linhas', () => {
   const fs = require('node:fs'), path = require('node:path');
-  for(const motor of ['postgres', 'mariadb', 'sqlserver', 'oracle', 'firebird', 'dbf']){
+  for(const motor of ['postgres', 'mariadb', 'sqlserver', 'oracle', 'firebird', 'dbf', 'excel']){
     const y = fs.readFileSync(path.join(__dirname, '..', 'core', 'toolbox', motor + '.yaml'), 'utf8');
     const bloco = y.slice(y.indexOf('name: db_catalog'), y.indexOf('---', y.indexOf('name: db_catalog')));
     const ordens = [...bloco.matchAll(/ORDER BY ([^\n]+)/g)].map(m => m[1]);
@@ -222,4 +222,34 @@ test('bancoAtivo: só com motor no status e catálogo lido (Postgres fora do ar 
   assert.equal(T.bancoAtivo('ERRO: dial tcp 127.0.0.1:5432: connect: connection refused', A.parseRows('[]')), false);
   assert.equal(T.bancoAtivo('', A.parseRows('[{"a":1}]')), false);
   assert.equal(T.bancoAtivo(ok, null), false);
+});
+
+test('excel: rótulo, porta 0, schema vazio e placeholders', () => {
+  assert.equal(T.engineLabel('excel'), 'Planilhas Excel');
+  assert.deepEqual(T.defaultsFor('excel', '', 'C:\\Controle da loja'), { porta:0, schema:'' });
+  const p = T.placeholdersFor('excel', '', '');
+  assert.equal(p.base, 'ex.: C:\\Controle da loja'); assert.equal(p.host, 'ex.: nao usado'); assert.equal(p.schema, 'ex.: nao usado');
+  assert.equal(T.configPayload({ motor:'excel', base:' C:\\x ', host:'', usuario:'', schema:'', senha:'' }).base, 'C:\\x');
+});
+test('motorArquivo, planilhasLinha e ignoradasLinhas', () => {
+  assert.equal(T.motorArquivo('excel'), true); assert.equal(T.motorArquivo('dbf'), true); assert.equal(T.motorArquivo('postgres'), false);
+  assert.equal(T.planilhasLinha({ arquivos:4, tabelas:9, ignoradas:[] }), '4 arquivos, 9 abas viraram tabelas');
+  assert.equal(T.planilhasLinha({ arquivos:1, tabelas:1, ignoradas:[] }), '1 arquivo, 1 aba virou tabela');
+  assert.equal(T.planilhasLinha({ arquivos:2, tabelas:1, ignoradas:[] }), '2 arquivos, 1 aba virou tabela');
+  assert.equal(T.planilhasLinha({ arquivos:1, tabelas:3, ignoradas:[] }), '1 arquivo, 3 abas viraram tabelas');
+  assert.equal(T.planilhasLinha({ arquivos:3, tabelas:0, ignoradas:[] }), '3 arquivos, nenhuma aba virou tabela');
+  assert.equal(T.planilhasLinha({ arquivos:1, tabelas:0, ignoradas:[] }), '1 arquivo, nenhuma aba virou tabela');
+  assert.deepEqual(T.ignoradasLinhas({ ignoradas:[{ arquivo:'vendas 2026.xlsx', aba:'Rascunho', motivo:'aba oculta' }, { arquivo:'ruim.xlsx', aba:'', motivo:'o arquivo não abriu' }] }),
+    ['vendas 2026.xlsx › Rascunho: aba oculta', 'ruim.xlsx: o arquivo não abriu']);
+  assert.deepEqual(T.ignoradasLinhas({}), []);
+  // item nulo na lista não quebra: a linha dele é omitida
+  assert.deepEqual(T.ignoradasLinhas({ ignoradas:[null, { arquivo:'a.xlsx', aba:'', motivo:'aba vazia' }] }), ['a.xlsx: aba vazia']);
+});
+test('planilhasLinha termina com a hora da leitura quando lido_em é data válida', () => {
+  // A hora sai no fuso de quem roda o teste: monta o HH:MM esperado do mesmo jeito.
+  const lido = '2026-10-23T14:05:09.123-03:00', d = new Date(lido);
+  const hhmm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  assert.equal(T.planilhasLinha({ arquivos:2, tabelas:3, lido_em:lido }), '2 arquivos, 3 abas viraram tabelas às ' + hhmm);
+  for(const ruim of [undefined, null, '', 'ontem', '0001-01-01T00:00:00Z'])
+    assert.equal(T.planilhasLinha({ arquivos:1, tabelas:1, lido_em:ruim }), '1 arquivo, 1 aba virou tabela', String(ruim));
 });

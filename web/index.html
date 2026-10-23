@@ -279,7 +279,8 @@ input[type=radio]{accent-color:var(--ink-brand);width:18px;height:18px;margin:0}
 select{width:100%;height:44px;background:var(--surface-raised);color:var(--ink);border:1px solid var(--border-field);border-radius:var(--radius-sm);padding:0 var(--space-3);font:400 15px/24px var(--font-sans)}
 input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-muted);cursor:not-allowed}
 .lnk{font:600 13px/20px var(--font-sans);color:var(--ink-brand)}
-#tbLog{margin:var(--space-3) 0 0}
+#tbLog,#tbIgnoradas{margin:var(--space-3) 0 0}
+#tbIgnoradas ul.inner{margin-bottom:0;padding-left:var(--space-6);overflow-wrap:anywhere}
 /* boas-vindas: abre toda vez que o harness inicia */
 .welcome p{margin:0 0 var(--space-4);font:400 15px/24px var(--font-sans);color:var(--ink)}
 .welcome__warn{margin:var(--space-6) 0;padding:var(--space-4);border-radius:var(--radius-md);background:var(--surface-100);border:1px solid var(--border)}
@@ -629,6 +630,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
           <option value="sqlserver">SQL Server</option>
           <option value="firebird">Firebird</option>
           <option value="dbf">DBF</option>
+          <option value="excel">Planilhas Excel</option>
         </select></div>
       <div><label for="dbHost">Host</label><input type="text" id="dbHost" spellcheck="false" autocomplete="off"></div>
       <div><label for="dbPorta">Porta</label><input type="text" id="dbPorta" inputmode="numeric" autocomplete="off"></div>
@@ -640,6 +642,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
     <div class="hint">Use uma conta somente leitura. A senha fica só neste computador e nunca volta para a tela.</div>
     <dl class="kv" id="tbStatus"></dl>
     <div class="hint" id="tbHint"></div>
+    <details class="tool" id="tbIgnoradas" style="display:none"><summary></summary><ul class="inner"></ul></details>
     <details class="tool" id="tbLog" style="display:none"><summary>Log do toolbox</summary><div class="inner"></div></details>
     <div class="hint"><a href="#" class="lnk" id="bPerfilPdf" style="display:none">Exportar o que a IA de Bolso entende do banco (PDF)</a></div>
     <div class="hint"><a href="#" class="lnk" id="bDbOff" style="display:none">Desconectar do banco</a></div>
@@ -867,6 +870,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 
 <dialog id="atualizar" aria-labelledby="atTitulo">
   <h2 id="atTitulo">Atualizar com o banco</h2>
+  <p class="hint" id="atRelendo" hidden></p>
   <p class="hint" id="atLendo">Lendo o banco de novo…</p>
   <p class="imp__erro" id="atErro" hidden></p>
   <p class="imp__erro" id="atIgual" hidden>O entendimento já está igual ao banco.</p>
@@ -895,22 +899,22 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 </dialog>
 
 <div id="printArea" aria-hidden="true"></div>
-<script src="mcp.js?v=0.20.1"></script>
-<script src="oauth.js?v=0.20.1"></script>
-<script src="toolbox.js?v=0.20.1"></script>
-<script src="chart.js?v=0.20.1"></script>
-<script src="catalog.js?v=0.20.1"></script>
-<script src="perfil.js?v=0.20.1"></script>
-<script src="descricao.js?v=0.20.1"></script>
-<script src="notas.js?v=0.20.1"></script>
-<script src="consultas.js?v=0.20.1"></script>
-<script src="entendimento.js?v=0.20.1"></script>
-<script src="ask.js?v=0.20.1"></script>
-<script src="report.js?v=0.20.1"></script>
-<script src="demo.js?v=0.20.1"></script>
-<script src="momento.js?v=0.20.1"></script>
-<script src="sono.js?v=0.20.1"></script>
-<script src="instalar.js?v=0.20.1"></script>
+<script src="mcp.js?v=0.21.0"></script>
+<script src="oauth.js?v=0.21.0"></script>
+<script src="toolbox.js?v=0.21.0"></script>
+<script src="chart.js?v=0.21.0"></script>
+<script src="catalog.js?v=0.21.0"></script>
+<script src="perfil.js?v=0.21.0"></script>
+<script src="descricao.js?v=0.21.0"></script>
+<script src="notas.js?v=0.21.0"></script>
+<script src="consultas.js?v=0.21.0"></script>
+<script src="entendimento.js?v=0.21.0"></script>
+<script src="ask.js?v=0.21.0"></script>
+<script src="report.js?v=0.21.0"></script>
+<script src="demo.js?v=0.21.0"></script>
+<script src="momento.js?v=0.21.0"></script>
+<script src="sono.js?v=0.21.0"></script>
+<script src="instalar.js?v=0.21.0"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -1033,18 +1037,15 @@ async function conectarModo(mode, exigirBanco){
   const url = store.get('cd2.url') || (st.cfg.mcp && st.cfg.mcp.url) || '';
   const tok = store.get('cd2.tok', true) || '';
   if(mode === 'toolbox'){
-    const turl = CD2Toolbox.urlFor(location);
-    const c = new McpClient(turl, { token: async () => null, origin: location.origin });
-    st.tools = await c.init(); st.provider = c;
-    const statusTxt = await c.call('db_connection_status', {});
+    const { c, tools, statusTxt } = await sessaoToolbox();
+    st.tools = tools; st.provider = c;
     st.dbStatus = CD2Toolbox.parseStatus(statusTxt);
     let catalogoTxt = null;
     if(exigirBanco){
       catalogoTxt = await c.call('db_catalog', {});
       if(!CD2Toolbox.bancoAtivo(statusTxt, CD2Ask.parseRows(catalogoTxt))) throw new Error('Sem conexão com o banco.');
     }
-    const eng = st.dbStatus ? CD2Toolbox.engineLabel(st.dbStatus.engine) : 'Banco de dados';
-    setPill('#pMcp', 'ok', eng + ': ' + st.tools.length + ' ferramentas');
+    pilulaToolbox();
     st.catalogoFalhou = false;
     st.catalogPromise = loadCatalog(c, st.catalogGen, catalogoTxt);
   }else if(mode === 'mcp'){
@@ -1060,6 +1061,33 @@ async function conectarModo(mode, exigirBanco){
     setPill('#pMcp', 'gold', 'Demonstração: ' + st.tools.length + ' ferramentas');
   }
   syncBotaoNotas();
+}
+// Sessão MCP nova com o toolbox (initialize, tools/list e db_connection_status), sem mexer no estado da tela.
+async function sessaoToolbox(){
+  const c = new McpClient(CD2Toolbox.urlFor(location), { token: async () => null, origin: location.origin });
+  const tools = await c.init();
+  const statusTxt = await c.call('db_connection_status', {});
+  return { c, tools, statusTxt };
+}
+function pilulaToolbox(){
+  const eng = st.dbStatus ? CD2Toolbox.engineLabel(st.dbStatus.engine) : 'Banco de dados';
+  setPill('#pMcp', 'ok', eng + ': ' + st.tools.length + ' ferramentas');
+}
+// Depois do /reler o cd2-ctl reinicia o toolbox e a sessão MCP antiga morre com ele: abre outra no
+// lugar, sem ler o catálogo nem mexer em catálogo, notas e entendimento (quem compara e troca o
+// catálogo é o "Atualizar com o banco"). Lança se não conectar ou se o banco mudou no meio.
+async function reabrirToolbox(){
+  const gen = st.catalogGen;
+  const { c, tools, statusTxt } = await sessaoToolbox();
+  if(gen !== st.catalogGen) throw new Error('O banco mudou.');
+  st.tools = tools; st.provider = c;
+  st.dbStatus = CD2Toolbox.parseStatus(statusTxt);
+  pilulaToolbox();
+}
+// O toolbox caiu e não voltou (ou a sessão nova não abriu): a sessão MCP de antes morreu com ele. Mesmo
+// estado que o saveDb deixa quando o banco não sobe, para a Conversa não perguntar a um toolbox morto.
+function semSessaoToolbox(){
+  st.tools = []; st.provider = null; st.dbStatus = null; setPill('#pMcp', 'err', 'sem banco'); syncBotaoNotas();
 }
 // arranque (true só na abertura da página): tenta o que estiver de pé e, sem nada, abre a Demonstração.
 // Sem arranque (Salvar e conectar, sair do Archeo): conecta no modo guardado e mostra a falha.
@@ -1357,7 +1385,10 @@ async function concluirEntendimento(cat, gen, guardado){
 }
 // Veredito de varejo no documento: sem evidência (faltam descrições) fica verificado:false, para um
 // Atualizar que descreva as tabelas verificar de novo; com evidência é final e o aviso sai uma vez.
+// Nas planilhas o veredito já nasce final e sem aviso: planilha de controle não é ERP.
 function verificarVarejo(cat, doc){
+  const fixo = CD2Entendimento.varejoNaoSeAplica(motorPasta());
+  if(fixo){ doc.varejo = fixo; return; }
   const r = CD2Entendimento.pareceVarejo(cat);
   if(r.semEvidencia){ doc.varejo = { verificado:false }; return; }
   doc.varejo = { verificado:true, parece:r.parece };
@@ -1838,19 +1869,67 @@ async function salvarTelaNotas(){
 // catálogo mantendo o perfil guardado e, em segundo plano, entende só as tabelas novas e as sem descrição.
 // at.alvo: nomes das tabelas que a atualização em segundo plano está lendo (null fora dela).
 const at = { diff:null, cat:null, gen:0, chaveNotas:'', leitura:0, confirmando:false, vez:0, alvo:null };
+// Motor do banco do toolbox quando ele vem de uma pasta (excel, dbf); '' nos outros casos, inclusive
+// no Archeo e na Demonstração (o cd2-ctl pode ter uma pasta configurada sem ser ela a conectada).
+function motorPasta(){
+  const m = st.ctlStatus && st.ctlStatus.motor;
+  return modoAtual() === 'toolbox' && CD2Toolbox.motorArquivo(m) ? m : '';
+}
 function syncAtualizar(){
   const b = $('#nAtualizar'); if(!b) return;
+  const motor = motorPasta();
   b.disabled = !!at.alvo;
   b.title = at.alvo ? 'A IA ainda está entendendo as tabelas novas. Dá para atualizar de novo quando ela terminar.'
+    : motor === 'excel' ? 'Reler as planilhas e trazer abas e colunas novas, sem perder as notas'
+    : motor === 'dbf' ? 'Reler os arquivos e trazer tabelas e colunas novas, sem perder as notas'
     : 'Ler o banco de novo e trazer as tabelas e campos novos, sem perder as notas';
 }
 const SEM_CHAVE_ATUALIZAR = 'Não consigo guardar o entendimento deste banco agora (o controle do banco não respondeu). Feche e abra a IA de Bolso pelo atalho INICIAR e tente de novo. Nenhuma nota foi apagada.';
 async function abrirAtualizar(){
   if(!st.catalog || !st.notas || !st.entendimentoPronto || at.alvo) return;
-  const d = $('#atualizar'), leitura = ++at.leitura, gen = st.catalogGen, client = st.provider;
+  const d = $('#atualizar'), leitura = ++at.leitura, gen = st.catalogGen;
+  let client = st.provider;
   at.diff = null; at.cat = null; at.gen = gen; at.chaveNotas = st.notasChave || '';
   etapaAtualizar('lendo');
   if(!d.open) d.showModal();
+  // Planilhas e DBF: o toolbox trabalha numa cópia da pasta. O cd2-ctl relê a pasta e reinicia o
+  // toolbox (se a releitura falhar, a cópia antiga continua no ar), e o catálogo vem da sessão nova.
+  if(motorPasta() && client && client !== demo){
+    // Reler derruba o toolbox por uns segundos: a pergunta em andamento perderia a resposta.
+    if(st.busy) return etapaAtualizar('erro', 'Espere a resposta terminar para atualizar.');
+    etapaAtualizar('relendo');
+    // O banco mudou no meio: a janela é desta leitura e ficaria presa em "Relendo", com Cancelar desabilitado.
+    const largar = () => { if(leitura === at.leitura && d.open) d.close(); };
+    let r = null;
+    // Sem prazo, como o POST /config: uma pasta grande leva minutos, e cortar a espera no meio deixaria a
+    // tela sem saber se o toolbox voltou.
+    try{ r = await ctlRequest('POST', '/reler', null); }catch(e){}
+    if(gen !== st.catalogGen) return largar();
+    // Caiu a rede no meio: o cd2-ctl pode ter trocado a cópia e reiniciado o toolbox mesmo assim. Espera
+    // ele sair de "subindo" para saber se a sessão tem de ser reaberta.
+    if(!r){ await esperarCtl(); renderToolbox(); if(gen !== st.catalogGen) return largar(); }
+    // 404: cd2-ctl antigo, sem /reler. Lê o catálogo da sessão de sempre, como antes desta rota existir.
+    if(!(r && r.status === 404)){
+      // 200 traz o Status (com erro preenchido quando a releitura falhou); 401, 409 e 503 trazem só o erro.
+      const ok = !!(r && r.status === 200);
+      if(ok){ st.ctlStatus = r.data; renderToolbox(); }
+      const estado = ok ? r.data.estado : (!r && st.ctlStatus ? st.ctlStatus.estado : '');
+      // Com o toolbox de pé, a sessão é reaberta mesmo com erro ou com a janela já fechada: ele pode ter
+      // reiniciado (caiu na troca e voltou com a mesma pasta), e a Conversa precisa continuar respondendo.
+      // Fora do ar, ou sem conseguir reabrir, a sessão antiga morreu com ele.
+      let reaberto = false;
+      if(estado === 'rodando'){
+        try{ await reabrirToolbox(); reaberto = true; }catch(e){ if(gen === st.catalogGen) semSessaoToolbox(); }
+      }else if(estado) semSessaoToolbox();
+      if(gen !== st.catalogGen) return largar();
+      if(leitura !== at.leitura || !d.open) return;
+      if(!r) return etapaAtualizar('erro', 'O controle do banco não respondeu. Feche e abra a IA de Bolso pelo atalho INICIAR. Nenhuma nota foi apagada.');
+      if(!ok || r.data.erro) return etapaAtualizar('erro', (r.data && r.data.erro || 'Não consegui reler a pasta.') + ' Nenhuma nota foi apagada.');
+      if(!reaberto) return etapaAtualizar('erro', 'A pasta foi relida, mas não consegui falar com o toolbox de novo. Feche e abra a IA de Bolso pelo atalho INICIAR. Nenhuma nota foi apagada.');
+      client = st.provider;
+    }
+    etapaAtualizar('lendo');
+  }
   let cat = null;
   try{
     if(client && client !== demo){
@@ -1865,14 +1944,17 @@ async function abrirAtualizar(){
   at.cat = cat; at.diff = CD2Entendimento.comparar(cat, st.entendimento, st.notas);
   etapaAtualizar(at.diff.nadaMudou ? 'igual' : 'resumo');
 }
-// Uma janela, quatro etapas: 'lendo', 'erro', 'igual' (nada mudou) e 'resumo'.
+// Uma janela, cinco etapas: 'relendo' (o cd2-ctl relê a pasta), 'lendo', 'erro', 'igual' (nada mudou) e 'resumo'.
+// Relendo, Cancelar fica desabilitado e o Esc não fecha: o cd2-ctl não cancela a releitura.
 function etapaAtualizar(etapa, erro){
   const ok = $('#atOk'), cancelar = $('#atCancelar');
+  $('#atRelendo').hidden = etapa !== 'relendo';
   $('#atLendo').hidden = etapa !== 'lendo'; $('#atErro').hidden = etapa !== 'erro';
   $('#atIgual').hidden = etapa !== 'igual'; $('#atResumo').hidden = etapa !== 'resumo';
-  $('#atMsg').textContent = ''; ok.disabled = false; cancelar.disabled = false;
+  $('#atMsg').textContent = ''; ok.disabled = false; cancelar.disabled = etapa === 'relendo';
   ok.hidden = etapa !== 'resumo';
-  cancelar.textContent = etapa === 'resumo' || etapa === 'lendo' ? 'Cancelar' : 'Fechar';
+  cancelar.textContent = etapa === 'resumo' || etapa === 'lendo' || etapa === 'relendo' ? 'Cancelar' : 'Fechar';
+  if(etapa === 'relendo') $('#atRelendo').textContent = motorPasta() === 'excel' ? 'Relendo as planilhas…' : 'Relendo os arquivos .dbf…';
   if(etapa === 'erro') $('#atErro').textContent = erro;
   if(etapa === 'resumo') renderResumoAtualizar();
   (etapa === 'resumo' ? ok : cancelar).focus();
@@ -2527,6 +2609,7 @@ async function refreshCtl(timeoutMs){
     if(r.status === 200){ st.ctlUp = true; st.ctlStatus = r.data; }
     else if(r.status === 401) st.ctlStale = true;
   }catch(e){}
+  syncAtualizar();
 }
 function readDbForm(){ const f = {}; for(const k in DB_FIELDS) f[k] = $(DB_FIELDS[k]).value; return f; }
 // Exemplos por motor e porta padrão. A senha guarda o aviso de "senha salva" do fillDbForm.
@@ -2537,7 +2620,7 @@ function syncDbForm(){
   $('#dbHost').placeholder = p.host; $('#dbBase').placeholder = p.base; $('#dbUsuario').placeholder = p.usuario;
   $('#dbPorta').placeholder = String(d.porta); $('#dbSchema').placeholder = p.schema;
   if(!st.dbSenhaSalva) $('#dbSenha').placeholder = p.senha;
-  $('#dbBaseLabel').textContent = m === 'oracle' ? 'Service name' : (m === 'firebird' ? 'Arquivo do banco' : (m === 'dbf' ? 'Pasta dos arquivos' : 'Base de dados'));
+  $('#dbBaseLabel').textContent = m === 'oracle' ? 'Service name' : (m === 'firebird' ? 'Arquivo do banco' : (m === 'dbf' ? 'Pasta dos arquivos' : (m === 'excel' ? 'Pasta das planilhas' : 'Base de dados')));
 }
 function onDbMotorChange(){ $('#dbPorta').value = CD2Toolbox.portFor($('#dbMotor').value, $('#dbPorta').value); syncDbForm(); }
 // Preenche com o /status (ou limpa, com s nulo). A senha nunca vem: só o aviso de que há uma salva.
@@ -2552,8 +2635,8 @@ function fillDbForm(s){
   syncDbForm();
 }
 function renderToolbox(){
-  const cs = st.ctlStatus, hint = $('#tbHint'), dl = $('#tbStatus'), logBox = $('#tbLog');
-  dl.innerHTML = ''; hint.innerHTML = ''; logBox.style.display = 'none';
+  const cs = st.ctlStatus, hint = $('#tbHint'), dl = $('#tbStatus'), logBox = $('#tbLog'), ignBox = $('#tbIgnoradas');
+  dl.innerHTML = ''; hint.innerHTML = ''; logBox.style.display = 'none'; ignBox.style.display = 'none';
   const warn = t => { hint.innerHTML = '<span class="tag tag--atencao">Atenção</span> '; hint.appendChild(document.createTextNode(t)); };
   const lines = rows => {
     for(const [k, v] of rows){
@@ -2566,6 +2649,18 @@ function renderToolbox(){
   else if(st.ctlBusy || cs.estado === 'subindo') hint.textContent = 'Conectando ao banco...';
   else{
     if(cs.estado === 'rodando') lines(st.dbStatus ? CD2Toolbox.statusLines(st.dbStatus) : CD2Toolbox.ctlStatusLines(cs));
+    // Relatório da leitura das planilhas: o cd2-ctl o manda quando houve tentativa de ler a pasta e o zera ao desconectar.
+    // Vem também na falha de importação, em qualquer motor e estado (inclusive sem banco, na primeira conexão, ou rodando
+    // com a conexão anterior), que é quando saber quais abas ficaram de fora mais ajuda.
+    if(cs.planilhas){
+      lines([['Planilhas lidas', CD2Toolbox.planilhasLinha(cs.planilhas)]]);
+      const ign = CD2Toolbox.ignoradasLinhas(cs.planilhas);
+      if(ign.length){
+        ignBox.style.display = ''; ignBox.querySelector('summary').textContent = 'Abas deixadas de fora (' + ign.length + ')';
+        const ul = ignBox.querySelector('ul'); ul.textContent = '';
+        for(const t of ign){ const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); }
+      }
+    }
     if(cs.erro){
       warn(cs.erro);
       if(cs.log && cs.log.length){ logBox.style.display = ''; logBox.querySelector('.inner').textContent = cs.log.join('\n'); }
@@ -2575,6 +2670,7 @@ function renderToolbox(){
   for(const k in DB_FIELDS) $(DB_FIELDS[k]).disabled = !on;
   $('#bDbOff').style.display = (on && cs && cs.motor) ? '' : 'none';
   $('#bPerfilPdf').style.display = st.catalog ? '' : 'none';
+  syncAtualizar();  // o título do ↻ Atualizar depende do motor
 }
 // Abre a guia Configurações (no modo pedido, se vier um). Já aberta, só troca o modo: não apaga o que foi digitado.
 function openCfg(forcar){
@@ -2926,8 +3022,8 @@ $('#nExportar').onclick = exportarNotas;
 $('#nAtualizar').onclick = abrirAtualizar;
 $('#atCancelar').onclick = () => $('#atualizar').close();
 $('#atOk').onclick = confirmarAtualizar;
-// Enquanto apaga e grava, a janela não fecha: o resultado (ou o erro) aparece nela.
-$('#atualizar').addEventListener('cancel', e => { if(at.confirmando) e.preventDefault(); });
+// Enquanto relê a pasta, ou apaga e grava, a janela não fecha: o resultado (ou o erro) aparece nela.
+$('#atualizar').addEventListener('cancel', e => { if(at.confirmando || !$('#atRelendo').hidden) e.preventDefault(); });
 $('#atualizar').addEventListener('close', () => { at.leitura++; at.diff = null; at.cat = null; });
 $('#nImportar').onclick = escolherArquivoNotas;
 $('#nArquivo').addEventListener('change', lerArquivoNotas);

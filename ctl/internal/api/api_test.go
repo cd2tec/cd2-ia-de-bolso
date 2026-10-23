@@ -9,17 +9,23 @@ import (
 
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/control"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbconf"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/excel"
 )
 
 const key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 type fakeBackend struct {
-	applied  []dbconf.Input
-	applyErr error
-	cleared  int
+	applied   []dbconf.Input
+	applyErr  error
+	cleared   int
+	relidos   int
+	relerErr  error
+	planilhas *excel.Relatorio
 }
 
-func (f *fakeBackend) Status() control.Status { return control.Status{Estado: control.SemBanco} }
+func (f *fakeBackend) Status() control.Status {
+	return control.Status{Estado: control.SemBanco, Planilhas: f.planilhas}
+}
 
 func (f *fakeBackend) Apply(in dbconf.Input) (control.Status, error) {
 	f.applied = append(f.applied, in)
@@ -32,6 +38,14 @@ func (f *fakeBackend) Apply(in dbconf.Input) (control.Status, error) {
 func (f *fakeBackend) Clear() control.Status {
 	f.cleared++
 	return control.Status{Estado: control.SemBanco}
+}
+
+func (f *fakeBackend) Reler() (control.Status, error) {
+	f.relidos++
+	if f.relerErr != nil {
+		return control.Status{}, f.relerErr
+	}
+	return control.Status{Estado: control.Rodando, Motor: "excel"}, nil
 }
 
 func newH() (http.Handler, *fakeBackend) {
@@ -237,6 +251,9 @@ func (closedBackend) Apply(dbconf.Input) (control.Status, error) {
 func (closedBackend) Clear() control.Status {
 	return control.Status{Estado: control.SemBanco, Erro: control.MsgClosed}
 }
+func (closedBackend) Reler() (control.Status, error) {
+	return control.Status{Estado: control.SemBanco, Erro: control.MsgClosed}, nil
+}
 
 func TestAposShutdown503(t *testing.T) {
 	h := Handler(Options{Key: key, HarnessPort: 8080, CtlPort: 11080}, &closedBackend{})
@@ -245,5 +262,72 @@ func TestAposShutdown503(t *testing.T) {
 	}
 	if w := do(h, "DELETE", "/config", "", nil); w.Code != 503 {
 		t.Errorf("DELETE: %d", w.Code)
+	}
+	if w := do(h, "POST", "/reler", "", nil); w.Code != 503 {
+		t.Errorf("POST /reler: %d", w.Code)
+	}
+}
+
+func TestReler(t *testing.T) {
+	h, b := newH()
+	// sem Content-Type nem corpo: a rota não lê corpo
+	w := do(h, "POST", "/reler", "", func(r *http.Request) { r.Header.Del("Content-Type") })
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"estado":"rodando"`) || !strings.Contains(w.Body.String(), `"motor":"excel"`) {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+	if b.relidos != 1 {
+		t.Errorf("Reler chamado %d vezes", b.relidos)
+	}
+}
+
+func TestRelerNaoArquivo409(t *testing.T) {
+	h, b := newH()
+	b.relerErr = control.ErrNaoArquivo
+	w := do(h, "POST", "/reler", "", nil)
+	if w.Code != 409 || erro(w) != "Esta conexão não é de arquivos." {
+		t.Errorf("%d %s", w.Code, w.Body)
+	}
+}
+
+func TestRelerMetodoErrado(t *testing.T) {
+	h, b := newH()
+	w := do(h, "GET", "/reler", "", nil)
+	if w.Code != 405 || w.Header().Get("Allow") != "POST" {
+		t.Errorf("%d %v", w.Code, w.Header())
+	}
+	if b.relidos != 0 {
+		t.Error("Reler chamado com GET")
+	}
+}
+
+func TestRelerSemChave(t *testing.T) {
+	h, b := newH()
+	w := do(h, "POST", "/reler", "", func(r *http.Request) { r.Header.Set("Authorization", "") })
+	if w.Code != 401 {
+		t.Errorf("%d %s", w.Code, w.Body)
+	}
+	if w := do(h, "POST", "/reler", "", func(r *http.Request) { r.Header.Del("Origin") }); w.Code != 403 {
+		t.Errorf("sem Origin: %d", w.Code)
+	}
+	if b.relidos != 0 {
+		t.Error("Reler chamado sem chave ou sem Origin")
+	}
+}
+
+func TestStatusLevaPlanilhas(t *testing.T) {
+	h, b := newH()
+	b.planilhas = &excel.Relatorio{Arquivos: 2, Tabelas: 3, Ignoradas: []excel.Ignorada{}}
+	w := do(h, "GET", "/status", "", nil)
+	var got struct {
+		Planilhas *excel.Relatorio `json:"planilhas"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if w.Code != 200 || got.Planilhas == nil || got.Planilhas.Arquivos != 2 || got.Planilhas.Tabelas != 3 {
+		t.Errorf("%d %s", w.Code, w.Body)
+	}
+	if !strings.Contains(w.Body.String(), `"lido_em"`) || !strings.Contains(w.Body.String(), `"ignoradas"`) {
+		t.Errorf("faltam campos do relatório: %s", w.Body)
 	}
 }

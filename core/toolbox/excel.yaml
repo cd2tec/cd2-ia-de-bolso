@@ -1,0 +1,157 @@
+# CD2 Harness - receita do MCP Toolbox para planilhas Excel.
+# O cd2-ctl le a pasta de planilhas (.xlsx/.xlsm), uma tabela por aba, e grava uma copia SQLite
+# em CD2_DB_SQLITE. Os arquivos originais nao sao alterados. A consulta e SQLite (LIMIT).
+# Somente leitura: excludedValues em db_read_only_query e guarda de SELECT no front.
+kind: source
+name: cd2-db
+type: sqlite
+database: '${CD2_DB_SQLITE}'
+
+---
+kind: tool
+name: db_connection_status
+type: sqlite-sql
+source: cd2-db
+description: Verifica se a pasta das planilhas foi lida e se a cópia está pronta para consulta. Devolve motor, versão do SQLite, a pasta e quantas abas foram copiadas como tabelas.
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT 'excel' AS engine,
+         sqlite_version() AS db_version,
+         '' AS host,
+         '${CD2_DB_NAME}' AS "database",
+         '' AS "user",
+         '' AS "schema",
+         (SELECT COUNT(*) FROM sqlite_master
+           WHERE type = 'table' AND name NOT LIKE 'sqlite_%') AS visible_tables
+
+---
+kind: tool
+name: db_list_tables
+type: sqlite-sql
+source: cd2-db
+description: Lista as abas das planilhas copiadas, uma tabela por aba (nome arquivo__aba quando o arquivo tem mais de uma aba). Use pattern para filtrar pelo nome. num_rows não vem do arquivo e fica vazio.
+annotations: { readOnlyHint: true }
+statement: |
+  WITH p AS (SELECT ? AS pattern)
+  SELECT m.name AS name,
+         CASE WHEN m.type = 'view' THEN 'VIEW' ELSE 'TABLE' END AS type,
+         NULL AS num_rows,
+         '' AS comments
+    FROM sqlite_master m, p
+   WHERE m.type IN ('table', 'view')
+     AND m.name NOT LIKE 'sqlite_%'
+     AND (? = 1 OR m.type = 'table')
+     AND (p.pattern = '' OR UPPER(m.name) LIKE
+          CASE WHEN INSTR(p.pattern, '%') > 0 THEN UPPER(p.pattern) ELSE '%' || UPPER(p.pattern) || '%' END)
+   ORDER BY m.name
+   LIMIT ? OFFSET ?
+parameters:
+  - { name: pattern, type: string, description: "Filtro por nome (insensível a caixa). Sem % vira %pattern%. Vazio = sem filtro.", required: false, default: "" }
+  - { name: include_views, type: integer, description: "1 para incluir views, 0 para só tabelas.", required: false, default: 1 }
+  - { name: limit, type: integer, description: "Máximo de resultados (1-500).", required: false, default: 50 }
+  - { name: offset, type: integer, description: "Deslocamento para paginação.", required: false, default: 0 }
+
+---
+kind: tool
+name: db_describe_table
+type: sqlite-sql
+source: cd2-db
+description: Apresenta as colunas e os tipos de uma aba copiada das planilhas. Nome insensível a caixa. Devolve vazio se a tabela não existir.
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT p.name AS column_name,
+         p.type AS data_type,
+         CASE WHEN p."notnull" = 0 THEN 1 ELSE 0 END AS nullable,
+         '' AS comments,
+         p.pk AS is_primary_key,
+         '' AS foreign_key_references,
+         '{{.table_name}}' AS "table"
+    FROM pragma_table_info('{{.table_name}}') p
+   ORDER BY p.cid
+templateParameters:
+  - name: table_name
+    type: string
+    description: "Nome exato da tabela, como devolvido por db_list_tables."
+    allowedValues: ["^[A-Za-z_][A-Za-z0-9_]*$"]
+
+---
+kind: tool
+name: db_search_columns
+type: sqlite-sql
+source: cd2-db
+description: Encontra colunas pelo nome nas abas copiadas das planilhas.
+annotations: { readOnlyHint: true }
+statement: |
+  WITH p AS (SELECT ? AS pattern)
+  SELECT m.name AS "table",
+         c.name AS "column",
+         c.type AS data_type,
+         '' AS comments
+    FROM sqlite_master m
+    JOIN pragma_table_info(m.name) c
+    JOIN p
+   WHERE m.type IN ('table', 'view')
+     AND m.name NOT LIKE 'sqlite_%'
+     AND UPPER(c.name) LIKE
+         CASE WHEN INSTR(p.pattern, '%') > 0 THEN UPPER(p.pattern) ELSE '%' || UPPER(p.pattern) || '%' END
+   ORDER BY m.name, c.cid
+   LIMIT ? OFFSET ?
+parameters:
+  - { name: pattern, type: string, description: "Trecho do nome da coluna (insensível a caixa). Ex.: cnpj, preco, %data%." }
+  - { name: limit, type: integer, description: "Máximo de resultados (1-500).", required: false, default: 50 }
+  - { name: offset, type: integer, description: "Deslocamento para paginação.", required: false, default: 0 }
+
+---
+kind: tool
+name: db_sample_table
+type: sqlite-sql
+source: cd2-db
+description: Mostra uma amostra de até 20 linhas para entender o conteúdo de uma tabela. Informe só um nome devolvido por db_list_tables (letras, números e _).
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT * FROM "{{.table_name}}" LIMIT 20
+templateParameters:
+  - name: table_name
+    type: string
+    description: "Nome exato da tabela, como devolvido por db_list_tables."
+    allowedValues: ["^[A-Za-z_][A-Za-z0-9_]*$"]
+
+---
+kind: tool
+name: db_catalog
+type: sqlite-sql
+source: cd2-db
+description: Mapa das abas copiadas das planilhas, para o roteiro de relatórios. Uma linha por coluna, até 300 abas e 60 colunas por aba.
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT m.name AS table_name,
+         CASE WHEN m.type = 'view' THEN 'VIEW' ELSE 'TABLE' END AS table_type,
+         NULL AS num_rows,
+         c.name AS column_name,
+         c.type AS data_type,
+         c.cid + 1 AS ordinal
+    FROM (
+      SELECT name, type
+        FROM sqlite_master
+       WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'
+       ORDER BY CASE WHEN UPPER(type) = 'VIEW' THEN 0 ELSE 1 END, name
+       LIMIT 300) m
+    JOIN pragma_table_info(m.name) c
+   WHERE c.cid < 60
+   ORDER BY CASE WHEN UPPER(m.type) = 'VIEW' THEN 0 ELSE 1 END, m.name, c.cid
+
+---
+kind: tool
+name: db_read_only_query
+type: sqlite-sql
+source: cd2-db
+description: Executa uma consulta SELECT avulsa na cópia das planilhas. Dialeto SQLite. Um único SELECT, sem ponto e vírgula, sem DML. Devolve no máximo 200 linhas.
+annotations: { readOnlyHint: true }
+statement: |
+  SELECT * FROM ({{.sql}}) q LIMIT 200
+templateParameters:
+  - name: sql
+    type: string
+    description: "A consulta SELECT, no dialeto SQLite, sem ponto e vírgula."
+    allowedValues: ["(?is)^\\s*(select|with)\\b.*$"]
+    excludedValues: [";", "(?i)\\b(insert|update|delete|drop|alter|truncate|create|attach|detach|pragma|replace|grant|revoke)\\b"]

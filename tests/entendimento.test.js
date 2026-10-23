@@ -371,3 +371,11 @@ test('pareceVarejo: semEvidencia só quando falta descrição (veredito não é 
   assert.equal(r2.semEvidencia, false);
   assert.equal(r2.parece, false);
 });
+
+test('varejoNaoSeAplica: planilhas ganham veredito final que não avisa; outros motores verificam', () => {
+  const v = E.varejoNaoSeAplica('excel');
+  // verificado:true torna o veredito final (Atualizar não verifica de novo); parece:true nunca dispara o aviso.
+  assert.deepEqual(v, { verificado:true, parece:true });
+  assert.notEqual(E.varejoNaoSeAplica('excel'), v, 'objeto novo a cada chamada');
+  for(const m of ['dbf', 'postgres', 'firebird', '', undefined, null]) assert.equal(E.varejoNaoSeAplica(m), null, String(m));
+});

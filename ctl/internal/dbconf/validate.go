@@ -8,18 +8,22 @@ import (
 )
 
 // Engines aceitos, na ordem da tela.
-var Engines = []string{"postgres", "oracle", "mariadb", "sqlserver", "firebird", "dbf"}
+var Engines = []string{"postgres", "oracle", "mariadb", "sqlserver", "firebird", "dbf", "excel"}
 
-var defaultPorts = map[string]int{"postgres": 5432, "oracle": 1521, "mariadb": 3306, "sqlserver": 1433, "firebird": 3050, "dbf": 0}
+var defaultPorts = map[string]int{"postgres": 5432, "oracle": 1521, "mariadb": 3306, "sqlserver": 1433, "firebird": 3050, "dbf": 0, "excel": 0}
 
 const (
 	msgControl = "não pode ter quebra de linha nem caractere de controle"
 	msgPort    = "use um número de 1 a 65535"
-	msgEngine  = "use postgres, oracle, mariadb, sqlserver, firebird ou dbf"
+	msgEngine  = "use postgres, oracle, mariadb, sqlserver, firebird, dbf ou excel"
 )
 
 // DefaultPort devolve a porta padrão do motor (0 se o motor não existe ou não usa porta, como o DBF).
 func DefaultPort(engine string) int { return defaultPorts[engine] }
+
+// EngineArquivo diz se o motor lê uma pasta de arquivos (DBF ou planilhas Excel) em vez de
+// conectar a um servidor: a "base" é o caminho da pasta e não há host, porta, usuário nem senha.
+func EngineArquivo(engine string) bool { return engine == "dbf" || engine == "excel" }
 
 func knownEngine(engine string) bool {
 	_, ok := defaultPorts[engine]
@@ -29,6 +33,9 @@ func knownEngine(engine string) bool {
 // DefaultSchema segue as regras da v0.5.0 (core/db-env.sh): Postgres public, Oracle o usuário
 // em maiúsculas, MariaDB o nome da base, SQL Server dbo. Firebird não tem schema.
 func DefaultSchema(engine, user, name string) string {
+	if EngineArquivo(engine) {
+		return ""
+	}
 	switch engine {
 	case "postgres":
 		return "public"
@@ -38,8 +45,6 @@ func DefaultSchema(engine, user, name string) string {
 		return name
 	case "sqlserver":
 		return "dbo"
-	case "firebird", "dbf":
-		return ""
 	}
 	return ""
 }
@@ -118,7 +123,7 @@ func check(c Config) error {
 	if !knownEngine(c.Engine) {
 		return bad("motor", msgEngine)
 	}
-	if c.Engine == "dbf" {
+	if EngineArquivo(c.Engine) {
 		if hasControl(c.Name) {
 			return bad("base", msgControl)
 		}
@@ -159,6 +164,15 @@ func check(c Config) error {
 	return nil
 }
 
+// semAspas tira um par de aspas duplas que envolva o caminho inteiro: o "Copiar como caminho" do
+// Windows copia "C:\Controle da loja" com elas, e a pasta não existe com aspas no nome.
+func semAspas(s string) string {
+	if len(s) >= 2 && strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`) {
+		return strings.TrimSpace(s[1 : len(s)-1])
+	}
+	return s
+}
+
 // Check confere uma Config lida do disco, com as mesmas regras da tela.
 func (c Config) Check() error { return check(c) }
 
@@ -194,6 +208,9 @@ func Validate(in Input, saved *Config) (Config, error) {
 		Name:   strings.TrimSpace(in.Base),
 		User:   strings.TrimSpace(in.Usuario),
 		Schema: strings.TrimSpace(in.Schema),
+	}
+	if EngineArquivo(c.Engine) {
+		c.Name = semAspas(c.Name)
 	}
 	if in.Senha != nil && *in.Senha != "" {
 		c.Password = *in.Senha

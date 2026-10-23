@@ -43,7 +43,11 @@ test('roteiro: perguntas de orientação caem na resposta certa', () => {
     'É seguro conectar no meu banco?':'seguranca',
     'Como eu conecto o banco de dados?':'conectar',
     'Quais ferramentas estão conectadas?':'ferramentas',
-    'quanto tempo demora pra ler as tabelas':'aprendizado'
+    'quanto tempo demora pra ler as tabelas':'aprendizado',
+    'Não tenho acesso a um banco. Posso usar planilhas?':'planilhas',
+    'Funciona com Excel?':'planilhas',
+    'não tenho ERP, uso planilha':'planilhas',
+    'Como conecto o meu banco de dados?':'conectar'
   };
   for(const [q, id] of Object.entries(casos)) assert.equal((D.roteiro(q) || {}).id, id, q);
 });
@@ -103,4 +107,27 @@ test('exemplos da barra: textos exatos e nunca "sem IA"', () => {
 test('config.json sai com a Demonstração como modo padrão (pen drive novo abre nela)', () => {
   const cfg = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'web', 'config.json'), 'utf8'));
   assert.equal(cfg.mcp.mode, 'demo');
+});
+
+test('quebra-gelo de planilhas: a sugestão existe e cai na resposta das planilhas', () => {
+  const cfg = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'web', 'config.json'), 'utf8'));
+  const chip = cfg.suggestions.demo.find(s => /planilha/i.test(s));
+  assert.ok(chip, 'falta a sugestão de planilhas no modo Demonstração');
+  assert.equal(D.roteiro(chip).id, 'planilhas');
+  for(const s of cfg.suggestions.demo) assert.ok(s.length <= 60, 'sugestão longa demais: ' + s);
+});
+
+test('resposta das planilhas: passo a passo curto, motor certo e sem prometer o que não faz', () => {
+  const r = D.ROTEIRO.find(x => x.id === 'planilhas');
+  const t = D.texto(r);
+  assert.match(t, /Planilhas Excel/);
+  assert.match(t, /Pasta das planilhas/);
+  assert.match(t, /\.xlsx/);
+  assert.match(t, /cada aba vira uma tabela/i);
+  assert.match(t, /Atualizar com o banco/);
+  assert.match(t, /não (são|é) alterad/);
+  const passos = r.blocos.find(b => b.lista);
+  assert.ok(passos && passos.numerada && passos.lista.length <= 4);
+  assert.ok(r.blocos.length <= 4, 'resposta tem que ser breve');
+  assert.match(D.instrucao(r), /Termine a resposta dizendo/);
 });
