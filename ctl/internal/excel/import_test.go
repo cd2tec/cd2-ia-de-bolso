@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -231,14 +230,15 @@ func TestImportColunaDeDataComTextoNoMeio(t *testing.T) {
 	if tp := tiposDe(t, db, "agenda")["Quando"]; tp != "TEXT" {
 		t.Fatalf("tipo de Quando: %s", tp)
 	}
-	soNumero := regexp.MustCompile(`^\d+(\.\d+)?$`)
-	for _, evento := range []string{"Inventário", "Balanço"} {
+	// Em coluna TEXT a data sai em ISO: o texto formatado da excelize no formato 14 é americano
+	// (mm-dd-yy), e 03/02 viraria 2 de março para quem lê no Brasil.
+	for evento, quer := range map[string]string{"Inventário": "2026-01-15", "Balanço": "2026-03-02"} {
 		var quando string
 		if err := db.QueryRow(`SELECT Quando FROM agenda WHERE Evento = ?`, evento).Scan(&quando); err != nil {
 			t.Fatal(err)
 		}
-		if quando == "" || soNumero.MatchString(quando) {
-			t.Fatalf("data de %s veio como %q, não como o texto que o Excel mostra", evento, quando)
+		if quando != quer {
+			t.Fatalf("data de %s veio como %q, quero %q", evento, quando, quer)
 		}
 	}
 }
@@ -393,12 +393,176 @@ func TestFormatoDeData(t *testing.T) {
 		{0, "dd/mm/yyyy", true},
 		{0, "#,##0.00", false},
 		{0, `0.00 "m"`, false},
-		{0, "[h]:mm:ss", true},
+		{0, "[h]:mm:ss", false},
+		{20, "", false},
 		{0, "R$ #,##0.00", false},
 	}
 	for _, c := range casos {
 		if got := formatoDeData(c.numFmt, c.custom); got != c.quer {
 			t.Errorf("formatoDeData(%d, %q) = %v, quero %v", c.numFmt, c.custom, got, c.quer)
 		}
+	}
+}
+
+func TestFormatoDeHora(t *testing.T) {
+	casos := []struct {
+		numFmt int
+		custom string
+		quer   bool
+	}{
+		{20, "", true},
+		{0, "[h]:mm:ss", true},
+		{0, "hh:mm", true},
+		{14, "", false},
+		{0, "dd/mm/yyyy hh:mm", false},
+		{0, "#,##0.00", false},
+	}
+	for _, c := range casos {
+		if got := formatoDeHora(c.numFmt, c.custom); got != c.quer {
+			t.Errorf("formatoDeHora(%d, %q) = %v, quero %v", c.numFmt, c.custom, got, c.quer)
+		}
+	}
+}
+
+func TestConverterCelulaDataGravadaComoTexto(t *testing.T) {
+	semEstilo := func() formato { return formatoNumero }
+	casos := []struct {
+		cru   string
+		tipo  Tipo
+		texto string
+	}{
+		{"2026-01-15T00:00:00Z", Data, "2026-01-15"},
+		{"2026-01-15T08:30:00", Data, "2026-01-15 08:30:00"},
+		{"2026-01-15", Data, "2026-01-15"},
+		{"ontem", Texto, "ontem"},
+	}
+	for _, c := range casos {
+		got := converter(excelize.CellTypeDate, c.cru, c.cru, false, semEstilo)
+		if got.Tipo != c.tipo || got.Texto != c.texto {
+			t.Errorf("converter(t=\"d\", %q) = %+v, quero tipo %v e texto %q", c.cru, got, c.tipo, c.texto)
+		}
+	}
+}
+
+func TestImportNenhumArquivoAbriu(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "ruim.xlsx"), []byte("isto não é um zip"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f := excelize.NewFile()
+	deve(t, f.SetSheetRow("Sheet1", "A1", &[]any{"Produto", "Qtd"}))
+	deve(t, f.SetSheetRow("Sheet1", "A2", &[]any{"Arroz", 3}))
+	deve(t, f.SaveAs(filepath.Join(dir, "segredo.xlsx"), excelize.Options{Password: "x"}))
+	deve(t, f.Close())
+	rel, err := Import(dir, filepath.Join(dir, "out", "planilhas.sqlite"))
+	if err == nil || err.Error() != "Não consegui abrir nenhuma planilha dessa pasta. Veja o motivo de cada arquivo em Configurações." {
+		t.Fatalf("erro: %v", err)
+	}
+	wantIgn := []Ignorada{
+		{Arquivo: "ruim.xlsx", Aba: "", Motivo: MotivoNaoAbriu},
+		{Arquivo: "segredo.xlsx", Aba: "", Motivo: MotivoSenha},
+	}
+	if rel == nil || !reflect.DeepEqual(rel.Ignoradas, wantIgn) {
+		t.Fatalf("relatório: %+v", rel)
+	}
+}
+
+func TestImportColunaDeHoraViraTexto(t *testing.T) {
+	dir := t.TempDir()
+	novaPlanilha(t, filepath.Join(dir, "turnos.xlsx"), func(f *excelize.File) {
+		deve(t, f.SetSheetRow("Sheet1", "A1", &[]any{"Turno", "Duracao"}))
+		deve(t, f.SetSheetRow("Sheet1", "A2", &[]any{"Noite", 1.5}))
+		id, err := f.NewStyle(&excelize.Style{NumFmt: 20})
+		deve(t, err)
+		deve(t, f.SetCellStyle("Sheet1", "B2", "B2", id))
+	})
+	destino := filepath.Join(dir, "out", "planilhas.sqlite")
+	if _, err := Import(dir, destino); err != nil {
+		t.Fatal(err)
+	}
+	db := abrir(t, destino)
+	if tp := tiposDe(t, db, "turnos")["Duracao"]; tp != "TEXT" {
+		t.Fatalf("tipo de Duracao: %s", tp)
+	}
+	var d string
+	if err := db.QueryRow(`SELECT Duracao FROM turnos`).Scan(&d); err != nil {
+		t.Fatal(err)
+	}
+	if d == "" || d == "1.5" {
+		t.Fatalf("Duracao devia vir como o Excel mostra, veio %q", d)
+	}
+}
+
+func TestImportFolhaDeGraficoNaoContaComoAba(t *testing.T) {
+	dir := t.TempDir()
+	novaPlanilha(t, filepath.Join(dir, "metas.xlsx"), func(f *excelize.File) {
+		deve(t, f.SetSheetName("Sheet1", "Dados"))
+		deve(t, f.SetSheetRow("Dados", "A1", &[]any{"Mes", "Meta"}))
+		deve(t, f.SetSheetRow("Dados", "A2", &[]any{"Jan", 10}))
+		deve(t, f.SetSheetRow("Dados", "A3", &[]any{"Fev", 12}))
+		deve(t, f.AddChartSheet("Grafico", &excelize.Chart{
+			Type: excelize.Col,
+			Series: []excelize.ChartSeries{{
+				Name: "Dados!$B$1", Categories: "Dados!$A$2:$A$3", Values: "Dados!$B$2:$B$3",
+			}},
+		}))
+	})
+	destino := filepath.Join(dir, "out", "planilhas.sqlite")
+	rel, err := Import(dir, destino)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantIgn := []Ignorada{{Arquivo: "metas.xlsx", Aba: "Grafico", Motivo: MotivoVazia}}
+	if !reflect.DeepEqual(rel.Ignoradas, wantIgn) {
+		t.Fatalf("ignoradas: %+v", rel.Ignoradas)
+	}
+	if got := tabelasDe(t, abrir(t, destino)); !reflect.DeepEqual(got, []string{"metas"}) {
+		t.Fatalf("tabelas: %v", got)
+	}
+}
+
+func TestImportDate1904(t *testing.T) {
+	dir := t.TempDir()
+	novaPlanilha(t, filepath.Join(dir, "mac.xlsx"), func(f *excelize.File) {
+		verdadeiro := true
+		deve(t, f.SetWorkbookProps(&excelize.WorkbookPropsOptions{Date1904: &verdadeiro}))
+		deve(t, f.SetSheetRow("Sheet1", "A1", &[]any{"Pedido", "Entrega"}))
+		deve(t, f.SetSheetRow("Sheet1", "A2", &[]any{"P1", time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)}))
+		deve(t, f.SetCellStyle("Sheet1", "B2", "B2", estiloData(t, f)))
+	})
+	destino := filepath.Join(dir, "out", "planilhas.sqlite")
+	if _, err := Import(dir, destino); err != nil {
+		t.Fatal(err)
+	}
+	var entrega string
+	if err := abrir(t, destino).QueryRow(`SELECT CAST(Entrega AS TEXT) FROM mac`).Scan(&entrega); err != nil {
+		t.Fatal(err)
+	}
+	if entrega != "2026-01-15" {
+		t.Fatalf("Entrega: %q", entrega)
+	}
+}
+
+func TestImportSoCsvDaDica(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "dados.csv"), []byte("nome;valor\nAna;10\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Import(dir, filepath.Join(dir, "out", "planilhas.sqlite"))
+	if err == nil || !strings.Contains(err.Error(), "salve como .xlsx") {
+		t.Fatalf("erro: %v", err)
+	}
+}
+
+func TestImportGravacaoFalhaNaoContaTabelas(t *testing.T) {
+	dir := t.TempDir()
+	planilhaSimples(t, filepath.Join(dir, "bom.xlsx"))
+	// O destino fica "dentro" de um arquivo: a pasta da cópia não pode ser criada e Gravar falha.
+	rel, err := Import(dir, filepath.Join(dir, "bom.xlsx", "planilhas.sqlite"))
+	if err == nil {
+		t.Fatal("gravação impossível passou")
+	}
+	if rel == nil || rel.Tabelas != 0 {
+		t.Fatalf("relatório: %+v", rel)
 	}
 }

@@ -3,11 +3,9 @@ package excel
 import (
 	"errors"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -63,18 +61,25 @@ func Import(pasta, destino string) (*Relatorio, error) {
 	}
 	usados := map[string]int{}
 	var tabelas []copia.Tabela
+	abertos := 0
 	for _, nome := range nomes {
-		lidas, ignoradas := lerArquivo(pasta, nome, usados)
+		lidas, ignoradas, abriu := lerArquivo(pasta, nome, usados)
 		tabelas = append(tabelas, lidas...)
 		rel.Ignoradas = append(rel.Ignoradas, ignoradas...)
+		if abriu {
+			abertos++
+		}
 	}
-	rel.Tabelas = len(tabelas)
 	if len(tabelas) == 0 {
+		if abertos == 0 {
+			return rel, fmt.Errorf("Não consegui abrir nenhuma planilha dessa pasta. Veja o motivo de cada arquivo em Configurações.")
+		}
 		return rel, fmt.Errorf("Nenhuma aba das planilhas dessa pasta tem um cabeçalho que eu reconheça.")
 	}
 	if err := copia.Gravar(destino, tabelas); err != nil {
 		return rel, err
 	}
+	rel.Tabelas = len(tabelas)
 	return rel, nil
 }
 
@@ -101,9 +106,10 @@ func arquivos(pasta string) (nomes []string, antigos bool, err error) {
 	return nomes, antigos, nil
 }
 
-// lerArquivo devolve uma tabela por aba visível que tenha cabeçalho. O nome leva o da aba só quando o
-// arquivo tem mais de uma aba visível: planilha de uma aba só vira a tabela com o nome do arquivo.
-func lerArquivo(pasta, nome string, usados map[string]int) (tabelas []copia.Tabela, ignoradas []Ignorada) {
+// lerArquivo devolve uma tabela por aba visível que tenha cabeçalho, e se o arquivo abriu. O nome leva
+// o da aba só quando o arquivo tem mais de uma aba visível com conteúdo: planilha de uma aba só vira a
+// tabela com o nome do arquivo, e folha de gráfico ou aba em branco ao lado não mudam isso.
+func lerArquivo(pasta, nome string, usados map[string]int) (tabelas []copia.Tabela, ignoradas []Ignorada, abriu bool) {
 	caminho := filepath.Join(pasta, nome)
 	f, err := excelize.OpenFile(caminho)
 	if err != nil {
@@ -111,7 +117,7 @@ func lerArquivo(pasta, nome string, usados map[string]int) (tabelas []copia.Tabe
 		if errors.Is(err, excelize.ErrWorkbookPassword) || protegidoPorSenha(caminho) {
 			motivo = MotivoSenha
 		}
-		return nil, []Ignorada{{Arquivo: nome, Motivo: motivo}}
+		return nil, []Ignorada{{Arquivo: nome, Motivo: motivo}}, false
 	}
 	defer f.Close()
 	date1904 := false
@@ -119,35 +125,40 @@ func lerArquivo(pasta, nome string, usados map[string]int) (tabelas []copia.Tabe
 		date1904 = *props.Date1904
 	}
 
+	leitor := &leitorDeCelula{f: f, date1904: date1904, formatos: map[int]formato{}}
 	abas := f.GetSheetList()
+	grades := make([][][]Celula, len(abas))
 	visiveis := make([]bool, len(abas))
-	nVisiveis := 0
+	comConteudo := 0
 	for i, aba := range abas {
 		vis, err := f.GetSheetVisible(aba)
 		visiveis[i] = err != nil || vis
-		if visiveis[i] {
-			nVisiveis++
+		if !visiveis[i] {
+			continue
+		}
+		grades[i] = leitor.grade(aba)
+		if len(grades[i]) > 0 {
+			comConteudo++
 		}
 	}
 	base := copia.Identificador(strings.TrimSuffix(nome, filepath.Ext(nome)))
-	leitor := &leitorDeCelula{f: f, date1904: date1904, ehData: map[int]bool{}}
 	for i, aba := range abas {
 		if !visiveis[i] {
 			ignoradas = append(ignoradas, Ignorada{Arquivo: nome, Aba: aba, Motivo: MotivoOculta})
 			continue
 		}
-		colunas, linhas, motivo := analisarAba(leitor.grade(aba))
+		colunas, linhas, motivo := analisarAba(grades[i])
 		if motivo != "" {
 			ignoradas = append(ignoradas, Ignorada{Arquivo: nome, Aba: aba, Motivo: motivo})
 			continue
 		}
 		tabela := base
-		if nVisiveis >= 2 {
+		if comConteudo >= 2 {
 			tabela += "__" + copia.Identificador(aba)
 		}
 		tabelas = append(tabelas, copia.Tabela{Nome: copia.Unico(tabela, usados), Colunas: colunas, Linhas: linhas})
 	}
-	return tabelas, ignoradas
+	return tabelas, ignoradas, true
 }
 
 // protegidoPorSenha: o .xlsx com senha não é um zip, é um contêiner OLE com os fluxos EncryptionInfo e
@@ -169,138 +180,4 @@ func protegidoPorSenha(caminho string) bool {
 		}
 	}
 	return false
-}
-
-// leitorDeCelula converte as células de um arquivo aberto, guardando por estilo se o formato é de data.
-type leitorDeCelula struct {
-	f        *excelize.File
-	date1904 bool
-	ehData   map[int]bool
-}
-
-// grade monta a aba como o núcleo espera. Lê duas vezes: o texto formatado (o que o Excel mostra) e o
-// valor cru (o número por trás da data ou do "R$ 1.500,00"). As duas matrizes podem ter comprimentos
-// diferentes, porque a excelize corta a cauda vazia de cada uma; o que falta conta como vazio.
-func (l *leitorDeCelula) grade(aba string) [][]Celula {
-	formatadas, err := l.f.GetRows(aba)
-	if err != nil {
-		return nil
-	}
-	cruas, err := l.f.GetRows(aba, excelize.Options{RawCellValue: true})
-	if err != nil {
-		return nil
-	}
-	grade := make([][]Celula, max(len(formatadas), len(cruas)))
-	for i := range grade {
-		lf, lc := linhaOuNada(formatadas, i), linhaOuNada(cruas, i)
-		grade[i] = make([]Celula, max(len(lf), len(lc)))
-		for j := range grade[i] {
-			grade[i][j] = l.celula(aba, i, j, valorOuNada(lf, j), valorOuNada(lc, j))
-		}
-	}
-	return grade
-}
-
-func (l *leitorDeCelula) celula(aba string, i, j int, formatado, cru string) Celula {
-	if formatado == "" && cru == "" {
-		return Celula{}
-	}
-	ref, err := excelize.CoordinatesToCellName(j+1, i+1)
-	if err != nil {
-		return Celula{Tipo: Texto, Texto: formatado}
-	}
-	tipo, _ := l.f.GetCellType(aba, ref)
-	switch tipo {
-	case excelize.CellTypeError:
-		return Celula{Tipo: Erro, Texto: formatado}
-	case excelize.CellTypeBool:
-		c := Celula{Tipo: Bool, Texto: formatado}
-		if cru == "1" || strings.EqualFold(cru, "TRUE") {
-			c.Num = 1
-		}
-		return c
-	}
-	if cru == "" {
-		return Celula{}
-	}
-	switch tipo {
-	case excelize.CellTypeNumber, excelize.CellTypeFormula, excelize.CellTypeUnset:
-		num, err := strconv.ParseFloat(cru, 64)
-		if err != nil || math.IsNaN(num) || math.IsInf(num, 0) {
-			break
-		}
-		if l.formatoDaCelulaEhData(aba, ref) {
-			if data, err := excelize.ExcelDateToTime(num, l.date1904); err == nil {
-				return Celula{Tipo: Data, Texto: formatado, Data: data}
-			}
-		}
-		return Celula{Tipo: Numero, Texto: formatado, Num: num}
-	}
-	return Celula{Tipo: Texto, Texto: formatado}
-}
-
-func (l *leitorDeCelula) formatoDaCelulaEhData(aba, ref string) bool {
-	id, err := l.f.GetCellStyle(aba, ref)
-	if err != nil {
-		return false
-	}
-	if eh, ok := l.ehData[id]; ok {
-		return eh
-	}
-	eh := false
-	if estilo, err := l.f.GetStyle(id); err == nil && estilo != nil {
-		custom := ""
-		if estilo.CustomNumFmt != nil {
-			custom = *estilo.CustomNumFmt
-		}
-		eh = formatoDeData(estilo.NumFmt, custom)
-	}
-	l.ehData[id] = eh
-	return eh
-}
-
-// formatoDeData diz se o formato numérico mostra o número como data ou hora. Os embutidos de data do
-// Excel são 14–22, 27–36, 45–47 e 50–58; no formato próprio, procuro y, m, d, h ou s fora de texto
-// literal ("m" entre aspas é metro), de colchete ([Red], [$-416]) e de caractere escapado com \.
-func formatoDeData(numFmt int, custom string) bool {
-	switch {
-	case numFmt >= 14 && numFmt <= 22, numFmt >= 27 && numFmt <= 36,
-		numFmt >= 45 && numFmt <= 47, numFmt >= 50 && numFmt <= 58:
-		return true
-	}
-	var b strings.Builder
-	aspas, colchete, escapa := false, false, false
-	for _, r := range custom {
-		switch {
-		case escapa:
-			escapa = false
-		case aspas:
-			aspas = r != '"'
-		case colchete:
-			colchete = r != ']'
-		case r == '\\':
-			escapa = true
-		case r == '"':
-			aspas = true
-		case r == '[':
-			colchete = true
-		default:
-			b.WriteRune(r)
-		}
-	}
-	return strings.ContainsAny(strings.ToLower(b.String()), "ymdhs")
-}
-
-func linhaOuNada(m [][]string, i int) []string {
-	if i < len(m) {
-		return m[i]
-	}
-	return nil
-}
-
-func valorOuNada(l []string, j int) string {
-	if j < len(l) {
-		return l[j]
-	}
-	return ""
 }
