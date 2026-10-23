@@ -103,7 +103,7 @@ O DBF já faz o essencial: o `cd2-ctl` copia os arquivos para um SQLite na pasta
 
 ### Identificador com acento
 
-O `identificador` de hoje apaga letra acentuada ("Descrição" vira "Descrio"). Para planilha, onde o cabeçalho é texto de gente, isso não serve. O identificador passa a **transliterar**: remove o acento e mantém a letra (`Descrição` → `Descricao`, `Preço (R$)` → `Preco_R`, `Nº` → `N`), usando `golang.org/x/text` (já é dependência) para decompor e tirar as marcas. Espaço, hífen e ponto viram `_`; parêntese, barra, `$`, `%` e o resto somem; underscores repetidos colapsam; nome vazio ou começando com dígito ganha `T_`; limite de 60 caracteres. A função vira compartilhada entre `dbf` e `excel` (pacote pequeno, por exemplo `ctl/internal/ident`). No DBF o efeito é nulo na prática: nome de campo DBF é ASCII.
+O `identificador` de hoje apaga letra acentuada ("Descrição" vira "Descrio"). Para planilha, onde o cabeçalho é texto de gente, isso não serve. O identificador passa a **transliterar**: remove o acento e mantém a letra (`Descrição` → `Descricao`, `Preço (R$)` → `Preco_R`, `Nº` → `N`), usando `golang.org/x/text` (já é dependência) para decompor (NFD, não NFKD: `Nº` vira `N`, não `No`) e tirar as marcas. Espaço, hífen, ponto e barra viram `_`; parêntese, `$`, `%` e o resto somem; underscores repetidos colapsam; nome vazio ou começando com dígito ganha `T_`; limite de 60 caracteres. A função vira compartilhada entre `dbf` e `excel` (pacote pequeno, por exemplo `ctl/internal/ident`). No DBF o efeito é nulo na prática: nome de campo DBF é ASCII.
 
 ### Cabeçalho, linhas e colunas de uma aba
 
