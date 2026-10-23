@@ -1,18 +1,23 @@
-// Package api é a porta de controle do cd2-ctl: GET /status, POST e DELETE /config e POST /reler.
+// Package api é a porta de controle do cd2-ctl: GET /status, POST e DELETE /config, POST /reler e
+// POST /escolher-pasta.
 // Host, Origin, chave da sessão e Content-Type são conferidos antes de qualquer coisa.
 package api
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"mime"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/control"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbconf"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/notas"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/pasta"
 )
 
 // MaxBody é o maior corpo aceito em POST /config.
@@ -31,7 +36,12 @@ type Options struct {
 	Entendimento *notas.Store
 	// PodeImportar diz se POST /notas/importar é aceito (só na versão instalada).
 	PodeImportar func() bool
+	// EscolherPasta abre o seletor de pastas nativo (pasta.Escolher); nil deixa POST /escolher-pasta em 404.
+	EscolherPasta func(ctx context.Context, inicial string) (caminho string, ok bool, err error)
 }
+
+// TempoSeletor é quanto o seletor de pastas pode ficar aberto antes de ser fechado à força.
+var TempoSeletor = 15 * time.Minute
 
 // Backend é o que a API controla (*control.Controller).
 type Backend interface {
@@ -48,6 +58,9 @@ type server struct {
 	notas   *notas.Store
 	entend  *notas.Store
 	importa func() bool
+	escolhe func(context.Context, string) (string, bool, error)
+	// seletor: um seletor de pastas aberto por vez
+	seletor sync.Mutex
 	auth    []byte
 	origins map[string]bool
 	hosts   map[string]bool
@@ -62,6 +75,7 @@ func Handler(opt Options, b Backend) http.Handler {
 		notas:   opt.Notas,
 		entend:  opt.Entendimento,
 		importa: opt.PodeImportar,
+		escolhe: opt.EscolherPasta,
 		auth:    []byte("Bearer " + opt.Key),
 		origins: map[string]bool{"http://127.0.0.1:" + h: true, "http://localhost:" + h: true},
 		hosts:   map[string]bool{"127.0.0.1:" + c: true, "localhost:" + c: true},
@@ -143,6 +157,16 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, codeFor(st), st)
+	case "/escolher-pasta":
+		if s.escolhe == nil {
+			fail(w, http.StatusNotFound, "rota não encontrada")
+			return
+		}
+		if r.Method != http.MethodPost {
+			notAllowed(w, "POST")
+			return
+		}
+		s.escolherPasta(w, r)
 	case "/instalacao", "/instalacao/chave", "/instalacao/progresso", "/instalacao/abrir":
 		if s.inst == nil {
 			fail(w, http.StatusNotFound, "rota não encontrada")
@@ -222,4 +246,33 @@ func codeFor(st control.Status) int {
 		return http.StatusServiceUnavailable
 	}
 	return http.StatusOK
+}
+
+// escolherPasta abre o seletor de pastas nativo e espera a pessoa escolher ou cancelar.
+// Corpo {"inicial": "<pasta onde o seletor começa>"}; resposta {"caminho": "..."} ou {"cancelado": true}.
+func (s *server) escolherPasta(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Inicial string `json:"inicial"`
+	}
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	if !s.seletor.TryLock() {
+		fail(w, http.StatusConflict, "O seletor de pastas já está aberto")
+		return
+	}
+	defer s.seletor.Unlock()
+	ctx, cancel := context.WithTimeout(r.Context(), TempoSeletor)
+	defer cancel()
+	caminho, ok, err := s.escolhe(ctx, in.Inicial)
+	switch {
+	case errors.Is(err, pasta.ErrSemSeletor):
+		fail(w, http.StatusNotImplemented, err.Error())
+	case err != nil:
+		fail(w, http.StatusInternalServerError, err.Error())
+	case !ok:
+		writeJSON(w, http.StatusOK, map[string]bool{"cancelado": true})
+	default:
+		writeJSON(w, http.StatusOK, map[string]string{"caminho": caminho})
+	}
 }

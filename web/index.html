@@ -276,6 +276,10 @@ input[type=radio]{accent-color:var(--ink-brand);width:18px;height:18px;margin:0}
 .dbf{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--space-4)}
 .dbf .wide{grid-column:1 / -1}
 .dbf label{margin:var(--space-4) 0 var(--space-2)}
+.dbf [hidden]{display:none}
+.dbf__pasta{display:flex;gap:var(--space-3);align-items:center}
+.dbf__pasta input{flex:1;min-width:0}
+.dbf__pasta button{flex:none}
 select{width:100%;height:44px;background:var(--surface-raised);color:var(--ink);border:1px solid var(--border-field);border-radius:var(--radius-sm);padding:0 var(--space-3);font:400 15px/24px var(--font-sans)}
 input:disabled,select:disabled{background:var(--surface-100);color:var(--ink-muted);cursor:not-allowed}
 .lnk{font:600 13px/20px var(--font-sans);color:var(--ink-brand)}
@@ -632,14 +636,16 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
           <option value="dbf">DBF</option>
           <option value="excel">Planilhas Excel</option>
         </select></div>
-      <div><label for="dbHost">Host</label><input type="text" id="dbHost" spellcheck="false" autocomplete="off"></div>
-      <div><label for="dbPorta">Porta</label><input type="text" id="dbPorta" inputmode="numeric" autocomplete="off"></div>
-      <div><label for="dbBase" id="dbBaseLabel">Base de dados</label><input type="text" id="dbBase" spellcheck="false" autocomplete="off"></div>
-      <div><label for="dbUsuario">Usuário</label><input type="text" id="dbUsuario" spellcheck="false" autocomplete="off"></div>
-      <div><label for="dbSenha">Senha</label><input type="password" id="dbSenha" autocomplete="new-password"></div>
-      <div><label for="dbSchema">Schema</label><input type="text" id="dbSchema" spellcheck="false" autocomplete="off"></div>
+      <div data-campo="host"><label for="dbHost">Host</label><input type="text" id="dbHost" spellcheck="false" autocomplete="off"></div>
+      <div data-campo="porta"><label for="dbPorta">Porta</label><input type="text" id="dbPorta" inputmode="numeric" autocomplete="off"></div>
+      <div data-campo="base"><label for="dbBase" id="dbBaseLabel">Base de dados</label>
+        <div class="dbf__pasta"><input type="text" id="dbBase" spellcheck="false" autocomplete="off"><button type="button" class="contorno" id="bDbPasta" hidden>Escolher pasta</button></div>
+        <div class="hint" id="dbPastaAviso" role="status" hidden></div></div>
+      <div data-campo="usuario"><label for="dbUsuario">Usuário</label><input type="text" id="dbUsuario" spellcheck="false" autocomplete="off"></div>
+      <div data-campo="senha"><label for="dbSenha">Senha</label><input type="password" id="dbSenha" autocomplete="new-password"></div>
+      <div data-campo="schema"><label for="dbSchema">Schema</label><input type="text" id="dbSchema" spellcheck="false" autocomplete="off"></div>
     </form>
-    <div class="hint">Use uma conta somente leitura. A senha fica só neste computador e nunca volta para a tela.</div>
+    <div class="hint" id="dbAviso">Use uma conta somente leitura. A senha fica só neste computador e nunca volta para a tela.</div>
     <dl class="kv" id="tbStatus"></dl>
     <div class="hint" id="tbHint"></div>
     <details class="tool" id="tbIgnoradas" style="display:none"><summary></summary><ul class="inner"></ul></details>
@@ -2612,15 +2618,45 @@ async function refreshCtl(timeoutMs){
   syncAtualizar();
 }
 function readDbForm(){ const f = {}; for(const k in DB_FIELDS) f[k] = $(DB_FIELDS[k]).value; return f; }
-// Exemplos por motor e porta padrão. A senha guarda o aviso de "senha salva" do fillDbForm.
+// Campos, exemplos e porta padrão do motor. Os campos que o motor não usa somem (o que estiver
+// digitado neles fica guardado para quando a pessoa voltar ao motor, mas não vai no salvamento).
+// A senha guarda o aviso de "senha salva" do fillDbForm.
+const AVISO_SERVIDOR = 'Use uma conta somente leitura. A senha fica só neste computador e nunca volta para a tela.';
+const AVISO_PASTA = 'Escolha a pasta ou cole o caminho. Pode vir com aspas, do jeito que o "Copiar como caminho" do Windows copia.';
 function syncDbForm(){
-  const m = $('#dbMotor').value;
+  const m = $('#dbMotor').value, usa = CD2Toolbox.camposDoMotor(m), pasta = CD2Toolbox.motorArquivo(m);
+  document.querySelectorAll('#dbForm [data-campo]').forEach(el => { el.hidden = !usa.includes(el.dataset.campo); });
+  $('#dbForm [data-campo=base]').classList.toggle('wide', pasta);
+  $('#bDbPasta').hidden = !pasta;
+  if(!pasta) $('#dbPastaAviso').hidden = true;
+  $('#dbAviso').textContent = pasta ? AVISO_PASTA : AVISO_SERVIDOR;
   const d = CD2Toolbox.defaultsFor(m, $('#dbUsuario').value.trim(), $('#dbBase').value.trim());
   const p = CD2Toolbox.placeholdersFor(m, $('#dbUsuario').value.trim(), $('#dbBase').value.trim());
   $('#dbHost').placeholder = p.host; $('#dbBase').placeholder = p.base; $('#dbUsuario').placeholder = p.usuario;
   $('#dbPorta').placeholder = String(d.porta); $('#dbSchema').placeholder = p.schema;
   if(!st.dbSenhaSalva) $('#dbSenha').placeholder = p.senha;
-  $('#dbBaseLabel').textContent = m === 'oracle' ? 'Service name' : (m === 'firebird' ? 'Arquivo do banco' : (m === 'dbf' ? 'Pasta dos arquivos' : (m === 'excel' ? 'Pasta das planilhas' : 'Base de dados')));
+  $('#dbBaseLabel').textContent = CD2Toolbox.rotuloBase(m);
+}
+// Escolher pasta (DBF e Planilhas): o cd2-ctl abre o seletor de pastas do sistema, porque o
+// navegador não entrega o caminho completo da pasta. Escolheu, o caminho vai para o campo.
+async function escolherPasta(){
+  const b = $('#bDbPasta'), aviso = $('#dbPastaAviso');
+  if(st.dbEscolhendo) return;
+  st.dbEscolhendo = true; b.disabled = true; b.textContent = 'Abrindo…'; aviso.hidden = true;
+  const avisar = t => { aviso.textContent = t; aviso.hidden = false; };
+  try{
+    const r = await ctlRequest('POST', '/escolher-pasta', { inicial:$('#dbBase').value.trim() });
+    if(r.status === 200){
+      // cancelado: o campo fica como estava
+      if(r.data.caminho){ $('#dbBase').value = r.data.caminho; syncDbForm(); $('#dbBase').focus(); }
+    }else if(r.status === 404) avisar('Esta versão do controle do banco não abre o seletor de pastas. Cole o caminho da pasta no campo.');
+    else avisar(r.data.erro || 'Não consegui abrir o seletor de pastas. Cole o caminho da pasta no campo.');
+  }catch(e){
+    avisar('O controle do banco não respondeu. Cole o caminho da pasta no campo.');
+  }finally{
+    st.dbEscolhendo = false; b.textContent = 'Escolher pasta';
+    b.disabled = !(st.ctlUp && !st.ctlBusy);
+  }
 }
 function onDbMotorChange(){ $('#dbPorta').value = CD2Toolbox.portFor($('#dbMotor').value, $('#dbPorta').value); syncDbForm(); }
 // Preenche com o /status (ou limpa, com s nulo). A senha nunca vem: só o aviso de que há uma salva.
@@ -2668,6 +2704,7 @@ function renderToolbox(){
   }
   const on = st.ctlUp && !st.ctlBusy;
   for(const k in DB_FIELDS) $(DB_FIELDS[k]).disabled = !on;
+  if(!st.dbEscolhendo) $('#bDbPasta').disabled = !on;
   $('#bDbOff').style.display = (on && cs && cs.motor) ? '' : 'none';
   $('#bPerfilPdf').style.display = st.catalog ? '' : 'none';
   syncAtualizar();  // o título do ↻ Atualizar depende do motor
@@ -3049,6 +3086,7 @@ document.querySelectorAll('input[name=mode]').forEach(r => r.onchange = syncCfgB
 $('#bLogin').onclick = loginArcheo;
 $('#bLogout').onclick = logoutArcheo;
 $('#dbMotor').onchange = onDbMotorChange;
+$('#bDbPasta').onclick = escolherPasta;
 $('#dbUsuario').addEventListener('input', syncDbForm);
 $('#dbBase').addEventListener('input', syncDbForm);
 $('#bDbOff').onclick = disconnectDb;

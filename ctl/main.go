@@ -26,6 +26,7 @@ import (
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/control"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/inst"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/notas"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/pasta"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/toolbox"
 )
 
@@ -109,9 +110,10 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	instalacao := inst.New(*root, *cache)
 	srv := &http.Server{
 		Handler: api.Handler(api.Options{Key: key, HarnessPort: *hport, CtlPort: ctlPort, Instalacao: instalacao,
-			Notas:        notas.New(*cache),
-			Entendimento: notas.NewEntendimento(*cache),
-			PodeImportar: func() bool { return instalacao.Info().Origem == "instalada" },
+			Notas:         notas.New(*cache),
+			Entendimento:  notas.NewEntendimento(*cache),
+			PodeImportar:  func() bool { return instalacao.Info().Origem == "instalada" },
+			EscolherPasta: pasta.Escolher,
 		}, ctl),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

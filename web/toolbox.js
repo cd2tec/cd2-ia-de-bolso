@@ -13,6 +13,14 @@ const ENGINES = {
   dbf:       { label:'DBF',             port:0 },
   excel:     { label:'Planilhas Excel', port:0 }
 };
+// Campos do formulário que cada motor usa, na ordem da tela. Os motores de pasta (DBF e Planilhas)
+// só têm o caminho da pasta; o Firebird não tem schema.
+const CAMPOS_SERVIDOR = ['host', 'porta', 'base', 'usuario', 'senha', 'schema'];
+const CAMPOS = {
+  postgres: CAMPOS_SERVIDOR, oracle: CAMPOS_SERVIDOR, mariadb: CAMPOS_SERVIDOR, sqlserver: CAMPOS_SERVIDOR,
+  firebird: ['host', 'porta', 'base', 'usuario', 'senha'],
+  dbf: ['base'], excel: ['base']
+};
 // Exemplos dos campos do formulário do banco. Só exemplos genéricos: nada de
 // host, usuário ou senha reais, que circulariam com o pen drive.
 const PLACEHOLDERS = {
@@ -21,8 +29,8 @@ const PLACEHOLDERS = {
   mariadb:   { host:'ex.: mysql.empresa.local', base:'ex.: erp',      usuario:'ex.: leitura_ro' },
   sqlserver: { host:'ex.: mssql.empresa.local', base:'ex.: ERP',      usuario:'ex.: leitura_ro' },
   firebird:  { host:'ex.: 192.168.0.10',        base:'ex.: C:\\dados\\erp.fdb', usuario:'ex.: LEITURA_RO' },
-  dbf:       { host:'ex.: nao usado',            base:'ex.: C:\\dados\\loja',    usuario:'ex.: nao usado' },
-  excel:     { host:'ex.: nao usado',            base:'ex.: C:\\Controle da loja', usuario:'ex.: nao usado' }
+  dbf:       { base:'ex.: C:\\dados\\loja' },
+  excel:     { base:'ex.: C:\\Controle da loja' }
 };
 const TOOL_DESCRIPTIONS = {
   db_catalog:           'Lê o mapa do banco (tabelas e colunas) para o roteiro de relatórios.',
@@ -42,6 +50,12 @@ const FORBIDDEN = new RegExp('\\b(' + [
   'pg_read_file','pg_read_binary_file','pg_write\\w*','pg_sleep\\w*'
 ].join('|') + ')\\b', 'i');
 
+// Campos do formulário que o motor usa ([] para motor desconhecido).
+function camposDoMotor(motor){ return (CAMPOS[motor] || []).slice(); }
+// Rótulo do campo "base" no formulário e no resumo da conexão.
+function rotuloBase(motor){
+  return { oracle:'Service name', firebird:'Arquivo do banco', dbf:'Pasta dos arquivos', excel:'Pasta das planilhas' }[motor] || 'Base de dados';
+}
 function engineLabel(e){ return (ENGINES[e] && ENGINES[e].label) || 'Banco de dados'; }
 function urlFor(loc){ const p = parseInt(loc.port, 10) || 80; return 'http://127.0.0.1:' + (p + 1000) + '/mcp'; }
 
@@ -101,14 +115,16 @@ function parseStatus(text){
 function bancoAtivo(statusTxt, catalogo){
   return !!parseStatus(statusTxt) && !!(catalogo && catalogo.ok);
 }
+// Nos motores de pasta a "versão" é a do SQLite em que as tabelas foram montadas: não entra.
 function statusLines(s){
   const v = x => (x == null ? '' : String(x));
-  return [
-    ['Motor', engineLabel(s.engine)],
-    ['Versão', v(s.db_version).split('\n')[0].trim()],
-    ['Host', v(s.host)], ['Base', v(s.database)], ['Usuário', v(s.user)], ['Schema', v(s.schema)],
-    ['Tabelas visíveis', v(s.visible_tables)]
-  ];
+  const pasta = motorArquivo(s.engine);
+  return linhasDoMotor(s.engine, [
+    ['', 'Motor', engineLabel(s.engine)],
+    [pasta ? 'nenhum' : '', 'Versão', v(s.db_version).split('\n')[0].trim()],
+    ['host', 'Host', v(s.host)], ['base', pasta ? 'Pasta' : 'Base', v(s.database)], ['usuario', 'Usuário', v(s.user)], ['schema', 'Schema', v(s.schema)],
+    ['', 'Tabelas visíveis', v(s.visible_tables)]
+  ]);
 }
 
 /* ---------- cd2-ctl: controle do banco na porta do harness + 3000 ---------- */
@@ -128,13 +144,18 @@ function defaultsFor(motor, usuario, base){
   return { porta:e.port, schema };
 }
 // Exemplos do formulário para o motor. O schema repete a regra do defaultsFor e,
-// quando ela depende de um campo ainda vazio, usa o exemplo desse campo.
+// quando ela depende de um campo ainda vazio, usa o exemplo desse campo. Campo que o
+// motor não usa fica sem exemplo (nem aparece na tela).
 function placeholdersFor(motor, usuario, base){
   const p = PLACEHOLDERS[motor];
   if(!p) return { host:'', base:'', usuario:'', senha:'', schema:'' };
-  const d = defaultsFor(motor, usuario, base);
-  const fallback = { oracle:'LEITURA_RO', mariadb:'erp', firebird:'nao usado', dbf:'nao usado', excel:'nao usado' }[motor] || '';
-  return { host:p.host, base:p.base, usuario:p.usuario, senha:'Senha da conta de leitura', schema:'ex.: ' + (d.schema || fallback) };
+  const usa = camposDoMotor(motor), d = defaultsFor(motor, usuario, base);
+  const fallback = { oracle:'LEITURA_RO', mariadb:'erp' }[motor] || '';
+  return {
+    host: p.host || '', base: p.base || '', usuario: p.usuario || '',
+    senha: usa.includes('senha') ? 'Senha da conta de leitura' : '',
+    schema: usa.includes('schema') ? 'ex.: ' + (d.schema || fallback) : ''
+  };
 }
 // Porta ao trocar de motor: vazia ou ainda na porta padrão de algum motor vira a
 // padrão do motor novo; porta digitada pela pessoa fica como está.
@@ -146,22 +167,32 @@ function portFor(motor, atual){
   return (a === '' || padrao) ? String(e.port) : a;
 }
 // Corpo de POST /config. A senha não é aparada (espaço pode fazer parte dela) e só vai se
-// foi digitada: vazia significa "manter a salva".
+// foi digitada: vazia significa "manter a salva". Só vão os campos que o motor usa: o que ficou
+// digitado num campo escondido (de outro motor) não é salvo.
 function configPayload(form){
   const t = v => String(v == null ? '' : v).trim();
-  const out = { motor:t(form.motor), host:t(form.host), base:t(form.base), usuario:t(form.usuario), schema:t(form.schema) };
+  const motor = t(form.motor), usa = CAMPOS[motor] || CAMPOS_SERVIDOR;
+  const out = { motor };
+  for(const k of ['host', 'base', 'usuario', 'schema']) if(usa.includes(k)) out[k] = t(form[k]);
   const p = t(form.porta);
-  if(p) out.porta = /^\d+$/.test(p) ? Number(p) : p;
+  if(p && usa.includes('porta')) out.porta = /^\d+$/.test(p) ? Number(p) : p;
   const s = form.senha == null ? '' : String(form.senha);
-  if(s) out.senha = s;
+  if(s && usa.includes('senha')) out.senha = s;
   return out;
+}
+// Linhas do resumo da conexão só com o que o motor usa: nos motores de pasta, o motor e a pasta.
+function linhasDoMotor(motor, linhas){
+  const usa = CAMPOS[motor];
+  if(!usa) return linhas.map(l => [l[1], l[2]]);
+  return linhas.filter(l => !l[0] || usa.includes(l[0])).map(l => [l[1], l[2]]);
 }
 function ctlStatusLines(cs){
   const v = x => (x == null ? '' : String(x));
-  return [
-    ['Motor', engineLabel(cs.motor)], ['Host', v(cs.host)], ['Porta', v(cs.porta)],
-    ['Base', v(cs.base)], ['Usuário', v(cs.usuario)], ['Schema', v(cs.schema)]
-  ];
+  return linhasDoMotor(cs.motor, [
+    ['', 'Motor', engineLabel(cs.motor)], ['host', 'Host', v(cs.host)], ['porta', 'Porta', v(cs.porta)],
+    ['base', CAMPOS[cs.motor] && motorArquivo(cs.motor) ? 'Pasta' : 'Base', v(cs.base)],
+    ['usuario', 'Usuário', v(cs.usuario)], ['schema', 'Schema', v(cs.schema)]
+  ]);
 }
 
 // Motores que leem uma pasta de arquivos em vez de falar com um servidor.
@@ -187,6 +218,6 @@ function ignoradasLinhas(p){
 }
 
 const api = { ENGINES, TOOL_DESCRIPTIONS, engineLabel, urlFor, guardSql, prepareSql, parseStatus, bancoAtivo, statusLines,
-  UNSAFE_PORTS, ctlUrlFor, readKeyFromHash, defaultsFor, placeholdersFor, portFor, configPayload, ctlStatusLines, motorArquivo, planilhasLinha, ignoradasLinhas };
+  UNSAFE_PORTS, ctlUrlFor, readKeyFromHash, defaultsFor, placeholdersFor, portFor, camposDoMotor, rotuloBase, configPayload, ctlStatusLines, motorArquivo, planilhasLinha, ignoradasLinhas };
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else root.CD2Toolbox = api;
 })(typeof window !== 'undefined' ? window : globalThis);
