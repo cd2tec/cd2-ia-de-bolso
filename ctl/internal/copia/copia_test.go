@@ -94,12 +94,24 @@ func TestGravarSubstituiDestinoAnterior(t *testing.T) {
 	}
 }
 
-// O SQLite reserva os nomes que começam com sqlite_ (em qualquer caixa): CREATE TABLE sqlite_x falha.
-func TestIdentificadorFogeDoPrefixoReservado(t *testing.T) {
-	casos := map[string]string{"sqlite_x": "T_sqlite_x", "SQLite_Vendas": "T_SQLite_Vendas", "sqlite x": "T_sqlite_x", "sqlitex": "sqlitex"}
-	for in, want := range casos {
-		if got := Identificador(in); got != want {
-			t.Errorf("%q: %q != %q", in, got, want)
-		}
+// O prefixo reservado vale para o nome final da tabela, montado depois do Identificador
+// (base + "__" + aba): sqlite.xlsx com duas abas vira sqlite__Aba1.
+func TestUnicoFogeDoPrefixoReservado(t *testing.T) {
+	usados := map[string]int{}
+	if got := Unico("sqlite__Aba1", usados); got != "T_sqlite__Aba1" {
+		t.Errorf("got %q", got)
+	}
+	if got := Unico("SQLITE_x", usados); got != "T_SQLITE_x" {
+		t.Errorf("got %q", got)
+	}
+	// repetido: o T_ entra antes da checagem de colisão, então o sufixo vai no nome já corrigido
+	if got := Unico("sqlite__Aba1", usados); got != "T_sqlite__Aba1_2" {
+		t.Errorf("got %q", got)
+	}
+	if got := Unico("sqlitex", usados); got != "sqlitex" {
+		t.Errorf("got %q", got)
+	}
+	if got := Unico("SQLite_Vendas", map[string]int{}); got != "T_SQLite_Vendas" {
+		t.Errorf("got %q", got)
 	}
 }

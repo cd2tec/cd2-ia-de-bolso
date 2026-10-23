@@ -691,3 +691,25 @@ func TestImportFormulaComValorGravado(t *testing.T) {
 		t.Fatalf("Total: %d", total)
 	}
 }
+
+// sqlite.xlsx com duas abas gera sqlite__Aba1, que o SQLite reserva: o nome final ganha T_.
+func TestImportNomeReservadoDoSqlite(t *testing.T) {
+	dir := t.TempDir()
+	novaPlanilha(t, filepath.Join(dir, "sqlite.xlsx"), func(f *excelize.File) {
+		deve(t, f.SetSheetName("Sheet1", "Aba1"))
+		deve(t, f.SetSheetRow("Aba1", "A1", &[]any{"Loja", "Valor"}))
+		deve(t, f.SetSheetRow("Aba1", "A2", &[]any{"Centro", 100}))
+		_, err := f.NewSheet("Aba2")
+		deve(t, err)
+		deve(t, f.SetSheetRow("Aba2", "A1", &[]any{"Loja", "Valor"}))
+		deve(t, f.SetSheetRow("Aba2", "A2", &[]any{"Norte", 50}))
+	})
+	destino := filepath.Join(dir, "out", "planilhas.sqlite")
+	if _, err := Import(dir, destino); err != nil {
+		t.Fatal(err)
+	}
+	got := tabelasDe(t, abrir(t, destino))
+	if len(got) != 2 || !strings.HasPrefix(got[0], "T_sqlite__") || !strings.HasPrefix(got[1], "T_sqlite__") {
+		t.Fatalf("tabelas: %v", got)
+	}
+}

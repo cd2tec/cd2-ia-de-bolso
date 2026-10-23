@@ -365,3 +365,68 @@ func TestCabecalhoSemNomeUtilViraColunaPelaLetra(t *testing.T) {
 	}
 	esperaColunas(t, cols, col("Coluna_A", "INTEGER"), col("Produto", "TEXT"), col("Coluna_C", "INTEGER"), col("T_2024", "INTEGER"))
 }
+
+// Primeira linha de dados mais larga que o cabeçalho (coluna de código sem título na frente, ou uma
+// anotação solta na cauda) não troca o cabeçalho: só título de até 2 células deixa a escolha descer.
+func TestDadoMaisLargoNaoTrocaOCabecalho(t *testing.T) {
+	t.Run("coluna de codigo sem titulo", func(t *testing.T) {
+		grade := [][]Celula{
+			{vazia(), txt("Nome"), txt("Telefone"), txt("Cidade")},
+			{num(1), txt("João"), txt("9999-1234"), txt("Curitiba")},
+			{num(2), txt("Maria"), txt("9888-0000"), txt("Londrina")},
+		}
+		cols, linhas, motivo := analisarAba(grade)
+		if motivo != "" {
+			t.Fatal(motivo)
+		}
+		esperaColunas(t, cols, col("Coluna_A", "INTEGER"), col("Nome", "TEXT"), col("Telefone", "TEXT"), col("Cidade", "TEXT"))
+		if len(linhas) != 2 {
+			t.Fatalf("linhas: %v", linhas)
+		}
+	})
+	t.Run("anotacao na cauda da primeira linha", func(t *testing.T) {
+		grade := [][]Celula{
+			{txt("Data"), txt("Produto"), txt("Qtd")},
+			{data(2026, 9, 1), txt("Arroz"), num(2), txt("pago")},
+			{data(2026, 9, 2), txt("Feijão"), num(1)},
+		}
+		cols, linhas, motivo := analisarAba(grade)
+		if motivo != "" {
+			t.Fatal(motivo)
+		}
+		esperaColunas(t, cols, col("Data", "DATE"), col("Produto", "TEXT"), col("Qtd", "INTEGER"))
+		if len(linhas) != 2 {
+			t.Fatalf("linhas: %v", linhas)
+		}
+	})
+	t.Run("anotacao na unica linha de dados", func(t *testing.T) {
+		grade := [][]Celula{
+			{txt("Nome"), txt("Telefone"), txt("Cidade")},
+			{txt("João"), txt("9999-1234"), txt("Curitiba"), txt("cliente antigo")},
+		}
+		cols, _, motivo := analisarAba(grade)
+		if motivo != "" {
+			t.Fatal(motivo)
+		}
+		esperaColunas(t, cols, col("Nome", "TEXT"), col("Telefone", "TEXT"), col("Cidade", "TEXT"))
+	})
+}
+
+// Título de duas células, linha em branco e cabeçalho de 3 colunas: a trava de "no máximo 2 células
+// em cima" ainda deixa descer.
+func TestTituloDeDuasCelulasComLinhaEmBrancoSobreCabecalho(t *testing.T) {
+	grade := [][]Celula{
+		{txt("Controle de Vendas"), num(2026)},
+		{},
+		{txt("Data"), txt("Produto"), txt("Qtd")},
+		{data(2026, 9, 1), txt("Arroz"), num(2)},
+	}
+	cols, linhas, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	esperaColunas(t, cols, col("Data", "DATE"), col("Produto", "TEXT"), col("Qtd", "INTEGER"))
+	if len(linhas) != 1 {
+		t.Fatalf("linhas: %v", linhas)
+	}
+}

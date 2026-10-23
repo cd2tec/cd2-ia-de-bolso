@@ -57,6 +57,14 @@ func analisarAba(grade [][]Celula) (colunas []copia.Coluna, linhas [][]any, moti
 		return nil, nil, MotivoSemCabecalho
 	}
 	ini, fim := extensao(grade[cab])
+	// Coluna de código sem título ([, Nome, Telefone] / [1, João, 9999-1234]): se a primeira linha de dados
+	// começa mais à esquerda que o cabeçalho, a coluna entra, com o nome pela letra. À direita não
+	// estendo: o que passa da largura do cabeçalho é anotação solta.
+	if k := proximaPreenchida(grade, cab); k >= 0 {
+		if iniDado, _ := extensao(grade[k]); iniDado >= 0 && iniDado < ini {
+			ini = iniDado
+		}
+	}
 
 	usados := map[string]int{}
 	nomes := make([]string, 0, fim-ini+1)
@@ -139,9 +147,15 @@ func nomeDaColuna(c Celula, j int) string {
 	return id
 }
 
-// acharCabecalho pega a primeira candidata e, enquanto a próxima linha preenchida (a até 2 linhas)
-// também for candidata e mais larga, desce para ela: título de duas células ([Controle de Vendas,
-// 2026]) passa por candidata, mas o cabeçalho de verdade vem logo abaixo e ocupa mais colunas.
+// maxCelulasDeTitulo é quantas células preenchidas tem, no máximo, uma linha de título ([Controle de
+// Vendas, 2026]); só uma linha assim deixa a escolha do cabeçalho descer.
+const maxCelulasDeTitulo = 2
+
+// acharCabecalho pega a primeira candidata e, enquanto ela tiver no máximo 2 células preenchidas (cara
+// de título) e a próxima linha preenchida (a até 2 linhas) também for candidata e mais larga, desce para
+// ela: o título passa por candidato, mas o cabeçalho de verdade vem logo abaixo e ocupa mais colunas.
+// Linha de 3 células ou mais já é cabeçalho: a primeira linha de dados mais larga (coluna de código sem
+// título, anotação na cauda) não o substitui.
 func acharCabecalho(grade [][]Celula) int {
 	for i := 0; i < len(grade) && i < linhasDeBusca; i++ {
 		if !ehCandidata(grade, i) {
@@ -149,7 +163,7 @@ func acharCabecalho(grade [][]Celula) int {
 		}
 		for {
 			k := proximaPreenchida(grade, i)
-			if k < 0 || k >= linhasDeBusca || !ehCandidata(grade, k) || largura(grade[k]) <= largura(grade[i]) {
+			if celulasPreenchidas(grade[i]) > maxCelulasDeTitulo || k < 0 || k >= linhasDeBusca || !ehCandidata(grade, k) || largura(grade[k]) <= largura(grade[i]) {
 				return i
 			}
 			i = k
@@ -166,6 +180,17 @@ func proximaPreenchida(grade [][]Celula, i int) int {
 		}
 	}
 	return -1
+}
+
+// celulasPreenchidas conta as células não vazias da linha.
+func celulasPreenchidas(l []Celula) int {
+	n := 0
+	for _, c := range l {
+		if c.Tipo != Vazia {
+			n++
+		}
+	}
+	return n
 }
 
 // largura conta da primeira à última célula preenchida da linha.

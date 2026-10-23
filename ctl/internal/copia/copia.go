@@ -96,7 +96,7 @@ func SemAcento(s string) string {
 
 // Identificador transforma um nome qualquer num identificador SQL simples: tira o acento, troca
 // espaço, hífen, ponto e barra por "_", descarta o resto e limita a 60 caracteres. Ganha o prefixo
-// T_ quando começaria com dígito ou com sqlite_, que o SQLite reserva (CREATE TABLE sqlite_x falha).
+// T_ quando começaria com dígito. O prefixo reservado sqlite_ fica por conta do Unico, que vê o nome final.
 func Identificador(s string) string {
 	var b strings.Builder
 	for _, r := range SemAcento(s) {
@@ -112,7 +112,7 @@ func Identificador(s string) string {
 		out = strings.ReplaceAll(out, "__", "_")
 	}
 	out = strings.Trim(out, "_")
-	if out == "" || out[0] >= '0' && out[0] <= '9' || strings.HasPrefix(strings.ToLower(out), "sqlite_") {
+	if out == "" || out[0] >= '0' && out[0] <= '9' {
 		out = "T_" + out
 	}
 	if len(out) > 60 {
@@ -121,8 +121,14 @@ func Identificador(s string) string {
 	return out
 }
 
-// Unico devolve nome sem repetir um já usado (o SQLite ignora a caixa), anotando-o em usados.
+// Unico devolve nome sem repetir um já usado (o SQLite ignora a caixa), anotando-o em usados. O nome que
+// começa com sqlite_ (em qualquer caixa) ganha T_ antes da checagem, porque o SQLite o reserva
+// (CREATE TABLE sqlite_x falha); a regra mora aqui, e não no Identificador, porque o nome final da
+// tabela (arquivo + "__" + aba) só existe depois dele.
 func Unico(nome string, usados map[string]int) string {
+	if strings.HasPrefix(strings.ToLower(nome), "sqlite_") {
+		nome = "T_" + nome
+	}
 	base := nome
 	for {
 		chave := strings.ToUpper(base)
