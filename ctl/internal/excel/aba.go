@@ -152,6 +152,9 @@ func nomeDaColuna(c Celula, j int) string {
 // Vendas, 2026]).
 const maxCelulasDeTitulo = 2
 
+// linhasDeDadoNaDescida é quantas linhas preenchidas abaixo de k a condição (c) de podeDescer examina.
+const linhasDeDadoNaDescida = 5
+
 // acharCabecalho pega a primeira candidata e repete a descida enquanto podeDescer disser que sim: o
 // título passa por candidato, mas o cabeçalho de verdade vem logo abaixo e ocupa mais colunas.
 func acharCabecalho(grade [][]Celula) int {
@@ -171,15 +174,16 @@ func acharCabecalho(grade [][]Celula) int {
 }
 
 // podeDescer diz se o cabeçalho passa da candidata i para a próxima linha preenchida k. Valem as três:
-//   - toda célula preenchida de k tem cara de título (pareceParteDeTitulo): uma primeira linha de dados
-//     com número ou anotação ([Arroz, 10, promo]) não troca o cabeçalho;
+//   - toda célula preenchida de k tem cara de título (pareceParteDeTitulo; célula de erro, como #REF!,
+//     conta): uma primeira linha de dados com número ou anotação ([Arroz, 10, promo]) não troca o cabeçalho;
 //   - k é mais larga que i;
 //   - i tem no máximo 2 células (forma de título) ou a linha de dados logo abaixo de k ocupa alguma coluna
-//     fora da extensão de i: metadados de 3 células ou mais ([Loja:, Centro, Mês:, Setembro]) sobre um
+//     fora da extensão de i (olho até linhasDeDadoNaDescida linhas preenchidas, porque a primeira pode ser
+//     curta): metadados de 3 células ou mais ([Loja:, Centro, Mês:, Setembro]) sobre um
 //     cabeçalho mais largo descem, pois o dado não cabe na largura deles.
 func podeDescer(grade [][]Celula, i, k int) bool {
 	for _, c := range grade[k] {
-		if c.Tipo != Vazia && !pareceParteDeTitulo(c) {
+		if c.Tipo != Vazia && c.Tipo != Erro && !pareceParteDeTitulo(c) {
 			return false
 		}
 	}
@@ -189,13 +193,19 @@ func podeDescer(grade [][]Celula, i, k int) bool {
 	if celulasPreenchidas(grade[i]) <= maxCelulasDeTitulo {
 		return true
 	}
-	d := proximaPreenchida(grade, k)
-	if d < 0 {
-		return false
-	}
 	ini, fim := extensao(grade[i])
-	di, df := extensao(grade[d])
-	return di < ini || df > fim
+	vistas := 0
+	for d := k + 1; d < len(grade) && vistas < linhasDeDadoNaDescida; d++ {
+		if linhaVazia(grade[d]) {
+			continue
+		}
+		vistas++
+		di, df := extensao(grade[d])
+		if di < ini || df > fim {
+			return true
+		}
+	}
+	return false
 }
 
 // proximaPreenchida é a primeira linha não vazia logo abaixo de i, a até 2 linhas; -1 se não há.

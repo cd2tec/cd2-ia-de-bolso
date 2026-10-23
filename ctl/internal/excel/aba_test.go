@@ -504,3 +504,39 @@ func TestRecuoDaColunaSoPorCelulasContiguas(t *testing.T) {
 		t.Fatalf("linhas: %v", linhas)
 	}
 }
+
+// A condição (c) da descida olha várias linhas de dados, não só a primeira: aqui a primeira cabe na
+// extensão do metadado e só a segunda ocupa a coluna Valor.
+func TestDescidaOlhaVariasLinhasDeDado(t *testing.T) {
+	grade := [][]Celula{
+		{txt("Loja Centro"), txt("Setembro"), num(2026)},
+		{txt("Data"), txt("Produto"), txt("Qtd"), txt("Valor")},
+		{data(2026, 9, 1), txt("Arroz"), num(2)},
+		{data(2026, 9, 2), txt("Feijão"), num(1), num(8)},
+	}
+	cols, linhas, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	esperaColunas(t, cols, col("Data", "DATE"), col("Produto", "TEXT"), col("Qtd", "INTEGER"), col("Valor", "INTEGER"))
+	if len(linhas) != 2 {
+		t.Fatalf("linhas: %v", linhas)
+	}
+}
+
+// Célula de erro (#REF!) no cabeçalho não bloqueia a descida: conta como título e a coluna sai pela letra.
+func TestErroNoCabecalhoNaoBloqueiaADescida(t *testing.T) {
+	grade := [][]Celula{
+		{txt("Controle de Vendas"), num(2026)},
+		{txt("Data"), txt("Produto"), {Tipo: Erro, Texto: "#REF!"}, txt("Valor")},
+		{data(2026, 9, 1), txt("Arroz"), num(2), num(10.5)},
+	}
+	cols, linhas, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	esperaColunas(t, cols, col("Data", "DATE"), col("Produto", "TEXT"), col("Coluna_C", "INTEGER"), col("Valor", "NUMERIC"))
+	if len(linhas) != 1 {
+		t.Fatalf("linhas: %v", linhas)
+	}
+}
