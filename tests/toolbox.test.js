@@ -182,12 +182,16 @@ test('placeholdersFor: exemplos genéricos por motor, sem credencial', () => {
   assert.equal(T.placeholdersFor('mariadb', '', 'loja').schema, 'ex.: loja');
   assert.equal(T.placeholdersFor('sqlserver', '', '').schema, 'ex.: dbo');
   assert.equal(T.placeholdersFor('firebird', '', '').base, 'ex.: C:\\dados\\erp.fdb');
-  assert.equal(T.placeholdersFor('firebird', '', '').schema, 'ex.: nao usado');
+  assert.equal(T.placeholdersFor('firebird', '', '').schema, '');
   assert.equal(T.placeholdersFor('dbf', '', '').base, 'ex.: C:\\dados\\loja');
-  assert.equal(T.placeholdersFor('dbf', '', '').schema, 'ex.: nao usado');
+  assert.equal(T.placeholdersFor('dbf', '', '').schema, '');
   for(const m of Object.keys(T.ENGINES)){
-    const p = T.placeholdersFor(m, '', '');
-    for(const k of ['host', 'base', 'usuario', 'schema']) assert.match(p[k], /^ex\.: /, m + '.' + k);
+    const p = T.placeholdersFor(m, '', ''), usa = T.camposDoMotor(m);
+    for(const k of ['host', 'base', 'usuario', 'schema']){
+      if(usa.includes(k)) assert.match(p[k], /^ex\.: /, m + '.' + k);
+      else assert.equal(p[k], '', m + '.' + k + ' não aparece, não tem exemplo');
+    }
+    assert.doesNotMatch(Object.values(p).join(' '), /nao usado/, m);
   }
   assert.deepEqual(T.placeholdersFor('xpto', '', ''), { host:'', base:'', usuario:'', senha:'', schema:'' });
 });
@@ -228,7 +232,7 @@ test('excel: rótulo, porta 0, schema vazio e placeholders', () => {
   assert.equal(T.engineLabel('excel'), 'Planilhas Excel');
   assert.deepEqual(T.defaultsFor('excel', '', 'C:\\Controle da loja'), { porta:0, schema:'' });
   const p = T.placeholdersFor('excel', '', '');
-  assert.equal(p.base, 'ex.: C:\\Controle da loja'); assert.equal(p.host, 'ex.: nao usado'); assert.equal(p.schema, 'ex.: nao usado');
+  assert.equal(p.base, 'ex.: C:\\Controle da loja'); assert.equal(p.host, ''); assert.equal(p.schema, '');
   assert.equal(T.configPayload({ motor:'excel', base:' C:\\x ', host:'', usuario:'', schema:'', senha:'' }).base, 'C:\\x');
 });
 test('motorArquivo, planilhasLinha e ignoradasLinhas', () => {
@@ -252,4 +256,39 @@ test('planilhasLinha termina com a hora da leitura quando lido_em é data válid
   assert.equal(T.planilhasLinha({ arquivos:2, tabelas:3, lido_em:lido }), '2 arquivos, 3 abas viraram tabelas às ' + hhmm);
   for(const ruim of [undefined, null, '', 'ontem', '0001-01-01T00:00:00Z'])
     assert.equal(T.planilhasLinha({ arquivos:1, tabelas:1, lido_em:ruim }), '1 arquivo, 1 aba virou tabela', String(ruim));
+});
+
+test('camposDoMotor e rotuloBase: cada motor mostra só os seus campos', () => {
+  const servidor = ['host', 'porta', 'base', 'usuario', 'senha', 'schema'];
+  for(const m of ['postgres', 'oracle', 'mariadb', 'sqlserver']) assert.deepEqual(T.camposDoMotor(m), servidor, m);
+  assert.deepEqual(T.camposDoMotor('firebird'), ['host', 'porta', 'base', 'usuario', 'senha']);
+  assert.deepEqual(T.camposDoMotor('dbf'), ['base']);
+  assert.deepEqual(T.camposDoMotor('excel'), ['base']);
+  assert.deepEqual(T.camposDoMotor('xpto'), []);
+  T.camposDoMotor('dbf').push('host');
+  assert.deepEqual(T.camposDoMotor('dbf'), ['base'], 'a lista devolvida é uma cópia');
+  assert.equal(T.rotuloBase('postgres'), 'Base de dados');
+  assert.equal(T.rotuloBase('oracle'), 'Service name');
+  assert.equal(T.rotuloBase('firebird'), 'Arquivo do banco');
+  assert.equal(T.rotuloBase('dbf'), 'Pasta dos arquivos');
+  assert.equal(T.rotuloBase('excel'), 'Pasta das planilhas');
+});
+
+test('configPayload: só vão os campos do motor (o digitado em outro motor fica de fora)', () => {
+  const form = { motor:'dbf', host:'pg.local', porta:'5432', base:' "C:\\dados\\loja" ', usuario:'u', senha:'s', schema:'public' };
+  assert.deepEqual(T.configPayload(form), { motor:'dbf', base:'"C:\\dados\\loja"' });
+  assert.deepEqual(T.configPayload({ ...form, motor:'excel' }), { motor:'excel', base:'"C:\\dados\\loja"' });
+  assert.deepEqual(T.configPayload({ ...form, motor:'firebird', base:'a.fdb' }),
+    { motor:'firebird', host:'pg.local', porta:5432, base:'a.fdb', usuario:'u', senha:'s' });
+});
+
+test('statusLines e ctlStatusLines: motores de pasta mostram motor e pasta; Firebird sem schema', () => {
+  assert.deepEqual(T.statusLines({ engine:'dbf', db_version:'3.45.1', host:'', database:'C:\\dados\\loja', user:'', schema:'', visible_tables:12 }),
+    [['Motor','DBF'],['Pasta','C:\\dados\\loja'],['Tabelas visíveis','12']]);
+  assert.deepEqual(T.ctlStatusLines({ estado:'rodando', motor:'excel', host:'', porta:0, base:'C:\\Controle da loja', usuario:'', schema:'' }),
+    [['Motor','Planilhas Excel'],['Pasta','C:\\Controle da loja']]);
+  assert.deepEqual(T.ctlStatusLines({ estado:'rodando', motor:'firebird', host:'h', porta:3050, base:'a.fdb', usuario:'u', schema:'' }),
+    [['Motor','Firebird'],['Host','h'],['Porta','3050'],['Base','a.fdb'],['Usuário','u']]);
+  assert.deepEqual(T.statusLines({ engine:'firebird', db_version:'WI-V5', host:'h', database:'a.fdb', user:'u', schema:'', visible_tables:3 }),
+    [['Motor','Firebird'],['Versão','WI-V5'],['Host','h'],['Base','a.fdb'],['Usuário','u'],['Tabelas visíveis','3']]);
 });

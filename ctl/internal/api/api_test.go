@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/control"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbconf"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/excel"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/pasta"
 )
 
 const key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -329,5 +332,74 @@ func TestStatusLevaPlanilhas(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), `"lido_em"`) || !strings.Contains(w.Body.String(), `"ignoradas"`) {
 		t.Errorf("faltam campos do relatório: %s", w.Body)
+	}
+}
+
+func newHPasta(f func(context.Context, string) (string, bool, error)) http.Handler {
+	return Handler(Options{Key: key, HarnessPort: 8080, CtlPort: 11080, EscolherPasta: f}, &fakeBackend{})
+}
+
+func TestEscolherPasta(t *testing.T) {
+	var recebido string
+	h := newHPasta(func(_ context.Context, ini string) (string, bool, error) {
+		recebido = ini
+		return `C:\dados\loja`, true, nil
+	})
+	w := do(h, http.MethodPost, "/escolher-pasta", `{"inicial":"C:\\dados"}`, nil)
+	if w.Code != 200 || recebido != `C:\dados` {
+		t.Fatalf("%d %q %s", w.Code, recebido, w.Body)
+	}
+	var m map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &m)
+	if m["caminho"] != `C:\dados\loja` {
+		t.Fatalf("caminho: %v", m)
+	}
+}
+
+func TestEscolherPastaCanceladoEErros(t *testing.T) {
+	cancelado := newHPasta(func(context.Context, string) (string, bool, error) { return "", false, nil })
+	w := do(cancelado, http.MethodPost, "/escolher-pasta", `{}`, nil)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"cancelado":true`) {
+		t.Fatalf("cancelado: %d %s", w.Code, w.Body)
+	}
+	sem := newHPasta(func(context.Context, string) (string, bool, error) { return "", false, pasta.ErrSemSeletor })
+	if w := do(sem, http.MethodPost, "/escolher-pasta", `{}`, nil); w.Code != http.StatusNotImplemented || erro(w) != pasta.ErrSemSeletor.Error() {
+		t.Fatalf("sem seletor: %d %s", w.Code, w.Body)
+	}
+	falha := newHPasta(func(context.Context, string) (string, bool, error) { return "", false, errors.New("quebrou") })
+	if w := do(falha, http.MethodPost, "/escolher-pasta", `{}`, nil); w.Code != 500 || erro(w) != "quebrou" {
+		t.Fatalf("falha: %d %s", w.Code, w.Body)
+	}
+	if w := do(falha, http.MethodGet, "/escolher-pasta", "", nil); w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("GET: %d", w.Code)
+	}
+	if w := do(falha, http.MethodPost, "/escolher-pasta", `{"outro":1}`, nil); w.Code != http.StatusBadRequest {
+		t.Fatalf("campo desconhecido: %d", w.Code)
+	}
+	if w := do(falha, http.MethodPost, "/escolher-pasta", `{}`, func(r *http.Request) { r.Header.Set("Authorization", "Bearer x") }); w.Code != http.StatusUnauthorized {
+		t.Fatalf("sem chave: %d", w.Code)
+	}
+	h, _ := newH()
+	if w := do(h, http.MethodPost, "/escolher-pasta", `{}`, nil); w.Code != http.StatusNotFound {
+		t.Fatalf("sem seletor ligado deve ser 404: %d", w.Code)
+	}
+}
+
+func TestEscolherPastaUmPorVez(t *testing.T) {
+	aberto, solta := make(chan struct{}), make(chan struct{})
+	h := newHPasta(func(context.Context, string) (string, bool, error) {
+		close(aberto)
+		<-solta
+		return "/x", true, nil
+	})
+	fim := make(chan int)
+	go func() { fim <- do(h, http.MethodPost, "/escolher-pasta", `{}`, nil).Code }()
+	<-aberto
+	if w := do(h, http.MethodPost, "/escolher-pasta", `{}`, nil); w.Code != http.StatusConflict {
+		t.Fatalf("segundo seletor: %d", w.Code)
+	}
+	close(solta)
+	if c := <-fim; c != 200 {
+		t.Fatalf("primeiro: %d", c)
 	}
 }
