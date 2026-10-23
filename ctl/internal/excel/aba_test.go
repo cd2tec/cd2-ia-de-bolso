@@ -430,3 +430,77 @@ func TestTituloDeDuasCelulasComLinhaEmBrancoSobreCabecalho(t *testing.T) {
 		t.Fatalf("linhas: %v", linhas)
 	}
 }
+
+// Metadados de 3 ou mais células acima de um cabeçalho mais largo: a descida continua valendo, porque a
+// linha de baixo é toda de títulos e o dado ocupa colunas além da extensão da de cima.
+func TestMetadadosDeVariasCelulasSobreCabecalhoMaisLargo(t *testing.T) {
+	t.Run("tres celulas", func(t *testing.T) {
+		grade := [][]Celula{
+			{txt("Loja Centro"), txt("Setembro"), num(2026)},
+			{txt("Data"), txt("Produto"), txt("Qtd"), txt("Valor"), txt("Pago")},
+			{data(2026, 9, 1), txt("Arroz"), num(2), num(10.5), txt("sim")},
+			{data(2026, 9, 2), txt("Feijão"), num(1), num(8), txt("não")},
+		}
+		cols, linhas, motivo := analisarAba(grade)
+		if motivo != "" {
+			t.Fatal(motivo)
+		}
+		esperaColunas(t, cols, col("Data", "DATE"), col("Produto", "TEXT"), col("Qtd", "INTEGER"), col("Valor", "NUMERIC"), col("Pago", "TEXT"))
+		want := [][]any{{"2026-09-01", "Arroz", int64(2), 10.5, "sim"}, {"2026-09-02", "Feijão", int64(1), 8.0, "não"}}
+		if !reflect.DeepEqual(linhas, want) {
+			t.Fatalf("linhas: %v", linhas)
+		}
+	})
+	t.Run("quatro celulas e linha em branco", func(t *testing.T) {
+		grade := [][]Celula{
+			{txt("Loja:"), txt("Centro"), txt("Mês:"), txt("Setembro")},
+			{},
+			{txt("Data"), txt("Produto"), txt("Qtd"), txt("Valor"), txt("Pago"), txt("Vendedor")},
+			{data(2026, 9, 1), txt("Arroz"), num(2), num(10.5), txt("sim"), txt("Ana")},
+		}
+		cols, linhas, motivo := analisarAba(grade)
+		if motivo != "" {
+			t.Fatal(motivo)
+		}
+		esperaColunas(t, cols, col("Data", "DATE"), col("Produto", "TEXT"), col("Qtd", "INTEGER"), col("Valor", "NUMERIC"), col("Pago", "TEXT"), col("Vendedor", "TEXT"))
+		if !reflect.DeepEqual(linhas, [][]any{{"2026-09-01", "Arroz", int64(2), 10.5, "sim", "Ana"}}) {
+			t.Fatalf("linhas: %v", linhas)
+		}
+	})
+}
+
+// Cabeçalho de 2 colunas com anotação na cauda da primeira linha de dados: a linha de baixo tem número,
+// não é só título, então não vira cabeçalho.
+func TestCabecalhoDeDuasColunasComAnotacaoNaCauda(t *testing.T) {
+	grade := [][]Celula{
+		{txt("Produto"), txt("Preço")},
+		{txt("Arroz"), num(10), txt("promo")},
+		{txt("Feijão"), num(8)},
+	}
+	cols, linhas, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	esperaColunas(t, cols, col("Produto", "TEXT"), col("Preco", "INTEGER"))
+	if len(linhas) != 2 {
+		t.Fatalf("linhas: %v", linhas)
+	}
+}
+
+// O recuo para a esquerda só anda por células contíguas: "obs" em A, longe do cabeçalho em D..F, não cria
+// Coluna_B e Coluna_C vazias.
+func TestRecuoDaColunaSoPorCelulasContiguas(t *testing.T) {
+	grade := [][]Celula{
+		{vazia(), vazia(), vazia(), txt("Nome"), txt("Qtd"), txt("Obs")},
+		{txt("obs"), vazia(), vazia(), txt("Arroz"), num(2), txt("x")},
+		{vazia(), vazia(), vazia(), txt("Feijão"), num(1), txt("y")},
+	}
+	cols, linhas, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	esperaColunas(t, cols, col("Nome", "TEXT"), col("Qtd", "INTEGER"), col("Obs", "TEXT"))
+	if len(linhas) != 2 {
+		t.Fatalf("linhas: %v", linhas)
+	}
+}

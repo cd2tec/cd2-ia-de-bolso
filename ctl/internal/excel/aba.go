@@ -58,11 +58,12 @@ func analisarAba(grade [][]Celula) (colunas []copia.Coluna, linhas [][]any, moti
 	}
 	ini, fim := extensao(grade[cab])
 	// Coluna de código sem título ([, Nome, Telefone] / [1, João, 9999-1234]): se a primeira linha de dados
-	// começa mais à esquerda que o cabeçalho, a coluna entra, com o nome pela letra. À direita não
-	// estendo: o que passa da largura do cabeçalho é anotação solta.
+	// tem célula preenchida logo à esquerda do cabeçalho, a coluna entra, com o nome pela letra; o recuo
+	// só anda por células contíguas, para não criar colunas vazias no meio. À direita não estendo: o que
+	// passa da largura do cabeçalho é anotação solta.
 	if k := proximaPreenchida(grade, cab); k >= 0 {
-		if iniDado, _ := extensao(grade[k]); iniDado >= 0 && iniDado < ini {
-			ini = iniDado
+		for ini > 0 && celula(grade[k], ini-1).Tipo != Vazia {
+			ini--
 		}
 	}
 
@@ -148,14 +149,11 @@ func nomeDaColuna(c Celula, j int) string {
 }
 
 // maxCelulasDeTitulo é quantas células preenchidas tem, no máximo, uma linha de título ([Controle de
-// Vendas, 2026]); só uma linha assim deixa a escolha do cabeçalho descer.
+// Vendas, 2026]).
 const maxCelulasDeTitulo = 2
 
-// acharCabecalho pega a primeira candidata e, enquanto ela tiver no máximo 2 células preenchidas (cara
-// de título) e a próxima linha preenchida (a até 2 linhas) também for candidata e mais larga, desce para
-// ela: o título passa por candidato, mas o cabeçalho de verdade vem logo abaixo e ocupa mais colunas.
-// Linha de 3 células ou mais já é cabeçalho: a primeira linha de dados mais larga (coluna de código sem
-// título, anotação na cauda) não o substitui.
+// acharCabecalho pega a primeira candidata e repete a descida enquanto podeDescer disser que sim: o
+// título passa por candidato, mas o cabeçalho de verdade vem logo abaixo e ocupa mais colunas.
 func acharCabecalho(grade [][]Celula) int {
 	for i := 0; i < len(grade) && i < linhasDeBusca; i++ {
 		if !ehCandidata(grade, i) {
@@ -163,13 +161,41 @@ func acharCabecalho(grade [][]Celula) int {
 		}
 		for {
 			k := proximaPreenchida(grade, i)
-			if celulasPreenchidas(grade[i]) > maxCelulasDeTitulo || k < 0 || k >= linhasDeBusca || !ehCandidata(grade, k) || largura(grade[k]) <= largura(grade[i]) {
+			if k < 0 || k >= linhasDeBusca || !ehCandidata(grade, k) || !podeDescer(grade, i, k) {
 				return i
 			}
 			i = k
 		}
 	}
 	return -1
+}
+
+// podeDescer diz se o cabeçalho passa da candidata i para a próxima linha preenchida k. Valem as três:
+//   - toda célula preenchida de k tem cara de título (pareceParteDeTitulo): uma primeira linha de dados
+//     com número ou anotação ([Arroz, 10, promo]) não troca o cabeçalho;
+//   - k é mais larga que i;
+//   - i tem no máximo 2 células (forma de título) ou a linha de dados logo abaixo de k ocupa alguma coluna
+//     fora da extensão de i: metadados de 3 células ou mais ([Loja:, Centro, Mês:, Setembro]) sobre um
+//     cabeçalho mais largo descem, pois o dado não cabe na largura deles.
+func podeDescer(grade [][]Celula, i, k int) bool {
+	for _, c := range grade[k] {
+		if c.Tipo != Vazia && !pareceParteDeTitulo(c) {
+			return false
+		}
+	}
+	if largura(grade[k]) <= largura(grade[i]) {
+		return false
+	}
+	if celulasPreenchidas(grade[i]) <= maxCelulasDeTitulo {
+		return true
+	}
+	d := proximaPreenchida(grade, k)
+	if d < 0 {
+		return false
+	}
+	ini, fim := extensao(grade[i])
+	di, df := extensao(grade[d])
+	return di < ini || df > fim
 }
 
 // proximaPreenchida é a primeira linha não vazia logo abaixo de i, a até 2 linhas; -1 se não há.
