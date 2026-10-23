@@ -59,7 +59,7 @@ func TestValidateRecusaComMensagemPorCampo(t *testing.T) {
 		mut  func(*Input)
 		want string
 	}{
-		{func(i *Input) { i.Motor = "mysql" }, "motor: use postgres, oracle, mariadb, sqlserver, firebird ou dbf"},
+		{func(i *Input) { i.Motor = "mysql" }, "motor: use postgres, oracle, mariadb, sqlserver, firebird, dbf ou excel"},
 		{func(i *Input) { i.Host = "" }, "host: obrigatório"},
 		{func(i *Input) { i.Host = strings.Repeat("a", 254) }, "host: até 253 caracteres"},
 		{func(i *Input) { i.Host = "db local" }, "host: não pode ter espaço"},
@@ -142,7 +142,34 @@ func TestPadroes(t *testing.T) {
 	if DefaultSchema("oracle", "leitor", "") != "LEITOR" || DefaultSchema("mariadb", "u", "loja") != "loja" || DefaultSchema("sqlserver", "", "") != "dbo" || DefaultSchema("firebird", "SYSDBA", "x") != "" || DefaultSchema("dbf", "", `C:\dados`) != "" {
 		t.Error("DefaultSchema")
 	}
-	if len(Engines) != 6 {
+	if len(Engines) != 7 || Engines[5] != "dbf" || Engines[6] != "excel" {
 		t.Error("Engines")
+	}
+}
+
+func TestMotorExcel(t *testing.T) {
+	c, err := Validate(Input{Motor: "excel", Base: `C:\planilhas`}, nil)
+	if err != nil {
+		t.Fatalf("excel só com a base foi recusado: %v", err)
+	}
+	if c.Engine != "excel" || c.Name != `C:\planilhas` || c.Port != "0" || c.Schema != "" {
+		t.Errorf("config do excel: %+v", c)
+	}
+	_, err = Validate(Input{Motor: "excel"}, nil)
+	if err == nil || err.Error() != "base: obrigatório" {
+		t.Errorf("base vazia: %v", err)
+	}
+	if DefaultPort("excel") != 0 {
+		t.Error("DefaultPort(excel) deveria ser 0")
+	}
+	if DefaultSchema("excel", "u", "x") != "" {
+		t.Error("DefaultSchema(excel) deveria ser vazio")
+	}
+	if !EngineArquivo("excel") || !EngineArquivo("dbf") || EngineArquivo("postgres") || EngineArquivo("xpto") {
+		t.Error("EngineArquivo")
+	}
+	_, err = Validate(Input{Motor: "db2"}, nil)
+	if err == nil || !strings.Contains(err.Error(), "excel") {
+		t.Errorf("msgEngine deveria citar excel: %v", err)
 	}
 }

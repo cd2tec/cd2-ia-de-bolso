@@ -1,6 +1,7 @@
 package toolbox
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbconf"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/faketoolbox"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/secret"
+	"github.com/xuri/excelize/v2"
 )
 
 // Com CD2_FAKE_TOOLBOX=1 este binário de teste é o toolbox.
@@ -245,5 +247,155 @@ func TestPrazoRespeitadoComChamadaPendurada(t *testing.T) {
 	// Start inclui o Stop (até 3 s de TERM); o que importa é a espera pela prontidão
 	if waited > 2*time.Second+1500*time.Millisecond {
 		t.Errorf("Start levou %v", waited)
+	}
+}
+
+// cfgExcel é a configuração do motor excel: só a base, que é a pasta das planilhas.
+func cfgExcel(pasta string) dbconf.Config {
+	return dbconf.Config{Engine: "excel", Name: pasta}
+}
+
+// novaPlanilha grava um .xlsx em caminho; preencher mexe no arquivo antes de salvar (aba inicial "Sheet1").
+func novaPlanilha(t *testing.T, caminho string, preencher func(f *excelize.File)) {
+	t.Helper()
+	f := excelize.NewFile()
+	defer f.Close()
+	preencher(f)
+	if err := f.SaveAs(caminho); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func deve(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStartExcelImportaEmDuasEtapasEGuardaRelatorio(t *testing.T) {
+	s := newSup(t, 10*time.Second)
+	rep := filepath.Join(t.TempDir(), "rep.json")
+	t.Setenv(faketoolbox.ReportVar, rep)
+	pasta := t.TempDir()
+	novaPlanilha(t, filepath.Join(pasta, "vendas.xlsx"), func(f *excelize.File) {
+		deve(t, f.SetSheetRow("Sheet1", "A1", &[]any{"Produto", "Qtd"}))
+		deve(t, f.SetSheetRow("Sheet1", "A2", &[]any{"Arroz", 3}))
+		_, err := f.NewSheet("Rascunho")
+		deve(t, err)
+		deve(t, f.SetSheetRow("Rascunho", "A1", &[]any{"Ideia", "Prazo"}))
+		deve(t, f.SetSheetVisible("Rascunho", false))
+	})
+	if s.Planilhas() != nil {
+		t.Fatal("antes de qualquer Start não deveria haver relatório")
+	}
+	if err := s.Start(cfgExcel(pasta)); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	destino := filepath.Join(s.opt.CacheDir, "excel.sqlite")
+	if _, err := os.Stat(destino); err != nil {
+		t.Fatalf("excel.sqlite não existe: %v", err)
+	}
+	for _, sobra := range []string{".novo", ".novo-wal", ".novo-shm"} {
+		if _, err := os.Stat(destino + sobra); !os.IsNotExist(err) {
+			t.Errorf("sobrou excel.sqlite%s (err %v)", sobra, err)
+		}
+	}
+	rel := s.Planilhas()
+	if rel == nil || rel.Tabelas != 1 || len(rel.Ignoradas) != 1 {
+		t.Fatalf("relatório: %+v", rel)
+	}
+	b, err := os.ReadFile(rep)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var r faketoolbox.Report
+	if err := json.Unmarshal(b, &r); err != nil {
+		t.Fatal(err)
+	}
+	if r.Sqlite != destino {
+		t.Errorf("CD2_DB_SQLITE chegou %q, quero %q", r.Sqlite, destino)
+	}
+	if r.Engine != "excel" {
+		t.Errorf("CD2_DB_ENGINE chegou %q", r.Engine)
+	}
+	if want := filepath.Join("raiz", "core", "toolbox", "excel.yaml"); len(r.Args) < 2 || r.Args[1] != want {
+		t.Errorf("receita: %q, quero %q", r.Args, want)
+	}
+}
+
+func TestStartExcelFalhaNaImportacaoMantemCopiaAnterior(t *testing.T) {
+	s := newSup(t, 10*time.Second)
+	destino := filepath.Join(s.opt.CacheDir, "excel.sqlite")
+	db, err := sql.Open("sqlite", destino)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.Exec(`CREATE TABLE antiga (x TEXT); INSERT INTO antiga VALUES ('conteudo anterior')`)
+	deve(t, err)
+	deve(t, db.Close())
+
+	se := startErr(t, s.Start(cfgExcel(filepath.Join(t.TempDir(), "nao-existe"))))
+	if se.Msg != "Não achei a pasta das planilhas." {
+		t.Errorf("mensagem: %q", se.Msg)
+	}
+	if s.Planilhas() != nil {
+		t.Errorf("pasta inexistente não tem relatório: %+v", s.Planilhas())
+	}
+	db, err = sql.Open("sqlite", destino)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var x string
+	if err := db.QueryRow(`SELECT x FROM antiga`).Scan(&x); err != nil || x != "conteudo anterior" {
+		t.Errorf("a cópia anterior mudou: %q (%v)", x, err)
+	}
+	if _, err := os.Stat(destino + ".novo"); !os.IsNotExist(err) {
+		t.Errorf("sobrou excel.sqlite.novo (err %v)", err)
+	}
+}
+
+func TestStartExcelTudoIgnoradoGuardaRelatorio(t *testing.T) {
+	s := newSup(t, 10*time.Second)
+	pasta := t.TempDir()
+	novaPlanilha(t, filepath.Join(pasta, "lembretes.xlsx"), func(f *excelize.File) {
+		deve(t, f.SetCellValue("Sheet1", "A1", "anotações"))
+		deve(t, f.SetCellValue("Sheet1", "A5", "ligar para o João"))
+	})
+	startErr(t, s.Start(cfgExcel(pasta)))
+	rel := s.Planilhas()
+	if rel == nil || len(rel.Ignoradas) != 1 || rel.Tabelas != 0 {
+		t.Fatalf("relatório: %+v", rel)
+	}
+	if s.Running() {
+		t.Error("não deveria ter subido o toolbox")
+	}
+	if _, err := os.Stat(filepath.Join(s.opt.CacheDir, "excel.sqlite.novo")); !os.IsNotExist(err) {
+		t.Errorf("sobrou excel.sqlite.novo (err %v)", err)
+	}
+}
+
+func TestPlanilhasZeraNosOutrosMotores(t *testing.T) {
+	s := newSup(t, 10*time.Second)
+	pasta := t.TempDir()
+	novaPlanilha(t, filepath.Join(pasta, "a.xlsx"), func(f *excelize.File) {
+		deve(t, f.SetSheetRow("Sheet1", "A1", &[]any{"Produto", "Qtd"}))
+		deve(t, f.SetSheetRow("Sheet1", "A2", &[]any{"Arroz", 3}))
+	})
+	if err := s.Start(cfgExcel(pasta)); err != nil {
+		t.Fatal(err)
+	}
+	if s.Planilhas() == nil {
+		t.Fatal("deveria ter relatório")
+	}
+	if err := s.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Start(cfg("boa")); err != nil {
+		t.Fatal(err)
+	}
+	if s.Planilhas() != nil {
+		t.Error("com outro motor o relatório deveria ser nulo")
 	}
 }
