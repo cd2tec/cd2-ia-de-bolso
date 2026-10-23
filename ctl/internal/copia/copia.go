@@ -83,13 +83,23 @@ func gravarTabela(tx *sql.Tx, t Tabela) error {
 	return nil
 }
 
+// SemAcento decompõe o texto (NFD) e descarta as marcas de acento, deixando as letras-base.
+func SemAcento(s string) string {
+	var b strings.Builder
+	for _, r := range norm.NFD.String(s) {
+		if !unicode.Is(unicode.Mn, r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 // Identificador transforma um nome qualquer num identificador SQL simples: tira o acento, troca
 // espaço, hífen, ponto e barra por "_", descarta o resto e limita a 60 caracteres.
 func Identificador(s string) string {
 	var b strings.Builder
-	for _, r := range norm.NFD.String(s) {
+	for _, r := range SemAcento(s) {
 		switch {
-		case unicode.Is(unicode.Mn, r):
 		case r >= 'A' && r <= 'Z', r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '_':
 			b.WriteRune(r)
 		case unicode.IsSpace(r) || r == '-' || r == '.' || r == '/':
