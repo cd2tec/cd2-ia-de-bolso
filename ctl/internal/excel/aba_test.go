@@ -260,3 +260,108 @@ func TestLetrasDeColuna(t *testing.T) {
 		}
 	}
 }
+
+// Em coluna TEXT o número vai na forma canônica, não no texto formatado da excelize, que sai americano
+// ("R$ 1,500.50") e quebra SUM(CAST(...)). Data vai em ISO e Bool em "1"/"0".
+func TestNumeroEmColunaTextoVaiCanonico(t *testing.T) {
+	moeda := Celula{Tipo: Numero, Num: 1500.5, Texto: "R$ 1,500.50"}
+	sim := Celula{Tipo: Bool, Texto: "TRUE", Num: 1}
+	nao := Celula{Tipo: Bool, Texto: "FALSE"}
+	grade := [][]Celula{
+		{txt("Item"), txt("Valor"), txt("Obs")},
+		{txt("a"), moeda, sim},
+		{txt("b"), txt("-"), nao},
+		{txt("c"), num(2500.25), data(2026, 9, 1)},
+	}
+	cols, linhas, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	esperaColunas(t, cols, col("Item", "TEXT"), col("Valor", "TEXT"), col("Obs", "TEXT"))
+	want := [][]any{{"a", "1500.5", "1"}, {"b", "-", "0"}, {"c", "2500.25", "2026-09-01"}}
+	if !reflect.DeepEqual(linhas, want) {
+		t.Fatalf("linhas: %v", linhas)
+	}
+}
+
+// Título de duas células ([Controle de Vendas, 2026]) também é candidata, mas a linha logo abaixo é
+// candidata mais larga: o cabeçalho é ela.
+func TestTituloDeDuasCelulasNaoViraCabecalho(t *testing.T) {
+	grade := [][]Celula{
+		{txt("Controle de Vendas"), num(2026)},
+		{txt("Data"), txt("Produto"), txt("Qtd"), txt("Valor")},
+		{data(2026, 9, 1), txt("Arroz"), num(2), num(10.5)},
+	}
+	cols, linhas, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	esperaColunas(t, cols, col("Data", "DATE"), col("Produto", "TEXT"), col("Qtd", "INTEGER"), col("Valor", "NUMERIC"))
+	if !reflect.DeepEqual(linhas, [][]any{{"2026-09-01", "Arroz", int64(2), 10.5}}) {
+		t.Fatalf("linhas: %v", linhas)
+	}
+}
+
+// A troca só vale quando a linha de baixo também é candidata; em [Produto, 2024, 2025] / [Arroz, 10, 12]
+// a de baixo é dado e o cabeçalho continua o de cima (ver TestCabecalhoComAnoNasColunas).
+func TestLinhaDeBaixoMaisLargaMasNaoCandidata(t *testing.T) {
+	grade := [][]Celula{
+		{txt("Produto"), num(2024)},
+		{txt("Arroz"), num(10), num(12)},
+	}
+	cols, linhas, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	esperaColunas(t, cols, col("Produto", "TEXT"), col("T_2024", "INTEGER"))
+	if len(linhas) != 1 {
+		t.Fatalf("linhas: %v", linhas)
+	}
+}
+
+// Fórmula arrastada até o fim da folha dá #N/A nas linhas sem dado: linha só com Erro não é registro.
+func TestLinhaSoComErroSai(t *testing.T) {
+	na := Celula{Tipo: Erro, Texto: "#N/A"}
+	grade := [][]Celula{
+		{txt("Produto"), txt("Preço")},
+		{txt("Arroz"), num(10)},
+		{na, na},
+		{vazia(), na},
+	}
+	_, linhas, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	if !reflect.DeepEqual(linhas, [][]any{{"Arroz", int64(10)}}) {
+		t.Fatalf("linhas: %v", linhas)
+	}
+}
+
+func TestAbaSoComCabecalho(t *testing.T) {
+	grade := [][]Celula{
+		{txt("Cadastro de clientes")},
+		{},
+		{txt("Nome"), txt("Telefone"), txt("Cidade")},
+	}
+	if _, _, motivo := analisarAba(grade); motivo != MotivoSoCabecalho {
+		t.Fatalf("motivo: %q", motivo)
+	}
+	// Texto solto, sem linha com cara de cabeçalho, continua sendo "sem cabeçalho".
+	if _, _, motivo := analisarAba([][]Celula{{txt("anotações")}, {txt("ligar")}}); motivo != MotivoSemCabecalho {
+		t.Fatalf("motivo do texto solto: %q", motivo)
+	}
+}
+
+// "#" vira identificador vazio ("T_") e "#REF!" é célula Erro: os dois caem no nome pela letra.
+func TestCabecalhoSemNomeUtilViraColunaPelaLetra(t *testing.T) {
+	ref := Celula{Tipo: Erro, Texto: "#REF!"}
+	grade := [][]Celula{
+		{txt("#"), txt("Produto"), ref, txt("2024")},
+		{num(1), txt("Arroz"), num(3), num(4)},
+	}
+	cols, _, motivo := analisarAba(grade)
+	if motivo != "" {
+		t.Fatal(motivo)
+	}
+	esperaColunas(t, cols, col("Coluna_A", "INTEGER"), col("Produto", "TEXT"), col("Coluna_C", "INTEGER"), col("T_2024", "INTEGER"))
+}

@@ -164,6 +164,15 @@ func check(c Config) error {
 	return nil
 }
 
+// semAspas tira um par de aspas duplas que envolva o caminho inteiro: o "Copiar como caminho" do
+// Windows copia "C:\Controle da loja" com elas, e a pasta não existe com aspas no nome.
+func semAspas(s string) string {
+	if len(s) >= 2 && strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`) {
+		return strings.TrimSpace(s[1 : len(s)-1])
+	}
+	return s
+}
+
 // Check confere uma Config lida do disco, com as mesmas regras da tela.
 func (c Config) Check() error { return check(c) }
 
@@ -199,6 +208,9 @@ func Validate(in Input, saved *Config) (Config, error) {
 		Name:   strings.TrimSpace(in.Base),
 		User:   strings.TrimSpace(in.Usuario),
 		Schema: strings.TrimSpace(in.Schema),
+	}
+	if EngineArquivo(c.Engine) {
+		c.Name = semAspas(c.Name)
 	}
 	if in.Senha != nil && *in.Senha != "" {
 		c.Password = *in.Senha

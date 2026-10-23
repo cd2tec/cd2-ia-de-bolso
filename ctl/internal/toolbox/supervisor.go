@@ -88,9 +88,9 @@ func (s *Supervisor) Running() bool {
 	}
 }
 
-// Planilhas devolve o relatório da última importação de planilhas Excel (nulo nos outros motores,
-// inclusive DBF). Fica guardado mesmo quando o Start falhou na importação, para a tela mostrar
-// o que ficou de fora.
+// Planilhas devolve o relatório da última importação de planilhas Excel, seja ela de um Start ou
+// de um Reload, inclusive quando essa importação falhou: é assim que a tela mostra o que ficou de
+// fora da tentativa. Nulo nos outros motores, inclusive DBF.
 func (s *Supervisor) Planilhas() *excel.Relatorio {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -168,7 +168,7 @@ func (s *Supervisor) importar(cfg dbconf.Config) (troca func() error, err error)
 		_ = os.Remove(destino + "-shm")
 		if err := os.Rename(novo, destino); err != nil {
 			removeSqlite(novo)
-			return &StartError{Msg: "Não consegui gravar a cópia das planilhas: " + err.Error()}
+			return &StartError{Msg: "Não consegui gravar a cópia: " + err.Error()}
 		}
 		return nil
 	}, nil

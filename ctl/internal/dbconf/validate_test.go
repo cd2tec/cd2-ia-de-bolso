@@ -173,3 +173,30 @@ func TestMotorExcel(t *testing.T) {
 		t.Errorf("msgEngine deveria citar excel: %v", err)
 	}
 }
+
+// O "Copiar como caminho" do Windows põe aspas em volta; nos motores de arquivo saem antes da
+// validação. Só um par que envolva a base inteira, e só nesses motores.
+func TestBaseDeArquivoSemAspas(t *testing.T) {
+	casos := map[string]string{
+		`"C:\Controle da loja"`:   `C:\Controle da loja`,
+		` "C:\Controle da loja" `: `C:\Controle da loja`,
+		`""C:\x""`:                `"C:\x"`,
+		`"C:\x`:                   `"C:\x`,
+		`C:\a "b"`:                `C:\a "b"`,
+	}
+	for _, motor := range []string{"excel", "dbf"} {
+		for in, want := range casos {
+			c, err := Validate(Input{Motor: motor, Base: in}, nil)
+			if err != nil || c.Name != want {
+				t.Errorf("%s %q: %q (%v), quero %q", motor, in, c.Name, err, want)
+			}
+		}
+		if _, err := Validate(Input{Motor: motor, Base: `""`}, nil); err == nil || err.Error() != "base: obrigatório" {
+			t.Errorf("%s com aspas vazias: %v", motor, err)
+		}
+	}
+	c, err := Validate(Input{Motor: "postgres", Host: "h", Base: `"loja"`, Usuario: "u"}, nil)
+	if err != nil || c.Name != `"loja"` {
+		t.Errorf("postgres não devia mexer nas aspas: %q (%v)", c.Name, err)
+	}
+}

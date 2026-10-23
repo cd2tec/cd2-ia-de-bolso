@@ -93,3 +93,13 @@ func TestGravarSubstituiDestinoAnterior(t *testing.T) {
 		t.Errorf("a tabela antiga sobreviveu (n=%d, err=%v)", n, err)
 	}
 }
+
+// O SQLite reserva os nomes que começam com sqlite_ (em qualquer caixa): CREATE TABLE sqlite_x falha.
+func TestIdentificadorFogeDoPrefixoReservado(t *testing.T) {
+	casos := map[string]string{"sqlite_x": "T_sqlite_x", "SQLite_Vendas": "T_SQLite_Vendas", "sqlite x": "T_sqlite_x", "sqlitex": "sqlitex"}
+	for in, want := range casos {
+		if got := Identificador(in); got != want {
+			t.Errorf("%q: %q != %q", in, got, want)
+		}
+	}
+}

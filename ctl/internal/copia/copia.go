@@ -95,7 +95,8 @@ func SemAcento(s string) string {
 }
 
 // Identificador transforma um nome qualquer num identificador SQL simples: tira o acento, troca
-// espaço, hífen, ponto e barra por "_", descarta o resto e limita a 60 caracteres.
+// espaço, hífen, ponto e barra por "_", descarta o resto e limita a 60 caracteres. Ganha o prefixo
+// T_ quando começaria com dígito ou com sqlite_, que o SQLite reserva (CREATE TABLE sqlite_x falha).
 func Identificador(s string) string {
 	var b strings.Builder
 	for _, r := range SemAcento(s) {
@@ -111,7 +112,7 @@ func Identificador(s string) string {
 		out = strings.ReplaceAll(out, "__", "_")
 	}
 	out = strings.Trim(out, "_")
-	if out == "" || out[0] >= '0' && out[0] <= '9' {
+	if out == "" || out[0] >= '0' && out[0] <= '9' || strings.HasPrefix(strings.ToLower(out), "sqlite_") {
 		out = "T_" + out
 	}
 	if len(out) > 60 {

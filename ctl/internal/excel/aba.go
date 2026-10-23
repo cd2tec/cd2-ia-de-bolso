@@ -6,6 +6,7 @@ package excel
 
 import (
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,6 +37,7 @@ type Celula struct {
 const (
 	MotivoSemCabecalho = "sem cabeçalho que eu reconheça"
 	MotivoVazia        = "aba vazia"
+	MotivoSoCabecalho  = "aba só com cabeçalho, sem dados"
 )
 
 // linhasDeBusca é até onde procuro o cabeçalho: título e linhas em branco no topo são comuns, mas
@@ -49,6 +51,9 @@ func analisarAba(grade [][]Celula) (colunas []copia.Coluna, linhas [][]any, moti
 	}
 	cab := acharCabecalho(grade)
 	if cab < 0 {
+		if soCabecalho(grade) {
+			return nil, nil, MotivoSoCabecalho
+		}
 		return nil, nil, MotivoSemCabecalho
 	}
 	ini, fim := extensao(grade[cab])
@@ -56,12 +61,7 @@ func analisarAba(grade [][]Celula) (colunas []copia.Coluna, linhas [][]any, moti
 	usados := map[string]int{}
 	nomes := make([]string, 0, fim-ini+1)
 	for j := ini; j <= fim; j++ {
-		c := celula(grade[cab], j)
-		nome := strings.TrimSpace(c.Texto)
-		if c.Tipo == Vazia || nome == "" {
-			nome = "Coluna_" + letraDaColuna(j+1)
-		}
-		nomes = append(nomes, copia.Unico(copia.Identificador(nome), usados))
+		nomes = append(nomes, copia.Unico(nomeDaColuna(celula(grade[cab], j), j), usados))
 	}
 
 	var dados [][]Celula
@@ -70,7 +70,7 @@ func analisarAba(grade [][]Celula) (colunas []copia.Coluna, linhas [][]any, moti
 		for j := ini; j <= fim; j++ {
 			recorte[j-ini] = celula(l, j)
 		}
-		if linhaVazia(recorte) || linhaDeTotal(recorte) {
+		if linhaSemDado(recorte) || linhaDeTotal(recorte) {
 			continue
 		}
 		dados = append(dados, recorte)
@@ -124,21 +124,64 @@ func extensao(l []Celula) (ini, fim int) {
 	return ini, fim
 }
 
+// nomeDaColuna é o identificador do cabeçalho na coluna j, ou Coluna_<letra> quando a célula não dá
+// nome que sirva: vazia, Erro ("#REF!" viraria "REF") ou só símbolos ("#" viraria "T_").
+func nomeDaColuna(c Celula, j int) string {
+	pelaLetra := "Coluna_" + letraDaColuna(j+1)
+	nome := strings.TrimSpace(c.Texto)
+	if c.Tipo == Vazia || c.Tipo == Erro || nome == "" {
+		return pelaLetra
+	}
+	id := copia.Identificador(nome)
+	if strings.TrimPrefix(id, "T_") == "" {
+		return pelaLetra
+	}
+	return id
+}
+
+// acharCabecalho pega a primeira candidata e, enquanto a próxima linha preenchida (a até 2 linhas)
+// também for candidata e mais larga, desce para ela: título de duas células ([Controle de Vendas,
+// 2026]) passa por candidata, mas o cabeçalho de verdade vem logo abaixo e ocupa mais colunas.
 func acharCabecalho(grade [][]Celula) int {
 	for i := 0; i < len(grade) && i < linhasDeBusca; i++ {
-		if ehCandidata(grade, i) {
-			return i
+		if !ehCandidata(grade, i) {
+			continue
+		}
+		for {
+			k := proximaPreenchida(grade, i)
+			if k < 0 || k >= linhasDeBusca || !ehCandidata(grade, k) || largura(grade[k]) <= largura(grade[i]) {
+				return i
+			}
+			i = k
 		}
 	}
 	return -1
 }
 
-// ehCandidata: a linha tem pelo menos 2 células e 2 delas com cara de título (ver pareceParteDeTitulo),
-// e logo abaixo (até 2 linhas de distância, para tolerar uma linha em branco) vem uma linha com dado
-// dentro da largura dela.
-func ehCandidata(grade [][]Celula, i int) bool {
+// proximaPreenchida é a primeira linha não vazia logo abaixo de i, a até 2 linhas; -1 se não há.
+func proximaPreenchida(grade [][]Celula, i int) int {
+	for k := i + 1; k <= i+2 && k < len(grade); k++ {
+		if !linhaVazia(grade[k]) {
+			return k
+		}
+	}
+	return -1
+}
+
+// largura conta da primeira à última célula preenchida da linha.
+func largura(l []Celula) int {
+	ini, fim := extensao(l)
+	if ini < 0 {
+		return 0
+	}
+	return fim - ini + 1
+}
+
+// caraDeCabecalho: a linha tem pelo menos 2 células e 2 delas com cara de título (ver
+// pareceParteDeTitulo).
+func caraDeCabecalho(l []Celula) bool {
 	naoVazias, textos := 0, 0
-	for _, c := range grade[i] {
+	for _, c := range l {
 		if c.Tipo == Vazia {
 			continue
 		}
@@ -147,21 +190,37 @@ func ehCandidata(grade [][]Celula, i int) bool {
 			textos++
 		}
 	}
-	if naoVazias < 2 || textos < 2 {
+	return naoVazias >= 2 && textos >= 2
+}
+
+// ehCandidata: a linha tem cara de cabeçalho e logo abaixo (até 2 linhas de distância, para tolerar
+// uma linha em branco) vem uma linha com dado dentro da largura dela.
+func ehCandidata(grade [][]Celula, i int) bool {
+	if !caraDeCabecalho(grade[i]) {
 		return false
 	}
+	k := proximaPreenchida(grade, i)
+	if k < 0 {
+		return false
+	}
+	// Só a primeira linha não vazia decide: se o dado dela está fora da largura, as de baixo não valem.
 	ini, fim := extensao(grade[i])
-	for k := i + 1; k <= i+2 && k < len(grade); k++ {
-		if linhaVazia(grade[k]) {
+	for j := ini; j <= fim; j++ {
+		if celula(grade[k], j).Tipo != Vazia {
+			return true
+		}
+	}
+	return false
+}
+
+// soCabecalho: nenhuma linha virou candidata, mas a última linha preenchida da aba, dentro da busca,
+// tem cara de cabeçalho. É a tabela recém-criada, que ainda não recebeu nenhum registro.
+func soCabecalho(grade [][]Celula) bool {
+	for i := len(grade) - 1; i >= 0; i-- {
+		if linhaVazia(grade[i]) {
 			continue
 		}
-		// Só a primeira linha não vazia decide: se o dado dela está fora da largura, as de baixo não valem.
-		for j := ini; j <= fim; j++ {
-			if celula(grade[k], j).Tipo != Vazia {
-				return true
-			}
-		}
-		return false
+		return i < linhasDeBusca && caraDeCabecalho(grade[i])
 	}
 	return false
 }
@@ -183,6 +242,17 @@ func pareceParteDeTitulo(c Celula) bool {
 func linhaVazia(l []Celula) bool {
 	for _, c := range l {
 		if c.Tipo != Vazia {
+			return false
+		}
+	}
+	return true
+}
+
+// linhaSemDado: só células vazias ou Erro. Fórmula arrastada até o fim da folha deixa linhas inteiras
+// de #N/A, que não são registro.
+func linhaSemDado(l []Celula) bool {
+	for _, c := range l {
+		if c.Tipo != Vazia && c.Tipo != Erro {
 			return false
 		}
 	}
@@ -255,7 +325,7 @@ func valor(c Celula, tipo string) any {
 		return nil
 	}
 	if tipo == "TEXT" {
-		return c.Texto
+		return textoCanonico(c)
 	}
 	switch c.Tipo {
 	case Numero:
@@ -264,15 +334,30 @@ func valor(c Celula, tipo string) any {
 		}
 		return c.Num
 	case Data:
-		if c.Data.Hour() != 0 || c.Data.Minute() != 0 || c.Data.Second() != 0 {
-			return c.Data.Format("2006-01-02 15:04:05")
-		}
-		return c.Data.Format("2006-01-02")
+		return textoDaData(c.Data)
 	case Bool:
 		if c.Num != 0 {
 			return int64(1)
 		}
 		return int64(0)
+	}
+	return c.Texto
+}
+
+// textoCanonico é o que vai para coluna TEXT. Número não usa o texto formatado: a excelize formata no
+// padrão americano ("R$ 1,500.50"), e CAST(Valor AS REAL) leria 0 e estragaria a soma. Vai a forma
+// canônica (1500.5), a data em ISO e o booleano em "1"/"0"; só o texto mesmo fica como está.
+func textoCanonico(c Celula) string {
+	switch c.Tipo {
+	case Numero:
+		return strconv.FormatFloat(c.Num, 'f', -1, 64)
+	case Data:
+		return textoDaData(c.Data)
+	case Bool:
+		if c.Num != 0 {
+			return "1"
+		}
+		return "0"
 	}
 	return c.Texto
 }

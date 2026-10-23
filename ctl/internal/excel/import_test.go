@@ -1,11 +1,15 @@
 package excel
 
 import (
+	"archive/zip"
+	"bytes"
 	"database/sql"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -564,5 +568,126 @@ func TestImportGravacaoFalhaNaoContaTabelas(t *testing.T) {
 	}
 	if rel == nil || rel.Tabelas != 0 {
 		t.Fatalf("relatório: %+v", rel)
+	}
+}
+
+// Valor com estilo de moeda e um "-" no meio vira coluna TEXT; mesmo assim a soma com CAST tem de
+// bater, o que só acontece se o número for gravado na forma canônica e não como "R$1,500.50".
+func TestImportMoedaComTracoSomaComCast(t *testing.T) {
+	dir := t.TempDir()
+	novaPlanilha(t, filepath.Join(dir, "caixa.xlsx"), func(f *excelize.File) {
+		deve(t, f.SetSheetRow("Sheet1", "A1", &[]any{"Dia", "Valor"}))
+		deve(t, f.SetSheetRow("Sheet1", "A2", &[]any{"seg", 1500.5}))
+		deve(t, f.SetSheetRow("Sheet1", "A3", &[]any{"ter", "-"}))
+		deve(t, f.SetSheetRow("Sheet1", "A4", &[]any{"qua", 2500.25}))
+		moeda := `"R$" #,##0.00`
+		id, err := f.NewStyle(&excelize.Style{CustomNumFmt: &moeda})
+		deve(t, err)
+		deve(t, f.SetCellStyle("Sheet1", "B2", "B4", id))
+	})
+	destino := filepath.Join(dir, "out", "planilhas.sqlite")
+	if _, err := Import(dir, destino); err != nil {
+		t.Fatal(err)
+	}
+	db := abrir(t, destino)
+	if tp := tiposDe(t, db, "caixa")["Valor"]; tp != "TEXT" {
+		t.Fatalf("tipo de Valor: %s", tp)
+	}
+	var soma float64
+	if err := db.QueryRow(`SELECT SUM(CAST(Valor AS REAL)) FROM caixa`).Scan(&soma); err != nil {
+		t.Fatal(err)
+	}
+	if soma != 4000.75 {
+		t.Fatalf("soma: %v", soma)
+	}
+}
+
+// "sqlite_" no começo do nome é reservado no SQLite: sem o prefixo T_, o CREATE TABLE falha e derruba
+// a importação inteira.
+func TestImportArquivoComNomeReservadoDoSqlite(t *testing.T) {
+	dir := t.TempDir()
+	planilhaSimples(t, filepath.Join(dir, "sqlite_x.xlsx"))
+	destino := filepath.Join(dir, "out", "planilhas.sqlite")
+	if _, err := Import(dir, destino); err != nil {
+		t.Fatal(err)
+	}
+	if got := tabelasDe(t, abrir(t, destino)); !reflect.DeepEqual(got, []string{"T_sqlite_x"}) {
+		t.Fatalf("tabelas: %v", got)
+	}
+}
+
+// comValorGravado põe na célula ref o valor que o Excel guarda junto da fórmula (<v>), como num
+// arquivo salvo pelo Excel. A excelize grava a fórmula sem valor e com t="str", e não tem como gravar
+// o valor sem apagar a fórmula; por isso o XML da aba é editado direto no .xlsx salvo.
+func comValorGravado(t *testing.T, caminho, ref, v string) {
+	t.Helper()
+	zr, err := zip.OpenReader(caminho)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	trocou := false
+	celula := regexp.MustCompile(`<c r="` + ref + `"([^>]*?) t="str"([^>]*)>(<f>[^<]*</f>)(<v></v>|<v/>)?</c>`)
+	for _, arq := range zr.File {
+		r, err := arq.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		conteudo, err := io.ReadAll(r)
+		r.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if arq.Name == "xl/worksheets/sheet1.xml" {
+			novo := celula.ReplaceAll(conteudo, []byte(`<c r="`+ref+`"$1$2>$3<v>`+v+`</v></c>`))
+			trocou = !bytes.Equal(novo, conteudo)
+			conteudo = novo
+		}
+		w, err := zw.Create(arq.Name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write(conteudo); err != nil {
+			t.Fatal(err)
+		}
+	}
+	zr.Close()
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !trocou {
+		t.Fatalf("não achei a fórmula de %s no XML da aba", ref)
+	}
+	if err := os.WriteFile(caminho, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Fórmula com o valor gravado pelo Excel vale o valor: é o caso comum, porque o Excel sempre guarda o
+// resultado ao salvar (o teste de cima cobre o arquivo gerado por programa, que não guarda).
+func TestImportFormulaComValorGravado(t *testing.T) {
+	dir := t.TempDir()
+	caminho := filepath.Join(dir, "pedido.xlsx")
+	novaPlanilha(t, caminho, func(f *excelize.File) {
+		deve(t, f.SetSheetRow("Sheet1", "A1", &[]any{"Qtd", "Preco", "Total"}))
+		deve(t, f.SetSheetRow("Sheet1", "A2", &[]any{2, 3}))
+		deve(t, f.SetCellFormula("Sheet1", "C2", "A2*B2"))
+	})
+	comValorGravado(t, caminho, "C2", "6")
+	destino := filepath.Join(dir, "out", "planilhas.sqlite")
+	if _, err := Import(dir, destino); err != nil {
+		t.Fatal(err)
+	}
+	db := abrir(t, destino)
+	if tp := tiposDe(t, db, "pedido")["Total"]; tp != "INTEGER" {
+		t.Fatalf("tipo de Total: %s", tp)
+	}
+	var total int64
+	if err := db.QueryRow(`SELECT Total FROM pedido`).Scan(&total); err != nil {
+		t.Fatal(err)
+	}
+	if total != 6 {
+		t.Fatalf("Total: %d", total)
 	}
 }
