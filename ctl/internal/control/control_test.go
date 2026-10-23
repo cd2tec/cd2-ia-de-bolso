@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbconf"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/excel"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/faketoolbox"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/toolbox"
 )
@@ -37,6 +38,9 @@ type fakeRunner struct {
 	active    int
 	maxActive int
 	delay     time.Duration
+	reloads   []string
+	reloadErr error
+	planilhas *excel.Relatorio
 }
 
 func (f *fakeRunner) Start(cfg dbconf.Config) error {
@@ -72,6 +76,20 @@ func (f *fakeRunner) Running() bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.running != nil
+}
+
+// Reload registra a pasta relida; quando falha, o toolbox fica como estava.
+func (f *fakeRunner) Reload(cfg dbconf.Config) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reloads = append(f.reloads, cfg.Name)
+	return f.reloadErr
+}
+
+func (f *fakeRunner) Planilhas() *excel.Relatorio {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.planilhas
 }
 
 func (f *fakeRunner) kill() {
@@ -411,5 +429,153 @@ func TestShutdownEFinal(t *testing.T) {
 	<-c.BootAsync()
 	if len(run.starts) != 0 || st.Erro != MsgClosed || run.Running() {
 		t.Errorf("subidas %v, status %+v", run.starts, st)
+	}
+}
+
+// inputArquivo é a tela de um motor de arquivo: só o motor e a pasta.
+func inputArquivo(motor, pasta string) dbconf.Input {
+	return dbconf.Input{Motor: motor, Base: pasta}
+}
+
+func TestRelerComExcel(t *testing.T) {
+	run := &fakeRunner{}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	if st, err := c.Apply(inputArquivo("excel", "/planilhas")); err != nil || st.Estado != Rodando {
+		t.Fatalf("Apply: %+v %v", st, err)
+	}
+	st, err := c.Reler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Estado != Rodando || st.Erro != "" || st.Motor != "excel" || st.Base != "/planilhas" {
+		t.Errorf("status %+v", st)
+	}
+	if !reflect.DeepEqual(run.reloads, []string{"/planilhas"}) {
+		t.Errorf("releituras %q", run.reloads)
+	}
+}
+
+func TestRelerComDbf(t *testing.T) {
+	run := &fakeRunner{}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	if st, err := c.Apply(inputArquivo("dbf", "/dados")); err != nil || st.Estado != Rodando {
+		t.Fatalf("Apply: %+v %v", st, err)
+	}
+	st, err := c.Reler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Estado != Rodando || st.Erro != "" || st.Motor != "dbf" {
+		t.Errorf("status %+v", st)
+	}
+	if !reflect.DeepEqual(run.reloads, []string{"/dados"}) {
+		t.Errorf("releituras %q", run.reloads)
+	}
+}
+
+func TestRelerFalhaNaImportacaoMantemRodando(t *testing.T) {
+	run := &fakeRunner{reloadErr: &toolbox.StartError{Msg: "x", Log: []string{"linha"}}}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	if _, err := c.Apply(inputArquivo("excel", "/planilhas")); err != nil {
+		t.Fatal(err)
+	}
+	stops, starts := run.stops, len(run.starts)
+	st, err := c.Reler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Estado != Rodando || st.Erro != "x" || !reflect.DeepEqual(st.Log, []string{"linha"}) || st.Motor != "excel" {
+		t.Errorf("status %+v", st)
+	}
+	if run.stops != stops || len(run.starts) != starts {
+		t.Errorf("mexeu no toolbox: stops %d→%d, subidas %d→%d", stops, run.stops, starts, len(run.starts))
+	}
+}
+
+// Se o Reload falhou com o toolbox já derrubado, a mesma conexão sobe de novo (rollback).
+func TestRelerFalhaComToolboxParadoSobeDeNovo(t *testing.T) {
+	run := &fakeRunner{reloadErr: &toolbox.StartError{Msg: "x"}}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	if _, err := c.Apply(inputArquivo("excel", "/planilhas")); err != nil {
+		t.Fatal(err)
+	}
+	run.kill()
+	st, err := c.Reler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Estado != Rodando || st.Erro != "x" || st.Motor != "excel" {
+		t.Errorf("status %+v", st)
+	}
+	if len(run.starts) != 2 || !run.Running() {
+		t.Errorf("não subiu de novo: subidas %q", run.starts)
+	}
+}
+
+func TestRelerSemConexaoENaoArquivo(t *testing.T) {
+	run := &fakeRunner{}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	if _, err := c.Reler(); !errors.Is(err, ErrNaoArquivo) {
+		t.Errorf("sem conexão: erro %v", err)
+	}
+	if _, err := c.Apply(input("s1")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Reler(); !errors.Is(err, ErrNaoArquivo) {
+		t.Errorf("postgres: erro %v", err)
+	}
+	if len(run.reloads) != 0 {
+		t.Errorf("releu sem ser de arquivo: %q", run.reloads)
+	}
+	if st := c.Status(); st.Estado != Rodando || st.Erro != "" {
+		t.Errorf("status mudou: %+v", st)
+	}
+}
+
+func TestRelerDepoisDoShutdown(t *testing.T) {
+	run := &fakeRunner{}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	if _, err := c.Apply(inputArquivo("excel", "/planilhas")); err != nil {
+		t.Fatal(err)
+	}
+	c.Shutdown()
+	st, err := c.Reler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Erro != MsgClosed || len(run.reloads) != 0 {
+		t.Errorf("status %+v, releituras %q", st, run.reloads)
+	}
+}
+
+func TestStatusLevaPlanilhas(t *testing.T) {
+	rel := &excel.Relatorio{Arquivos: 1, Tabelas: 1}
+	run := &fakeRunner{planilhas: rel}
+	c, _ := newCtl(t, run)
+	<-c.BootAsync()
+	if _, err := c.Apply(inputArquivo("excel", "/planilhas")); err != nil {
+		t.Fatal(err)
+	}
+	if got := c.Status().Planilhas; got != rel {
+		t.Errorf("planilhas %p, quero %p", got, rel)
+	}
+	run.mu.Lock()
+	run.planilhas = nil
+	run.mu.Unlock()
+	if _, err := c.Apply(input("s1")); err != nil {
+		t.Fatal(err)
+	}
+	st := c.Status()
+	if st.Planilhas != nil {
+		t.Errorf("postgres com planilhas: %+v", st.Planilhas)
+	}
+	if b, _ := json.Marshal(st); strings.Contains(string(b), "planilhas") {
+		t.Errorf("JSON sem relatório não deveria ter a chave: %s", b)
 	}
 }

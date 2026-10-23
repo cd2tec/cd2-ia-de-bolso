@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/dbconf"
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/excel"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/toolbox"
 )
 
@@ -20,17 +21,24 @@ const (
 	Falhou   = "falhou"
 )
 
-// MsgClosed é a resposta de Apply e Clear depois do Shutdown.
+// MsgClosed é a resposta de Apply, Clear e Reler depois do Shutdown.
 const MsgClosed = "O cd2-ctl está encerrando."
 
 // MsgStopped aparece quando o toolbox morre sozinho depois de pronto.
 const MsgStopped = "O toolbox parou sozinho. Clique em Salvar e conectar para tentar de novo."
+
+// ErrNaoArquivo é a resposta de Reler quando não há conexão ou ela não é de um motor de arquivo.
+var ErrNaoArquivo = errors.New("Esta conexão não é de arquivos.")
 
 // Runner sobe e derruba o toolbox (*toolbox.Supervisor; nos testes, um falso).
 type Runner interface {
 	Start(dbconf.Config) error
 	Stop() error
 	Running() bool
+	// Reload relê a pasta de um motor de arquivo; se a importação falhar, o toolbox fica como estava.
+	Reload(dbconf.Config) error
+	// Planilhas é o relatório da última importação de planilhas Excel (nulo nos outros motores).
+	Planilhas() *excel.Relatorio
 }
 
 // Status é a resposta de GET /status (e de POST e DELETE /config). Nunca leva a senha.
@@ -45,6 +53,8 @@ type Status struct {
 	SenhaSalva bool     `json:"senha_salva"`
 	Erro       string   `json:"erro,omitempty"`
 	Log        []string `json:"log,omitempty"`
+	// Planilhas é o relatório da última leitura da pasta de planilhas (só no motor excel).
+	Planilhas *excel.Relatorio `json:"planilhas,omitempty"`
 }
 
 // Controller guarda a conexão em vigor e atende um pedido de configuração por vez.
@@ -87,7 +97,7 @@ func (c *Controller) Status() Status {
 	if estado == Rodando && !c.run.Running() {
 		estado, erro, log = Falhou, MsgStopped, nil
 	}
-	st := Status{Estado: estado, Erro: erro, Log: log}
+	st := Status{Estado: estado, Erro: erro, Log: log, Planilhas: c.run.Planilhas()}
 	if cur != nil {
 		st.Motor, st.Host, st.Base, st.Usuario, st.Schema = cur.Engine, cur.Host, cur.Name, cur.User, cur.Schema
 		st.Porta, _ = strconv.Atoi(cur.Port)
@@ -172,6 +182,35 @@ func (c *Controller) Apply(in dbconf.Input) (Status, error) {
 	return c.Status(), nil
 }
 
+// Reler relê a pasta da conexão em vigor (excel ou dbf) sem derrubar a cópia que está no ar
+// quando a importação falha. Sem conexão, ou com motor que não é de arquivo, devolve
+// ErrNaoArquivo sem mexer em nada.
+func (c *Controller) Reler() (Status, error) {
+	c.op.Lock()
+	defer c.op.Unlock()
+	if c.closed {
+		return c.closedStatus(), nil
+	}
+	cur := c.current()
+	if cur == nil || !dbconf.EngineArquivo(cur.Engine) {
+		return Status{}, ErrNaoArquivo
+	}
+	c.set(cur, Subindo, "", nil)
+	err := c.run.Reload(*cur)
+	switch {
+	case err == nil:
+		c.set(cur, Rodando, "", nil)
+	case c.run.Running():
+		// a importação falhou antes de mexer no toolbox: a cópia antiga continua no ar
+		msg, log := describe(err)
+		c.set(cur, Rodando, msg, log)
+	default:
+		// o toolbox caiu no meio da troca: sobe de novo a mesma conexão (o Start relê a pasta)
+		c.rollback(cur, err)
+	}
+	return c.Status(), nil
+}
+
 // rollback sobe de novo a conexão anterior e guarda erro e log da tentativa que falhou.
 func (c *Controller) rollback(prev *dbconf.Config, failure error) {
 	msg, log := describe(failure)
@@ -213,7 +252,7 @@ func (c *Controller) Shutdown() {
 	_ = c.run.Stop()
 }
 
-// closedStatus é a resposta de Apply e Clear depois do Shutdown: nada é iniciado nem apagado.
+// closedStatus é a resposta de Apply, Clear e Reler depois do Shutdown: nada é iniciado nem apagado.
 func (c *Controller) closedStatus() Status {
 	st := c.Status()
 	st.Erro, st.Log = MsgClosed, nil

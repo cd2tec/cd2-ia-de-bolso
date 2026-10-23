@@ -1,5 +1,5 @@
-// Package api é a porta de controle do cd2-ctl: GET /status, POST e DELETE /config. Host,
-// Origin, chave da sessão e Content-Type são conferidos antes de qualquer coisa.
+// Package api é a porta de controle do cd2-ctl: GET /status, POST e DELETE /config e POST /reler.
+// Host, Origin, chave da sessão e Content-Type são conferidos antes de qualquer coisa.
 package api
 
 import (
@@ -38,6 +38,8 @@ type Backend interface {
 	Status() control.Status
 	Apply(dbconf.Input) (control.Status, error)
 	Clear() control.Status
+	// Reler relê a pasta da conexão em vigor (excel ou dbf); control.ErrNaoArquivo nos outros casos.
+	Reler() (control.Status, error)
 }
 
 type server struct {
@@ -125,6 +127,22 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			notAllowed(w, "POST, DELETE")
 		}
+	case "/reler":
+		// sem corpo: não exige Content-Type nem lê o corpo
+		if r.Method != http.MethodPost {
+			notAllowed(w, "POST")
+			return
+		}
+		st, err := s.b.Reler()
+		if errors.Is(err, control.ErrNaoArquivo) {
+			fail(w, http.StatusConflict, err.Error())
+			return
+		}
+		if err != nil {
+			fail(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		writeJSON(w, codeFor(st), st)
 	case "/instalacao", "/instalacao/chave", "/instalacao/progresso", "/instalacao/abrir":
 		if s.inst == nil {
 			fail(w, http.StatusNotFound, "rota não encontrada")

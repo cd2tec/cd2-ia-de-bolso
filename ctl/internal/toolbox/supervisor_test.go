@@ -2,6 +2,7 @@ package toolbox
 
 import (
 	"database/sql"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -397,5 +398,154 @@ func TestPlanilhasZeraNosOutrosMotores(t *testing.T) {
 	}
 	if s.Planilhas() != nil {
 		t.Error("com outro motor o relatório deveria ser nulo")
+	}
+}
+
+// planilhaSimples grava um .xlsx com uma aba de cabeçalho e uma linha (vira uma tabela).
+func planilhaSimples(t *testing.T, caminho string) {
+	t.Helper()
+	novaPlanilha(t, caminho, func(f *excelize.File) {
+		deve(t, f.SetSheetRow("Sheet1", "A1", &[]any{"Produto", "Qtd"}))
+		deve(t, f.SetSheetRow("Sheet1", "A2", &[]any{"Arroz", 3}))
+	})
+}
+
+// contaTabelas abre o SQLite em caminho e conta as tabelas.
+func contaTabelas(t *testing.T, caminho string) int {
+	t.Helper()
+	db, err := sql.Open("sqlite", caminho)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func TestReloadTrocaACopiaComToolboxDePe(t *testing.T) {
+	s := newSup(t, 10*time.Second)
+	pasta := t.TempDir()
+	planilhaSimples(t, filepath.Join(pasta, "vendas.xlsx"))
+	if err := s.Start(cfgExcel(pasta)); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	destino := filepath.Join(s.opt.CacheDir, "excel.sqlite")
+	if n := contaTabelas(t, destino); n != 1 {
+		t.Fatalf("antes do Reload: %d tabelas", n)
+	}
+	planilhaSimples(t, filepath.Join(pasta, "estoque.xlsx"))
+	if err := s.Reload(cfgExcel(pasta)); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+	if !s.Running() {
+		t.Fatal("depois do Reload o toolbox deveria estar de pé")
+	}
+	if n := contaTabelas(t, destino); n != 2 {
+		t.Errorf("depois do Reload: %d tabelas, quero 2", n)
+	}
+	if rel := s.Planilhas(); rel == nil || rel.Tabelas != 2 {
+		t.Errorf("relatório: %+v", rel)
+	}
+	if _, err := os.Stat(destino + ".novo"); !os.IsNotExist(err) {
+		t.Errorf("sobrou excel.sqlite.novo (err %v)", err)
+	}
+}
+
+func TestReloadQueFalhaNaImportacaoNaoDerruba(t *testing.T) {
+	s := newSup(t, 10*time.Second)
+	pasta := filepath.Join(t.TempDir(), "planilhas")
+	deve(t, os.Mkdir(pasta, 0o755))
+	planilhaSimples(t, filepath.Join(pasta, "vendas.xlsx"))
+	if err := s.Start(cfgExcel(pasta)); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	deve(t, os.RemoveAll(pasta))
+	se := startErr(t, s.Reload(cfgExcel(pasta)))
+	if se.Msg != "Não achei a pasta das planilhas." {
+		t.Errorf("mensagem: %q", se.Msg)
+	}
+	if !s.Running() {
+		t.Error("a importação falhou e o toolbox caiu")
+	}
+	destino := filepath.Join(s.opt.CacheDir, "excel.sqlite")
+	if n := contaTabelas(t, destino); n != 1 {
+		t.Errorf("a cópia no ar mudou: %d tabelas, quero 1", n)
+	}
+	if _, err := os.Stat(destino + ".novo"); !os.IsNotExist(err) {
+		t.Errorf("sobrou excel.sqlite.novo (err %v)", err)
+	}
+}
+
+func TestReloadDeMotorQueNaoEDeArquivo(t *testing.T) {
+	s := newSup(t, 10*time.Second)
+	if err := s.Start(cfg("boa")); err != nil {
+		t.Fatal(err)
+	}
+	se := startErr(t, s.Reload(cfg("boa")))
+	if se.Msg != "Esta conexão não é de arquivos." {
+		t.Errorf("mensagem: %q", se.Msg)
+	}
+	if !s.Running() {
+		t.Error("o Reload recusado derrubou o toolbox")
+	}
+}
+
+// escreveDbf grava um .dbf mínimo (dBase III, um campo NOME de 20 caracteres, só ASCII).
+func escreveDbf(t *testing.T, caminho string, nomes ...string) {
+	t.Helper()
+	const nomeL = 20
+	h := make([]byte, 32)
+	h[0] = 0x03
+	binary.LittleEndian.PutUint32(h[4:], uint32(len(nomes)))
+	binary.LittleEndian.PutUint16(h[8:], 32+32+1)
+	binary.LittleEndian.PutUint16(h[10:], 1+nomeL)
+	campo := make([]byte, 32)
+	copy(campo, "NOME")
+	campo[11] = 'C'
+	campo[16] = nomeL
+	b := append(h, campo...)
+	b = append(b, 0x0D)
+	for _, n := range nomes {
+		reg := []byte(strings.Repeat(" ", 1+nomeL))
+		copy(reg[1:], n)
+		b = append(b, reg...)
+	}
+	b = append(b, 0x1A)
+	deve(t, os.WriteFile(caminho, b, 0o644))
+}
+
+func TestStartEReloadDbf(t *testing.T) {
+	s := newSup(t, 10*time.Second)
+	pasta := t.TempDir()
+	escreveDbf(t, filepath.Join(pasta, "CLIENTE.DBF"), "Padaria do Ze", "Mercado Bom")
+	conf := dbconf.Config{Engine: "dbf", Name: pasta}
+	if err := s.Start(conf); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	destino := filepath.Join(s.opt.CacheDir, "dbf.sqlite")
+	if _, err := os.Stat(destino); err != nil {
+		t.Fatalf("dbf.sqlite não existe: %v", err)
+	}
+	if _, err := os.Stat(destino + ".novo"); !os.IsNotExist(err) {
+		t.Errorf("sobrou dbf.sqlite.novo (err %v)", err)
+	}
+	if s.Planilhas() != nil {
+		t.Errorf("DBF não tem relatório de planilhas: %+v", s.Planilhas())
+	}
+	escreveDbf(t, filepath.Join(pasta, "PRODUTO.DBF"), "Arroz")
+	if err := s.Reload(conf); err != nil {
+		t.Fatalf("Reload: %v", err)
+	}
+	if !s.Running() {
+		t.Error("depois do Reload o toolbox deveria estar de pé")
+	}
+	if n := contaTabelas(t, destino); n != 2 {
+		t.Errorf("depois do Reload: %d tabelas, quero 2", n)
+	}
+	if s.Planilhas() != nil {
+		t.Errorf("DBF não tem relatório de planilhas: %+v", s.Planilhas())
 	}
 }
