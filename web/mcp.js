@@ -10,7 +10,7 @@
 (function(root){
 "use strict";
 const PROTOCOL_VERSION = '2025-06-18';
-const CLIENT_INFO = { name:'cd2-harness', version:'0.20.1' };
+const CLIENT_INFO = { name:'cd2-harness', version:'0.21.0' };
 
 function parseSse(text, id){
   for(const block of text.split(/\r?\n\r?\n/)){
