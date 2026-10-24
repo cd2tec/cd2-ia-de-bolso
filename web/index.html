@@ -2432,16 +2432,17 @@ function itemSalva(c){
     if(aberto){
       const menu = document.createElement('div'); menu.className = 'salvas__menu';
       if(sb.modo === 'apagar'){
-        const n = sb.contagem && sb.contagem.id === c.id ? sb.contagem.n : 0;
+        const cont = sb.contagem && sb.contagem.id === c.id ? sb.contagem : null, n = cont ? cont.n : 0;
         const t = document.createElement('span'); t.textContent = 'Apagar esta consulta?' + (n ? ' ' + CD2Agenda.textoApagar(n) : '');
         const sim = botaoSm('Apagar', 'primary'), nao = botaoSm('Cancelar');
+        sim.disabled = !!(cont && cont.pendente);
         sim.onclick = () => apagarSalva(c); nao.onclick = fecharMenuSalva;
         menu.appendChild(t); menu.appendChild(sim); menu.appendChild(nao); foco = nao;
       }else{
         const rodar = botaoSm('▶ Rodar agora'), agendar = botaoSm('⏰ Agendar…'), ren = botaoSm('✎ Renomear'), ap = botaoSm('🗑 Apagar');
         rodar.disabled = st.busy;
         rodar.onclick = () => rodarAgora(c); agendar.onclick = () => abrirAgendar(c);
-        ren.onclick = () => abrirMenuSalva(c, 'renomear'); ap.onclick = () => { abrirMenuSalva(c, 'apagar'); contarHistorico(c); };
+        ren.onclick = () => abrirMenuSalva(c, 'renomear'); ap.onclick = () => { sb.contagem = { id:c.id, n:0, pendente:!!(st.ctlKey && podeSalvar()) }; abrirMenuSalva(c, 'apagar'); contarHistorico(c); };
         menu.appendChild(rodar); menu.appendChild(agendar);
         if(c.agenda || novidadesDe(c.id)){ const hist = botaoSm('🗂 Ver histórico'); hist.onclick = () => abrirHistorico(c.id); menu.appendChild(hist); }
         menu.appendChild(ren); menu.appendChild(ap); foco = rodar.disabled ? agendar : rodar;
@@ -2518,6 +2519,7 @@ function confirmarRodar(){
 // usados (normalizados pelo montarSql) viram os da próxima vez.
 async function executarSalva(c, valores){
   if(st.busy || !st.provider) return;
+  fecharHistorico(); // o card vai para a conversa à vista
   st.busy = true; st.ctl = new AbortController(); toggleBusy();
   const hero = $('#hero'); if(hero) hero.remove();
   addUser('Consulta salva: ' + String(c.nome || ''));
@@ -2657,7 +2659,7 @@ const instalada = () => !!(inst.status && inst.status.origem === 'instalada');
 const ehParamData = p => !!p && (p.tipo === 'data' || p.tipo === 'datahora');
 const novidadesDe = id => (ag.genNov === st.catalogGen && ag.novidades[id]) || 0;
 // Relógio e bolinha de um item da barra (também usado para atualizar no lugar, sem redesenhar a lista).
-const abreHistorico = c => !!c.agenda && instalada();
+const abreHistorico = c => !!c.agenda && instalada() && !!st.ctlKey;
 function marcasSalva(run, c){
   run.title = abreHistorico(c) ? 'Ver o histórico do agendamento' : 'Rodar de novo, direto no banco';
   const n = novidadesDe(c.id);
@@ -2955,20 +2957,25 @@ async function rodarPeloCtl(c){
   }
 }
 // Quantas execuções o histórico tem, para a confirmação do Apagar.
+// O Apagar fica desabilitado enquanto a contagem não chega; se ela falhar, confirma sem o número.
 async function contarHistorico(c){
-  sb.contagem = null;
-  if(!st.ctlKey || !podeSalvar()) return;
+  if(!sb.contagem || sb.contagem.id !== c.id || !sb.contagem.pendente) return;
   let r = null;
   try{ r = await ctlRequest('GET', rotaHistorico(st.notasChave || '', c.id) + '&n=1', null, 5000); }catch(e){}
-  if(r && r.status === 409 && hs.id) return bancoMudouAgenda(r);
-  if(!r || r.status !== 200 || !Number.isInteger(r.data.total) || sb.menu !== c.id || sb.modo !== 'apagar') return;
-  sb.contagem = { id:c.id, n:r.data.total };
+  if(r && r.status === 409 && hs.id) bancoMudouAgenda(r);
+  if(!sb.contagem || sb.contagem.id !== c.id) return;
+  const ok = r && r.status === 200 && Number.isInteger(r.data.total);
+  sb.contagem = { id:c.id, n:ok ? r.data.total : 0, pendente:false };
+  if(sb.menu !== c.id || sb.modo !== 'apagar') return;
+  sb.focar = $('#sItens').contains(document.activeElement); // redesenhar não tira o foco do Cancelar
   renderSalvas();
 }
 // Depois que a consulta saiu das notas, o histórico dela vai junto (melhor esforço).
 async function apagarHistorico(chave, id){
   if(!st.ctlKey || !chave) return;
-  try{ await ctlRequest('DELETE', rotaHistorico(chave, id), null, 5000); }catch(e){}
+  let r = null;
+  try{ r = await ctlRequest('DELETE', rotaHistorico(chave, id), null, 5000); }catch(e){}
+  if(!r || r.status !== 200) addNote('A consulta foi apagada, mas o histórico das execuções não. Ele continua guardado neste computador.', true);
 }
 // ?agenda=<id> (a notificação ou a bandeja abriram a janela): com o banco conectado, abre o
 // histórico daquela consulta e tira o parâmetro do endereço (o resto fica).
@@ -3226,7 +3233,11 @@ function addNote(t, err){
   d.appendChild(document.createTextNode(t));
   chatAtual().appendChild(d); scrollDown();
 }
-function calarAvatares(){ document.querySelectorAll('.msg.falando').forEach(m => m.classList.remove('falando')); }
+function calarAvatares(){
+  const cala = m => m.classList.remove('falando');
+  document.querySelectorAll('.msg.falando').forEach(cala);
+  if(hs.guardados) hs.guardados.querySelectorAll('.msg.falando').forEach(cala); // conversa guardada atrás do histórico
+}
 function toggleBusy(){
   $('#bSend').style.display = st.busy ? 'none' : ''; $('#bStop').style.display = st.busy ? '' : 'none'; $('#input').disabled = st.busy;
   document.querySelectorAll('.salvas__run').forEach(b => { b.disabled = st.busy; });
