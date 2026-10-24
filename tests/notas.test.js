@@ -231,6 +231,23 @@ test('importar desliga a agenda que vem do arquivo', () => {
   assert.equal(c2.agenda.freq, 'mensal');
 });
 
+test('conflito que muda a forma dos params mantém a agenda daqui, mas desligada', () => {
+  const ag = { ligado:true, freq:'diario', a_cada:1, hora:'07:00', params:[{ modo:'periodo', periodo:'hoje', ponta:'inicio' }] };
+  const local = { ...q('1', 'Top', 'sql velho'), params:[{ nome:'d', tipo:'data', valor:'1' }], agenda:ag };
+  // mesmo nº e tipo de params: a agenda fica ligada
+  const igual = { ...q('9', 'Top', 'sql novo'), params:[{ nome:'dia', tipo:'data', valor:'2' }] };
+  assert.equal(N.planoImportacao(dd({}, [local]), dd({}, [igual])).resultado.consultas[0].agenda.ligado, true);
+  // tipo trocado, a mais ou em outra ordem: a agenda fica, desligada
+  for(const params of [[{ nome:'d', tipo:'numero', valor:'1' }],
+    [{ nome:'d', tipo:'data', valor:'1' }, { nome:'n', tipo:'numero', valor:'1' }],
+    []]){
+    const arq = { ...q('9', 'Top', 'sql novo'), params };
+    const c = N.planoImportacao(dd({}, [local]), dd({}, [arq])).resultado.consultas[0];
+    assert.deepEqual(c.agenda, { ...ag, ligado:false });
+  }
+  assert.equal(local.agenda.ligado, true); // não muta a entrada
+});
+
 test('agenda diferente não é conflito e a daqui fica', () => {
   const local = { ...q('1', 'Top', 'sql'), agenda:{ ligado:true, freq:'diaria', params:[] } };
   const arq = { ...q('9', 'Top', 'sql'), agenda:{ ligado:true, freq:'semanal', params:[] } };

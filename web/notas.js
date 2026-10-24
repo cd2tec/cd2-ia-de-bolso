@@ -118,6 +118,7 @@ function mesmoBanco(a, b){
 const chaveConsulta = c => String(c.nome).trim().toLowerCase();
 // O valor do parâmetro é só o da última vez (muda a cada execução): não conta como diferença.
 const formaParams = ps => JSON.stringify((Array.isArray(ps) ? ps : []).map(p => p && typeof p === 'object' ? [p.nome, p.tipo, p.inicio, p.fim] : p));
+const tiposParams = ps => JSON.stringify((Array.isArray(ps) ? ps : []).map(p => p && typeof p === 'object' ? p.tipo : null));
 const igualConsulta = (a, b) => ['sql', 'visual', 'x', 'y'].every(k => a[k] === b[k]) && formaParams(a.params) === formaParams(b.params);
 
 // Agenda que vem de arquivo chega desligada (cópia, sem mutar); agenda malformada cai.
@@ -161,8 +162,10 @@ function planoImportacao(atual, chegando){
     } else if(!igualConsulta(consultas[i], c)){
       const mesmoSql = consultas[i].sql === c.sql;
       conflitos.push({ tipo:'consulta', onde:consultas[i].nome, antes:mesmoSql ? JSON.stringify(consultas[i].params) : consultas[i].sql, depois:mesmoSql ? JSON.stringify(c.params) : c.sql });
-      // a agenda daqui prevalece; sem ela, leva a do arquivo (já desligada)
-      const agenda = consultas[i].agenda || c.agenda;
+      // a agenda daqui prevalece; sem ela, leva a do arquivo (já desligada). Se os params mudaram de
+      // forma (quantos, tipo ou ordem), os params da agenda não casam mais: fica, mas desligada.
+      let agenda = consultas[i].agenda || c.agenda;
+      if(consultas[i].agenda && tiposParams(consultas[i].params) !== tiposParams(c.params)) agenda = { ...agenda, ligado:false };
       consultas[i] = { ...c, id:consultas[i].id };
       if(agenda) consultas[i].agenda = agenda; else delete consultas[i].agenda;
     }
