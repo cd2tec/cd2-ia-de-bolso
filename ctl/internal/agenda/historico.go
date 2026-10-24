@@ -46,10 +46,12 @@ type Execucao struct {
 	Novo      bool       `json:"novo"`             // preenchido na leitura: agendada/perda com Seq > visto
 }
 
-// estado é o <consultaId>.estado.json: último seq, último visto e quando cada perda foi rodada.
+// estado é o <consultaId>.estado.json: último seq, último visto, quantas linhas o .jsonl tem e
+// quando cada perda foi rodada. Total nil: estado de antes do total, que é contado uma vez.
 type estado struct {
 	Seq     int64             `json:"seq"`
 	Visto   int64             `json:"visto"`
+	Total   *int64            `json:"total,omitempty"`
 	Rodadas map[string]string `json:"rodadas"`
 }
 
@@ -136,6 +138,50 @@ func gravarAtomico(arq string, dados []byte) error {
 	return nil
 }
 
+// total devolve quantas linhas válidas o .jsonl tem: do estado ou, num estado antigo, contando
+// uma vez (e deixando no est para quem for gravar).
+func (h *Historico) total(arq string, est *estado) (int64, error) {
+	if est.Total != nil {
+		return *est.Total, nil
+	}
+	var n int64
+	err := h.varrer(arq, func(b []byte) {
+		if json.Valid(b) {
+			n++
+		}
+	})
+	if err != nil {
+		return 0, err
+	}
+	est.Total = &n
+	return n, nil
+}
+
+// paraDisco tira Linhas quando é igual a Todas (o comum: as mesmas até 200 linhas duas vezes);
+// a leitura refaz com refazer. Não mexe no Resultado de quem chamou.
+func paraDisco(e Execucao) Execucao {
+	r := e.Resultado
+	if r == nil || !r.Ok || r.Linhas == nil || len(r.Linhas) != len(r.Todas) {
+		return e
+	}
+	l, err1 := json.Marshal(r.Linhas)
+	t, err2 := json.Marshal(r.Todas)
+	if err1 != nil || err2 != nil || !bytes.Equal(l, t) {
+		return e
+	}
+	c := *r
+	c.Linhas = nil
+	e.Resultado = &c
+	return e
+}
+
+// refazer põe de volta Linhas = Todas na execução lida do disco (o contrato com a tela não muda).
+func refazer(e *Execucao) {
+	if r := e.Resultado; r != nil && r.Ok && r.Linhas == nil && r.Todas != nil {
+		r.Linhas = r.Todas
+	}
+}
+
 // Anexar atribui Seq = estado.seq+1 e acrescenta a linha. O estado é gravado antes: se o
 // acréscimo falhar sobra um buraco no Seq, nunca um Seq repetido.
 func (h *Historico) Anexar(chave, id string, e Execucao) (Execucao, error) {
@@ -149,13 +195,20 @@ func (h *Historico) Anexar(chave, id string, e Execucao) (Execucao, error) {
 	if err != nil {
 		return e, err
 	}
-	est.Seq++
-	e.Seq = est.Seq
-	e.Rodada, e.Novo = nil, false
-	linha, err := json.Marshal(e)
+	tot, err := h.total(arq, &est)
 	if err != nil {
 		return e, err
 	}
+	est.Seq++
+	e.Seq = est.Seq
+	e.Rodada, e.Novo = nil, false
+	linha, err := json.Marshal(paraDisco(e))
+	if err != nil {
+		return e, err
+	}
+	// O total já conta a linha nova; se o acréscimo falhar, volta (melhor esforço).
+	novoTot := tot + 1
+	est.Total = &novoTot
 	if err := os.MkdirAll(filepath.Dir(arq), 0o700); err != nil {
 		return e, err
 	}
@@ -179,6 +232,10 @@ func (h *Historico) Anexar(chave, id string, e Execucao) (Execucao, error) {
 	}
 	if errFechar := f.Close(); err == nil {
 		err = errFechar
+	}
+	if err != nil {
+		est.Total = &tot
+		gravarEstado(arqEst, est)
 	}
 	return e, err
 }
@@ -217,24 +274,9 @@ func (h *Historico) Pagina(chave, id string, antes int64, n int) (itens []Execuc
 	if err != nil {
 		return nil, false, err
 	}
-	f, err := os.Open(arq)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, err
-	}
-	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil {
-		return nil, false, err
-	}
-	pos := fi.Size()
-	var resto []byte // começo de linha ainda sem o início
-	// linha trata uma linha completa; devolve true quando já achou n+1.
-	linha := func(b []byte) bool {
+	err = voltar(arq, func(b []byte) bool {
 		var e Execucao
-		if len(bytes.TrimSpace(b)) == 0 || json.Unmarshal(b, &e) != nil {
+		if json.Unmarshal(b, &e) != nil {
 			return false
 		}
 		if antes > 0 && e.Seq >= antes {
@@ -245,9 +287,33 @@ func (h *Historico) Pagina(chave, id string, antes int64, n int) (itens []Execuc
 			return true
 		}
 		est.preencher(&e)
+		refazer(&e)
 		itens = append(itens, e)
 		return false
+	})
+	if err != nil {
+		return nil, false, err
 	}
+	return itens, mais, nil
+}
+
+// voltar lê o .jsonl de trás para a frente em blocos de 64 KB e chama fn em cada linha não vazia,
+// da mais nova para a mais velha, até fn devolver true. Arquivo que não existe: nada.
+func voltar(arq string, fn func(linha []byte) bool) error {
+	f, err := os.Open(arq)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	pos := fi.Size()
+	var resto []byte // começo de linha ainda sem o início
 	for pos > 0 {
 		tam := int64(bloco)
 		if pos < tam {
@@ -256,7 +322,7 @@ func (h *Historico) Pagina(chave, id string, antes int64, n int) (itens []Execuc
 		pos -= tam
 		buf := make([]byte, tam+int64(len(resto)))
 		if err := readAtFull(f, buf[:tam], pos); err != nil && !errors.Is(err, io.EOF) {
-			return nil, false, err
+			return err
 		}
 		copy(buf[tam:], resto)
 		partes := bytes.Split(buf, []byte{'\n'})
@@ -266,12 +332,12 @@ func (h *Historico) Pagina(chave, id string, antes int64, n int) (itens []Execuc
 			resto, ate = nil, 0
 		}
 		for i := len(partes) - 1; i >= ate; i-- {
-			if linha(partes[i]) {
-				return itens, mais, nil
+			if len(bytes.TrimSpace(partes[i])) > 0 && fn(partes[i]) {
+				return nil
 			}
 		}
 	}
-	return itens, mais, nil
+	return nil
 }
 
 // varrer lê o .jsonl de frente para trás, linha a linha, sem guardar o arquivo.
@@ -299,24 +365,34 @@ func (h *Historico) varrer(arq string, fn func(linha []byte)) error {
 	}
 }
 
-// Contar devolve quantas execuções válidas o histórico tem.
+// Contar devolve quantas execuções válidas o histórico tem. Vem do estado; num estado antigo,
+// sem o total, conta uma vez lendo o arquivo e grava.
 func (h *Historico) Contar(chave, id string) (int, error) {
-	arq, _, err := h.caminhos(chave, id)
+	arq, arqEst, err := h.caminhos(chave, id)
 	if err != nil {
 		return 0, err
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	n := 0
-	err = h.varrer(arq, func(b []byte) {
-		if json.Valid(b) {
-			n++
-		}
-	})
-	return n, err
+	est, err := lerEstado(arqEst)
+	if err != nil {
+		return 0, err
+	}
+	if est.Total != nil {
+		return int(*est.Total), nil
+	}
+	n, err := h.total(arq, &est)
+	if err != nil {
+		return 0, err
+	}
+	if _, err := os.Stat(arq); err == nil { // sem histórico não cria estado
+		gravarEstado(arqEst, est)
+	}
+	return int(n), nil
 }
 
-// NaoVistas conta as agendadas e perdas com Seq > visto.
+// NaoVistas conta as agendadas e perdas com Seq > visto, lendo de trás para a frente até o
+// primeiro seq já visto (o Seq só cresce no arquivo).
 func (h *Historico) NaoVistas(chave, id string) (int, error) {
 	arq, arqEst, err := h.caminhos(chave, id)
 	if err != nil {
@@ -328,15 +404,25 @@ func (h *Historico) NaoVistas(chave, id string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	if est.Seq <= est.Visto {
+		return 0, nil
+	}
 	n := 0
-	err = h.varrer(arq, func(b []byte) {
+	err = voltar(arq, func(b []byte) bool {
 		var e struct {
 			Seq  int64  `json:"seq"`
 			Tipo string `json:"tipo"`
 		}
-		if json.Unmarshal(b, &e) == nil && e.Tipo != "manual" && e.Seq > est.Visto {
+		if json.Unmarshal(b, &e) != nil {
+			return false
+		}
+		if e.Seq <= est.Visto {
+			return true
+		}
+		if e.Tipo != "manual" {
 			n++
 		}
+		return false
 	})
 	return n, err
 }
