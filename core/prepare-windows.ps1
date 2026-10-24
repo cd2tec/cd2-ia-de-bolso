@@ -18,7 +18,7 @@ $ToolboxPlatforms = if ($env:CD2_TOOLBOX_PLATFORMS) { $env:CD2_TOOLBOX_PLATFORMS
 $ToolboxBase = "https://storage.googleapis.com/mcp-toolbox-for-databases/v$ToolboxVersion"
 # cd2-ctl (controle do banco pela tela): versao fixa, baixada do release deste repositorio.
 # CD2_CTL_LOCAL=1 pula o download e usa o binario que ja estiver em bin\ctl (antes do 1o release).
-$CtlVersion = if ($env:CD2_CTL_VERSION) { $env:CD2_CTL_VERSION } else { '0.9.0' }
+$CtlVersion = if ($env:CD2_CTL_VERSION) { $env:CD2_CTL_VERSION } else { '0.10.0' }
 $CtlBase = "https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/ctl-v$CtlVersion"
 
 New-Item -ItemType Directory -Force -Path (Join-Path $Root 'bin'), (Join-Path $Root 'models') | Out-Null

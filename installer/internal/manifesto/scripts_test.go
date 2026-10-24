@@ -47,10 +47,10 @@ func TestDosScriptsLeOsValoresAtuais(t *testing.T) {
 	if f.ToolboxBase != "https://storage.googleapis.com/mcp-toolbox-for-databases/v1.14.0" {
 		t.Errorf("ToolboxBase = %q", f.ToolboxBase)
 	}
-	if f.CtlVersao != "0.9.0" {
+	if f.CtlVersao != "0.10.0" {
 		t.Errorf("CtlVersao = %q", f.CtlVersao)
 	}
-	if f.CtlBase != "https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/ctl-v0.9.0" {
+	if f.CtlBase != "https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/ctl-v0.10.0" {
 		t.Errorf("CtlBase = %q", f.CtlBase)
 	}
 	quero := []string{"windows-amd64", "darwin-arm64", "darwin-amd64", "linux-amd64"}
