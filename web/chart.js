@@ -3,7 +3,7 @@
    tokens --pizza-N (claro ou escuro) e guarda o hex do claro como reserva fora da página. Todo texto que vem do banco é escapado aqui. Sem animação. */
 (function(root){
 "use strict";
-const PALETA = ['#0000ff', '#011e80', '#019eff', '#0333f7', '#a1a6ae', '#dbff2a'];
+const PALETA = ['#1640c0', '#192898', '#7da2ff', '#2563eb', '#a1a6ae', '#a9c1ff'];
 const corPizza = i => 'var(--pizza-' + (i % PALETA.length + 1) + ',' + PALETA[i % PALETA.length] + ')';
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const W = 640;
