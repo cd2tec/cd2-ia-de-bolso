@@ -439,3 +439,14 @@ func (h *Historico) MarcarAberta(chave string, t time.Time) error {
 	}
 	return gravarAtomico(filepath.Join(h.dir, "aberta.json"), raw)
 }
+
+// MarcarAbertaSemBanco grava t só na marca de qualquer banco: a IA aberta sem banco conectado.
+func (h *Historico) MarcarAbertaSemBanco(t time.Time) error {
+	raw, err := json.Marshal(marca{Ate: t})
+	if err != nil {
+		return err
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return gravarAtomico(filepath.Join(h.dir, "aberta.json"), raw)
+}
