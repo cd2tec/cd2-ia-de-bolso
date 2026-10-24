@@ -87,6 +87,9 @@ func TestConsultarFazInitializeUmaVez(t *testing.T) {
 	if f.cabs[0].Get("MCP-Protocol-Version") != "" {
 		t.Fatal("initialize não deve mandar MCP-Protocol-Version")
 	}
+	if f.metodos[1] != "notifications/initialized" || f.cabs[1].Get("MCP-Protocol-Version") != "2025-06-18" {
+		t.Fatalf("notifications/initialized deve mandar MCP-Protocol-Version: %s %v", f.metodos[1], f.cabs[1])
+	}
 }
 
 func TestConsultarErroDoTool(t *testing.T) {

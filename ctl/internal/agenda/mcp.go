@@ -35,6 +35,7 @@ type Cliente struct {
 	mu  sync.Mutex
 	sid string // Mcp-Session-Id, vazio se o servidor não mandou
 	ok  bool   // initialize já feito
+	ver string // versão de protocolo combinada no initialize; vai em todo pedido depois dele
 	n   int
 }
 
@@ -59,7 +60,7 @@ func (c *Cliente) Consultar(ctx context.Context, sql string) (string, error) {
 	return texto, err
 }
 
-func (c *Cliente) reiniciar() { c.sid, c.ok = "", false }
+func (c *Cliente) reiniciar() { c.sid, c.ok, c.ver = "", false, "" }
 
 func (c *Cliente) consultar(ctx context.Context, sql string) (string, error) {
 	if !c.ok {
@@ -115,6 +116,7 @@ func (c *Cliente) iniciar(ctx context.Context) error {
 	if r.ProtocolVersion != protocoloMCP {
 		return fmt.Errorf("o servidor MCP respondeu com a versão de protocolo %q; esperado %q", r.ProtocolVersion, protocoloMCP)
 	}
+	c.ver = r.ProtocolVersion // como o web/mcp.js: já o notifications/initialized leva o cabeçalho
 	if _, err := c.rpc(ctx, "notifications/initialized", nil, true); err != nil {
 		return err
 	}
@@ -147,8 +149,8 @@ func (c *Cliente) rpc(ctx context.Context, metodo string, params any, notif bool
 	if c.sid != "" {
 		req.Header.Set("Mcp-Session-Id", c.sid)
 	}
-	if c.ok && metodo != "initialize" {
-		req.Header.Set("MCP-Protocol-Version", protocoloMCP)
+	if c.ver != "" && metodo != "initialize" {
+		req.Header.Set("MCP-Protocol-Version", c.ver)
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
