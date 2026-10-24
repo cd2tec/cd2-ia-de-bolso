@@ -1,7 +1,10 @@
 // cd2-ctl: controle do banco de dados da IA de Bolso da CD2. Escuta só em 127.0.0.1:P+3000,
 // é o único dono do MCP Toolbox (127.0.0.1:P+1000) e grava a conexão no db.env do cache.
 //
-// Uso: CD2_CTL_KEY=<64 hex> cd2-ctl --root <pen drive> --cache <pasta> --harness-port P [--parent-pid N]
+// Uso: CD2_CTL_KEY=<64 hex> cd2-ctl --root <pen drive> --cache <pasta> --harness-port P [--parent-pid N] [--dados <pasta>]
+//
+// --dados é onde fica o histórico dos agendamentos (historico.sqlite). Vazio: no Mac,
+// ~/Library/Application Support/cd2-harness (o ~/Library/Caches pode ser limpo); nos outros, o --cache.
 //
 // Com --parent-pid, o cd2-ctl confere a cada 2 s se o launcher ainda existe e, se ele sumiu sem
 // limpar (console do Windows fechado no X, kill -9 no Unix), encerra como se tivesse recebido TERM.
@@ -10,6 +13,7 @@ package main
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -22,6 +26,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/agenda"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/api"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/control"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/inst"
@@ -61,6 +66,7 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	root := fs.String("root", "", "raiz do pen drive")
 	cache := fs.String("cache", "", "pasta de cache deste computador (db.env e toolbox.log)")
 	hport := fs.Int("harness-port", 0, "porta do harness (P); toolbox em P+1000, controle em P+3000")
+	dados := fs.String("dados", "", "pasta do historico dos agendamentos (vazio: Application Support no Mac, o --cache nos outros)")
 	parentPID := fs.Int("parent-pid", 0, "PID do launcher: quando ele some, o cd2-ctl encerra sozinho")
 	showVersion := fs.Bool("version", false, "mostra a versao e sai")
 	if err := fs.Parse(args); err != nil {
@@ -75,7 +81,7 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 		return 2
 	}
 	if *root == "" || *cache == "" || *hport < 1 || *hport+3000 > 65535 || *parentPID < 0 {
-		fmt.Fprintln(stderr, "uso: CD2_CTL_KEY=<chave> cd2-ctl --root <pen drive> --cache <pasta> --harness-port P [--parent-pid N]")
+		fmt.Fprintln(stderr, "uso: CD2_CTL_KEY=<chave> cd2-ctl --root <pen drive> --cache <pasta> --harness-port P [--parent-pid N] [--dados <pasta>]")
 		return 2
 	}
 	if err := os.MkdirAll(*cache, 0o700); err != nil {
@@ -108,9 +114,44 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	ctl := control.New(filepath.Join(*cache, "db.env"), sup)
 	ctl.BootAsync()
 	instalacao := inst.New(*root, *cache)
+	notasStore := notas.New(*cache)
+	instalada := instalacao.Info().Origem == "instalada"
+	agCtx, agStop := context.WithCancel(context.Background())
+	defer agStop()
+	agFim := make(chan struct{})
+	var ag api.Agenda
+	var hist *agenda.Historico
+	if motor, err := agenda.NovoMotor(filepath.Join(*root, "web")); err != nil {
+		fmt.Fprintf(stderr, "cd2-ctl: agendamento desligado (motor de consultas: %v)\n", err)
+		close(agFim)
+	} else {
+		home, _ := os.UserHomeDir()
+		hist = agenda.NovoHistorico(pastaDados(*dados, *cache, runtime.GOOS, home))
+		agendador := agenda.NovoAgendador(agenda.Opcoes{
+			Agora: time.Now,
+			Banco: func() (notas.Banco, bool) {
+				st := ctl.Status()
+				return notas.Banco{Motor: st.Motor, Host: st.Host, Porta: st.Porta, Base: st.Base, Usuario: st.Usuario, Schema: st.Schema}, st.Motor != ""
+			},
+			// Logo depois de abrir o toolbox ainda está subindo: a execução espera ele ficar pronto.
+			Pronto:    func() bool { return ctl.Status().Estado == control.Rodando },
+			Consultas: func(b notas.Banco) (json.RawMessage, error) { return notasStore.Ler(b) },
+			Consultar: agenda.NovoCliente(fmt.Sprintf("http://127.0.0.1:%d/mcp", tbPort)).Consultar,
+			Motor:     motor,
+			Hist:      hist,
+			Tick:      30 * time.Second,
+		})
+		ag = &agendaAPI{Agendador: agendador, Historico: hist, ligado: instalada}
+		if instalada {
+			go func() { defer close(agFim); agendador.Rodar(agCtx) }()
+		} else {
+			close(agFim)
+		}
+	}
 	srv := &http.Server{
 		Handler: api.Handler(api.Options{Key: key, HarnessPort: *hport, CtlPort: ctlPort, Instalacao: instalacao,
-			Notas:         notas.New(*cache),
+			Notas:         notasStore,
+			Agenda:        ag,
 			Entendimento:  notas.NewEntendimento(*cache),
 			PodeImportar:  func() bool { return instalacao.Info().Origem == "instalada" },
 			EscolherPasta: pasta.Escolher,
@@ -133,10 +174,27 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)
+	agStop() // o agendador para antes do toolbox
+	<-agFim
+	if hist != nil {
+		_ = hist.Fechar()
+	}
 	instalacao.Shutdown()
 	ctl.Shutdown()
 	fmt.Fprintln(stdout, "cd2-ctl encerrado")
 	return 0
+}
+
+// pastaDados é a pasta do histórico: --dados; senão, no Mac, Application Support (o Caches pode
+// ser limpo pelo sistema); nos outros (e sem HOME), o cache.
+func pastaDados(dados, cache, goos, home string) string {
+	switch {
+	case dados != "":
+		return dados
+	case goos == "darwin" && home != "":
+		return filepath.Join(home, "Library", "Application Support", "cd2-harness")
+	}
+	return cache
 }
 
 // watchParent fecha gone quando o processo pid deixa de existir (ou para quando quit fecha).
@@ -155,3 +213,12 @@ func watchParent(pid int, gone, quit chan struct{}) {
 		}
 	}
 }
+
+// agendaAPI junta o agendador e o histórico na interface api.Agenda.
+type agendaAPI struct {
+	*agenda.Agendador
+	*agenda.Historico
+	ligado bool
+}
+
+func (a *agendaAPI) Ligado() bool { return a.ligado }

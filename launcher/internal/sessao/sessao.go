@@ -83,6 +83,9 @@ type Sessao struct {
 	cancelar   context.CancelFunc
 	carregando chan struct{} // fecha quando o Rodar sai do carregamento
 	motor, ctl Processo
+	// portaCtl e chaveCtl do cd2-ctl que subiu; zero sem ele.
+	portaCtl int
+	chaveCtl string
 
 	dormir sync.Once
 }
@@ -265,6 +268,9 @@ func (s *Sessao) carregar(ctx context.Context) (Processo, bool) {
 			aviso = TextoSemBanco
 		} else {
 			s.guardarCtl(c)
+			s.mu.Lock()
+			s.portaCtl, s.chaveCtl = porta+3000, k
+			s.mu.Unlock()
 		}
 	}
 
@@ -335,6 +341,28 @@ func (s *Sessao) vigiar(ctx context.Context, m Processo) {
 		_ = c.Parar()
 	}
 	s.falhar(TextoParou)
+}
+
+// PortaCtl é a porta do cd2-ctl, para perguntar as novidades da agenda. Só
+// vale em Pronta e com o cd2-ctl de pé; fora disso, 0.
+func (s *Sessao) PortaCtl() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.estado.Fase != Pronta {
+		return 0
+	}
+	return s.portaCtl
+}
+
+// ChaveCtl é a chave do cd2-ctl (a mesma da conversa). Vale como o PortaCtl;
+// fora disso, "".
+func (s *Sessao) ChaveCtl() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.estado.Fase != Pronta || s.portaCtl == 0 {
+		return ""
+	}
+	return s.chaveCtl
 }
 
 // AbrirConversa abre outra janela com a mesma URL. Só vale em Pronta.

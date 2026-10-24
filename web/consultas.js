@@ -6,16 +6,19 @@
    (a guarda do toolbox tira comentários sem olhar aspas e recusa ; em qualquer lugar). Número só
    dígitos (com decimal opcional), data só AAAA-MM-DD que exista no calendário. % e _ de um LIKE NÃO são
    escapados: quem digita % quer o curinga, e escapar exigiria ESCAPE, que muda de motor para motor.
-   Data com hora ('AAAA-MM-DD HH:MM:SS'): o parâmetro cobre só a data e a hora original fica como está.
+   Data e hora ('AAAA-MM-DD HH:MM:SS'): o literal inteiro vira parâmetro datahora (aceita também o AAAA-MM-DDTHH:MM do
+   datetime-local e normaliza). Consulta antiga com tipo data sobre esse literal cobre só os 10 primeiros caracteres.
    Cada parâmetro é conferido de novo contra o SQL na hora de montar (vale para o que veio importado). */
 (function(root){
 "use strict";
 const isNode = typeof module !== 'undefined' && module.exports;
 
-const TIPOS = ['data', 'numero', 'texto'];
+const TIPOS = ['data', 'datahora', 'numero', 'texto'];
 const ERRO_TRECHO = 'Selecione um valor dentro de aspas ou um número inteiro.';
 const ERRO_VALOR = 'Esse valor não aparece na consulta.';
-const DATA_RE = /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/;
+const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DATAHORA_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+const DATAHORA_ENTRADA_RE = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(:\d{2})?$/;
 const NUM_RE = /^\d+(\.\d+)?$/;
 // "1.000" e "10,000" podem ser mil ou um/dez: separador de milhar é recusado, nunca adivinhado.
 const MILHAR_RE = /^\d{1,3}(\.\d{3})+$|^\d{1,3}(,\d{3})+$|^\d.*\..*,|^\d.*,.*\./;
@@ -79,11 +82,20 @@ function dataValida(v){
   return a >= 1 && d.getUTCFullYear() === a && d.getUTCMonth() === me - 1 && d.getUTCDate() === di;
 }
 
+// Aceita 'AAAA-MM-DD HH:MM:SS' e o 'AAAA-MM-DDTHH:MM(:SS)?' do datetime-local; devolve o normalizado ou null.
+function dataHoraValida(v){
+  const m = DATAHORA_ENTRADA_RE.exec(v);
+  if(!m || !dataValida(m[1])) return null;
+  const t = m[2] + (m[3] || ':00');
+  return /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(t) ? m[1] + ' ' + t : null;
+}
+
 function acharLiterais(sql){
   const s = String(sql == null ? '' : sql), v = varrer(s), out = [];
   for(const L of v.strings){
     const conteudo = s.slice(L.ini, L.fim);
-    if(DATA_RE.test(conteudo)){ out.push({ valor:conteudo.slice(0, 10), tipo:'data', inicio:L.ini, fim:L.ini + 10, marcado:true }); continue; }
+    if(DATAHORA_RE.test(conteudo)){ out.push({ valor:conteudo, tipo:'datahora', inicio:L.ini, fim:L.fim, marcado:true }); continue; }
+    if(DATA_RE.test(conteudo)){ out.push({ valor:conteudo, tipo:'data', inicio:L.ini, fim:L.ini + 10, marcado:true }); continue; }
     let a = L.ini, b = L.fim;
     while(a < b && s[a] === '%') a++;
     while(b > a && s[b - 1] === '%') b--;
@@ -112,7 +124,8 @@ function paramDeTrecho(sql, inicio, fim){
   const L = stringDe(v, a, b);
   if(!L || cortaPar(L, a, b)) return falha;
   const t = s.slice(a, b);
-  if(DATA_RE.test(t)) return { ok:true, param:{ valor:t.slice(0, 10), tipo:'data', inicio:a, fim:a + 10 } };
+  if(DATAHORA_RE.test(t)) return { ok:true, param:{ valor:t, tipo:'datahora', inicio:a, fim:b } };
+  if(DATA_RE.test(t)) return { ok:true, param:{ valor:t, tipo:'data', inicio:a, fim:a + 10 } };
   return { ok:true, param:{ valor:desescapar(t), tipo:'texto', inicio:a, fim:b } };
 }
 
@@ -151,6 +164,7 @@ function montarSql(consulta, valores){
     const valor = String(bruto == null ? '' : bruto).trim();
     let texto;
     if(p.tipo === 'data'){ if(!dataValida(valor)) return { ok:false, erro:nome + ': data inválida.' }; texto = valor; }
+    else if(p.tipo === 'datahora'){ const dh = dataHoraValida(valor); if(!dh) return { ok:false, erro:nome + ': data e hora inválida.' }; texto = dh; normal[i] = dh; }
     else if(p.tipo === 'numero'){
       // O valor salvo (com ponto, ou com vírgula como a janela Rodar mostra) já é o que rodou: não é ambíguo.
       const salvo = String(p.valor == null ? '' : p.valor);

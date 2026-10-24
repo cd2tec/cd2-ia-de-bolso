@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"image"
 	"image/color"
+	"image/draw"
 	"image/png"
 )
 
@@ -45,6 +46,7 @@ var (
 	corVazio    = color.NRGBA{0x1b, 0x20, 0x50, 255}
 	corEscuro   = color.NRGBA{0x0d, 0x12, 0x33, 255}
 	corBranco   = color.NRGBA{0xff, 0xff, 0xff, 255}
+	corMarca    = color.NRGBA{0xe5, 0x39, 0x35, 255}
 	primeira    = 1 // primeira e última linha do miolo do cérebro (as de fora são só contorno)
 )
 
@@ -123,4 +125,34 @@ func ICO(pngBytes []byte) []byte {
 	_ = binary.Write(&b, binary.LittleEndian, uint32(22)) // 6 do cabeçalho + 16 da entrada
 	b.Write(pngBytes)
 	return b.Bytes()
+}
+
+// ComMarca põe um círculo vermelho no canto de cima à direita do PNG: a
+// bandeja do Windows não tem texto ao lado do ícone, então os resultados
+// novos dos agendamentos aparecem assim, sem número. O raio é 1/5 do lado
+// menor. PNG inválido volta como veio.
+func ComMarca(pngBytes []byte) []byte {
+	src, err := png.Decode(bytes.NewReader(pngBytes))
+	if err != nil {
+		return pngBytes
+	}
+	b := src.Bounds()
+	img := image.NewNRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+	draw.Draw(img, img.Bounds(), src, b.Min, draw.Src)
+	l, a := b.Dx(), b.Dy()
+	r := min(l, a) / 5
+	if r < 1 {
+		r = 1
+	}
+	cx, cy := l-1-r, r
+	for y := cy - r; y <= cy+r; y++ {
+		for x := cx - r; x <= cx+r; x++ {
+			if dx, dy := x-cx, y-cy; dx*dx+dy*dy <= r*r {
+				img.SetNRGBA(x, y, corMarca)
+			}
+		}
+	}
+	var buf bytes.Buffer
+	_ = png.Encode(&buf, img) // escrever em memória não falha
+	return buf.Bytes()
 }

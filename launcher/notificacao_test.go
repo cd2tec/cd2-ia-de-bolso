@@ -34,3 +34,53 @@ func TestNotifyIconDataLayout(t *testing.T) {
 		}
 	}
 }
+
+// O texto do balão cabe no campo com o NUL do fim, sem partir um emoji (par
+// substituto do UTF-16) ao meio.
+func TestUTF16Cabendo(t *testing.T) {
+	casos := []struct {
+		texto string
+		n     int
+		quer  []uint16
+	}{
+		{"oi", 8, []uint16{'o', 'i', 0}},
+		{"abcd", 3, []uint16{'a', 'b', 0}},
+		{"ação", 5, []uint16{'a', 0xe7, 0xe3, 'o', 0}},
+		{"a😀", 3, []uint16{'a', 0}},
+		{"a😀", 4, []uint16{'a', 0xd83d, 0xde00, 0}},
+		{"", 4, []uint16{0}},
+	}
+	for _, c := range casos {
+		got := utf16Cabendo(c.texto, c.n)
+		if len(got) != len(c.quer) {
+			t.Errorf("utf16Cabendo(%q, %d) = %x, quer %x", c.texto, c.n, got, c.quer)
+			continue
+		}
+		for i := range got {
+			if got[i] != c.quer[i] {
+				t.Errorf("utf16Cabendo(%q, %d) = %x, quer %x", c.texto, c.n, got, c.quer)
+				break
+			}
+		}
+	}
+}
+
+// O clique no balão chega como NIN_BALLOONUSERCLICK no lParam da mensagem de
+// callback do systray (WM_USER+1).
+func TestCliqueNoBalao(t *testing.T) {
+	casos := []struct {
+		msg    uint32
+		lParam uintptr
+		quer   bool
+	}{
+		{0x401, 0x405, true},
+		{0x401, 0x202, false}, // WM_LBUTTONUP: o clique no ícone
+		{0x401, 0x404, false}, // NIN_BALLOONTIMEOUT
+		{0x111, 0x405, false}, // WM_COMMAND
+	}
+	for _, c := range casos {
+		if got := cliqueNoBalao(c.msg, c.lParam); got != c.quer {
+			t.Errorf("cliqueNoBalao(%#x, %#x) = %v, quer %v", c.msg, c.lParam, got, c.quer)
+		}
+	}
+}

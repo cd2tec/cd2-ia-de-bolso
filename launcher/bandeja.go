@@ -2,17 +2,21 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
+	"strconv"
 	"sync"
+	"time"
 
 	"fyne.io/systray"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/origem"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/icone"
+	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/novidades"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/sessao"
 )
 
@@ -33,7 +37,32 @@ const (
 	ladoBandeja  = 44 // px; o Mac reduz para 16x16 pontos, o Windows para o tamanho da bandeja
 	iconeCarrega = "carregando"
 	iconeAcorda  = "acordada"
+
+	// Na instalada, dormir e fechar param os agendamentos: o menu avisa.
+	sufixoAgenda = " (os agendamentos param)"
+
+	// intervaloNovidades é de quanto em quanto o ícone pergunta ao cd2-ctl.
+	intervaloNovidades = 5 * time.Second
+	prazoNovidades     = 3 * time.Second
 )
+
+// rotuloItem é o texto que o menu mostra para o item. O texto do item
+// continua sendo a chave dele; só o rótulo muda.
+func rotuloItem(texto string, instalada bool) string {
+	if instalada && (texto == itemDormir || texto == itemFechar) {
+		return texto + sufixoAgenda
+	}
+	return texto
+}
+
+// tituloMarca é o número ao lado do ícone na barra de menus do Mac: " 3"
+// com resultados novos, vazio sem.
+func tituloMarca(total int) string {
+	if total <= 0 {
+		return ""
+	}
+	return " " + strconv.Itoa(total)
+}
 
 // item é uma linha do menu da bandeja. Marcado só vale para o item com
 // marcação (o acordar com o computador).
@@ -137,7 +166,15 @@ type bandeja struct {
 	pronta    bool
 	cabecalho *systray.MenuItem
 	itens     map[string]*systray.MenuItem // pelo texto: o menu muda com a trava
-	icone     string
+	icone     string                       // o desenho que o estado pede
+	desenhado string                       // o que está no ícone agora
+	marca     bool                         // o ícone desenhado tem a marca (Windows)
+
+	// Novidades dos agendamentos: o topo e as linhas, criados escondidos.
+	nov       novidades.Estado
+	topo      *systray.MenuItem
+	linhas    [novidades.MaxLinhas]*systray.MenuItem
+	consultas [novidades.MaxLinhas]string // a consulta de cada linha visível
 }
 
 // montarMenu roda quando o systray fica pronto. Cria o cabeçalho e os
@@ -148,6 +185,14 @@ func (a *App) montarMenu() {
 	b.cabecalho = systray.AddMenuItem(nomeBandeja, "")
 	b.cabecalho.Disable()
 	systray.AddSeparator()
+	// As novidades da agenda ficam acima do Mostrar, escondidas até haver.
+	b.topo = systray.AddMenuItem("", "")
+	b.topo.Disable()
+	b.topo.Hide()
+	for i := range b.linhas {
+		b.linhas[i] = systray.AddMenuItem("", "")
+		b.linhas[i].Hide()
+	}
 	// Todos os itens existem desde o começo; o atualizarBandeja esconde os
 	// que não valem (com a trava, só Mostrar e Fechar).
 	// Na instalada entram o acordar com o computador e o desinstalar, entre
@@ -157,7 +202,8 @@ func (a *App) montarMenu() {
 		b.itens[texto] = systray.AddMenuItem(texto, "")
 	}
 	var inicioCh, desinstalarCh chan struct{} // nil no pen drive: nunca dispara
-	if a.instalada() {
+	instalada := a.instalada()
+	if instalada {
 		systray.AddSeparator()
 		a.mu.Lock()
 		ligado := a.inicioLigado
@@ -168,12 +214,28 @@ func (a *App) montarMenu() {
 		inicioCh, desinstalarCh = b.itens[itemInicio].ClickedCh, b.itens[itemDesinstalar].ClickedCh
 	}
 	for _, texto := range []string{itemDormir, itemFechar} {
-		b.itens[texto] = systray.AddMenuItem(texto, "")
+		b.itens[texto] = systray.AddMenuItem(rotuloItem(texto, instalada), "")
 	}
 	b.pronta = true
 	b.mu.Unlock()
 	ligarCliqueSimples(a)
 	a.atualizarBandeja(a.s.Atual())
+	b.mu.Lock()
+	b.aplicarNovidades()
+	linhas := b.linhas
+	b.mu.Unlock()
+	for i, m := range linhas {
+		go func() {
+			for range m.ClickedCh {
+				b.mu.Lock()
+				c := b.consultas[i]
+				b.mu.Unlock()
+				if c != "" {
+					a.abrirAgenda(c)
+				}
+			}
+		}()
+	}
 
 	mostrar, nova, instalar := b.itens[itemMostrar], b.itens[itemNova], b.itens[itemInstalar]
 	dormir, fechar := b.itens[itemDormir], b.itens[itemFechar]
@@ -243,8 +305,105 @@ func (a *App) atualizarBandeja(e sessao.Estado) {
 			m.Hide()
 		}
 	}
-	if ic := iconeDoEstado(e); ic != b.icone {
-		b.icone = ic
-		systray.SetIcon(formatoIcone(iconePNG(ic, ladoBandeja)))
+	b.icone = iconeDoEstado(e)
+	// Indo dormir (ou com erro) as novidades saem na hora, sem esperar o vigia.
+	if e.Fase != sessao.Pronta && b.nov.Total > 0 {
+		b.nov = novidades.Estado{}
+		b.aplicarNovidades()
+	}
+	b.desenhar()
+}
+
+// desenhar troca o desenho do ícone se o estado ou a marca mudaram. No Mac a
+// marca é o número ao lado, não vai no desenho. Exige b.mu.
+func (b *bandeja) desenhar() {
+	marca := marcaNoIcone && b.nov.Total > 0
+	if b.icone == b.desenhado && marca == b.marca {
+		return
+	}
+	b.desenhado, b.marca = b.icone, marca
+	p := iconePNG(b.icone, ladoBandeja)
+	if marca {
+		p = icone.ComMarca(p)
+	}
+	systray.SetIcon(formatoIcone(p))
+}
+
+// mostrarNovidades guarda as novidades e põe na bandeja, se ela já existe.
+// Resposta que chega com a IA já indo dormir não volta a pôr a marca.
+func (a *App) mostrarNovidades(e novidades.Estado) {
+	if a.s.Atual().Fase != sessao.Pronta { // antes do b.mu: nunca os dois juntos
+		e = novidades.Estado{}
+	}
+	b := &a.bandeja
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.nov = e
+	if b.pronta {
+		b.aplicarNovidades()
+	}
+}
+
+// aplicarNovidades põe o topo, as linhas e a marca (o número no Mac, o
+// círculo no Windows). Linha sem uso fica escondida. Exige b.mu e a bandeja
+// pronta.
+func (b *bandeja) aplicarNovidades() {
+	topo, linhas := novidades.TextosMenu(b.nov)
+	if topo == "" {
+		b.topo.Hide()
+	} else {
+		b.topo.SetTitle(topo)
+		b.topo.Show()
+	}
+	for i, m := range b.linhas {
+		if i < len(linhas) {
+			b.consultas[i] = b.nov.Linhas[i].Consulta
+			m.SetTitle(linhas[i])
+			m.Show()
+		} else {
+			b.consultas[i] = ""
+			m.Hide()
+		}
+	}
+	if marcaNoIcone {
+		b.desenhar()
+	} else {
+		systray.SetTitle(tituloMarca(b.nov.Total))
+	}
+}
+
+// vigiarNovidades pergunta ao cd2-ctl a cada intervaloNovidades enquanto a
+// IA está acordada. Os avisos novos viram notificação; na primeira resposta
+// depois de subir, só o das perdas (os outros já foram avisados antes).
+// Fora de Pronta (ou sem cd2-ctl) a bandeja fica sem novidades. Para quando
+// o Wails para.
+func (a *App) vigiarNovidades() {
+	var ultimo int64
+	primeira := true
+	t := time.NewTicker(intervaloNovidades)
+	defer t.Stop()
+	for range t.C {
+		if a.contexto() == nil {
+			return
+		}
+		porta, chave := a.s.PortaCtl(), a.s.ChaveCtl()
+		if porta == 0 {
+			a.mostrarNovidades(novidades.Estado{})
+			continue
+		}
+		ctx, cancelar := context.WithTimeout(context.Background(), prazoNovidades)
+		e, err := novidades.Perguntar(ctx, porta, chave, ultimo)
+		cancelar()
+		if err != nil {
+			continue // o cd2-ctl pode estar ocupado: tenta na próxima
+		}
+		for _, av := range novidades.ParaAvisar(e.Avisos, ultimo, primeira) {
+			notificar(av.Titulo, av.Texto, av.Consulta)
+		}
+		primeira = false
+		if e.Ultimo > ultimo {
+			ultimo = e.Ultimo
+		}
+		a.mostrarNovidades(e)
 	}
 }

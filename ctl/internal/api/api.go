@@ -34,6 +34,8 @@ type Options struct {
 	Notas *notas.Store
 	// Entendimento liga as rotas /entendimento; nil as deixa em 404.
 	Entendimento *notas.Store
+	// Agenda liga as rotas /agenda*; nil as deixa em 404.
+	Agenda Agenda
 	// PodeImportar diz se POST /notas/importar é aceito (só na versão instalada).
 	PodeImportar func() bool
 	// EscolherPasta abre o seletor de pastas nativo (pasta.Escolher); nil deixa POST /escolher-pasta em 404.
@@ -57,6 +59,7 @@ type server struct {
 	inst    Instalacao
 	notas   *notas.Store
 	entend  *notas.Store
+	agenda  Agenda
 	importa func() bool
 	escolhe func(context.Context, string) (string, bool, error)
 	// seletor: um seletor de pastas aberto por vez
@@ -74,6 +77,7 @@ func Handler(opt Options, b Backend) http.Handler {
 		inst:    opt.Instalacao,
 		notas:   opt.Notas,
 		entend:  opt.Entendimento,
+		agenda:  opt.Agenda,
 		importa: opt.PodeImportar,
 		escolhe: opt.EscolherPasta,
 		auth:    []byte("Bearer " + opt.Key),
@@ -185,6 +189,12 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.entendimentoRota(w, r)
+	case "/agenda/historico", "/agenda/rodar", "/agenda/visto", "/agenda/novidades":
+		if s.agenda == nil {
+			fail(w, http.StatusNotFound, "rota não encontrada")
+			return
+		}
+		s.agendaRota(w, r)
 	default:
 		fail(w, http.StatusNotFound, "rota não encontrada")
 	}

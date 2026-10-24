@@ -3,6 +3,7 @@
 package navegador
 
 import (
+	neturl "net/url"
 	"os"
 	"os/exec"
 	"runtime"
@@ -20,7 +21,16 @@ func URL(porta int, versao, chave string) string {
 // ComInstalar põe o instalar=1 na URL da conversa, que abre já com o modal
 // de instalação. O parâmetro entra antes do #: o que vem depois dele é a
 // chave e nunca chega ao servidor.
-func ComInstalar(url string) string {
+func ComInstalar(url string) string { return comParametro(url, "instalar=1") }
+
+// ComAgenda põe o agenda=<consulta> na URL da conversa, que abre já no
+// histórico daquele agendamento. Entra antes do #, como o ComInstalar.
+func ComAgenda(url, consulta string) string {
+	return comParametro(url, "agenda="+neturl.QueryEscape(consulta))
+}
+
+// comParametro põe par (já escapado) na query, antes do #.
+func comParametro(url, par string) string {
 	base, hash := url, ""
 	if i := strings.IndexByte(url, '#'); i >= 0 {
 		base, hash = url[:i], url[i:]
@@ -29,7 +39,7 @@ func ComInstalar(url string) string {
 	if strings.Contains(base, "?") {
 		sep = "&"
 	}
-	return base + sep + "instalar=1" + hash
+	return base + sep + par + hash
 }
 
 // appsMac, em ordem de preferência, em /Applications.

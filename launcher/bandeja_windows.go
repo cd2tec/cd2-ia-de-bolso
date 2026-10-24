@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"runtime"
+	"sync"
 	"unsafe"
 
 	"fyne.io/systray"
@@ -24,6 +25,7 @@ const textoAvisoBandeja = "Continuo acordada aqui perto do relógio. Me chama qu
 // no logout (WM_ENDSESSION da janela do systray) e no systray.Quit: nos dois
 // casos a IA dorme antes de o processo acabar.
 func iniciarBandeja(a *App) {
+	appBandeja = a
 	go func() {
 		runtime.LockOSThread()
 		systray.Run(a.montarMenu, a.s.Dormir)
@@ -44,12 +46,33 @@ func trazerParaFrente() {}
 // O systray some no Quit; sem isso o ícone fica "fantasma" até passar o mouse.
 func fecharBandeja() { systray.Quit() }
 
+// A bandeja do Windows não mostra texto ao lado do ícone: a marca é o
+// círculo vermelho no desenho.
+const marcaNoIcone = true
+
+// notificar mostra o aviso de um agendamento num balão do ícone. O clique no
+// balão abre o histórico do agendamento.
+func notificar(titulo, texto, consulta string) { mostrarBalao(titulo, texto, consulta) }
+
 var (
 	shell32         = windows.NewLazySystemDLL("shell32.dll")
 	user32          = windows.NewLazySystemDLL("user32.dll")
 	pShellNotify    = shell32.NewProc("Shell_NotifyIconW")
 	pFindWindowEx   = user32.NewProc("FindWindowExW")
 	pGetWindowPidOf = user32.NewProc("GetWindowThreadProcessId")
+	pSetWindowLong  = user32.NewProc("SetWindowLongPtrW")
+	pCallWindowProc = user32.NewProc("CallWindowProcW")
+)
+
+var (
+	appBandeja *App
+
+	// muBalao guarda a consulta do último balão e a WndProc original do
+	// systray, que a subclasse chama para tudo que não é clique no balão.
+	muBalao       sync.Mutex
+	consultaBalao string
+	procOriginal  uintptr
+	procNova      uintptr
 )
 
 // janelaDoSystray acha a janela escondida que o fyne.io/systray cria (classe
@@ -70,11 +93,15 @@ func janelaDoSystray() windows.Handle {
 	}
 }
 
-// avisarPrimeiroFechar mostra a notificação do sistema pelo próprio ícone da
-// bandeja (NIF_INFO no mesmo ícone, id 100, que é o que o systray usa). O
+// avisarPrimeiroFechar avisa que a IA continua na bandeja. Devolve se o
+// aviso saiu (sem a janela do systray, fica para a próxima).
+func avisarPrimeiroFechar() bool { return mostrarBalao(nomeBandeja, textoAvisoBandeja, "") }
+
+// mostrarBalao mostra a notificação do sistema pelo próprio ícone da bandeja
+// (NIF_INFO no mesmo ícone, id 100, que é o que o systray usa). O
 // fyne.io/systray não tem balão; isto evita uma dependência nova só para ele.
-// Devolve se o aviso saiu (sem a janela do systray, fica para a próxima).
-func avisarPrimeiroFechar() bool {
+// O consulta é o agendamento que o clique abre (vazio: o clique não faz nada).
+func mostrarBalao(titulo, texto, consulta string) bool {
 	const (
 		nimModify = 0x1
 		nifInfo   = 0x10
@@ -85,12 +112,46 @@ func avisarPrimeiroFechar() bool {
 	if h == 0 {
 		return false
 	}
+	subclassificar(h)
+	muBalao.Lock()
+	consultaBalao = consulta
+	muBalao.Unlock()
 	nid := notifyIconData{Wnd: uintptr(h), ID: idIcone, Flags: nifInfo, InfoFlags: niifInfo}
 	nid.Size = uint32(unsafe.Sizeof(nid))
-	info, _ := windows.UTF16FromString(textoAvisoBandeja)
-	titulo, _ := windows.UTF16FromString(nomeBandeja)
-	copy(nid.Info[:len(nid.Info)-1], info)
-	copy(nid.InfoTitle[:len(nid.InfoTitle)-1], titulo)
+	copy(nid.Info[:], utf16Cabendo(texto, len(nid.Info)))
+	copy(nid.InfoTitle[:], utf16Cabendo(titulo, len(nid.InfoTitle)))
 	ok, _, _ := pShellNotify.Call(nimModify, uintptr(unsafe.Pointer(&nid)))
 	return ok != 0
+}
+
+// subclassificar troca, uma vez só, a WndProc da janela do systray pela
+// procBandeja, para saber do clique no balão. A mensagem chega na thread da
+// bandeja; o resto segue para a WndProc do systray.
+func subclassificar(h windows.Handle) {
+	const gwlpWndProc = ^uintptr(3) // GWLP_WNDPROC (-4)
+	muBalao.Lock()
+	defer muBalao.Unlock()
+	if procOriginal != 0 {
+		return
+	}
+	if procNova == 0 {
+		procNova = windows.NewCallback(procBandeja) // há um limite de callbacks: cria uma só
+	}
+	antiga, _, _ := pSetWindowLong.Call(uintptr(h), gwlpWndProc, procNova)
+	procOriginal = antiga // 0 se falhou: tenta de novo no próximo balão
+}
+
+// procBandeja é a subclasse da janela do systray.
+func procBandeja(h windows.Handle, msg uint32, wParam, lParam uintptr) uintptr {
+	muBalao.Lock()
+	consulta, original := consultaBalao, procOriginal
+	muBalao.Unlock()
+	if cliqueNoBalao(msg, lParam) {
+		if consulta != "" && appBandeja != nil {
+			go appBandeja.abrirAgenda(consulta) // fora do laço de mensagens da bandeja
+		}
+		return 0
+	}
+	r, _, _ := pCallWindowProc.Call(original, uintptr(h), uintptr(msg), wParam, lParam)
+	return r
 }

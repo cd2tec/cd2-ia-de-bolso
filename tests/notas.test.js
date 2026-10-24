@@ -207,6 +207,58 @@ test('planoImportacao: mesma consulta com params diferentes é conflito', () => 
   assert.deepEqual(p.resultado.consultas[0].params, b.params);
 });
 
+test('importar desliga a agenda que vem do arquivo', () => {
+  const ag = (ligado, freq) => ({ ligado, freq, params:[{ nome:'d', valor:'1' }] });
+  const so = { ...q('1', 'Só aqui', 'a'), agenda:ag(true, 'diaria') };
+  const nova = { ...q('2', 'Nova', 'b'), agenda:ag(true, 'semanal') };
+  const sem = q('3', 'Sem agenda', 'c');
+  const p = N.planoImportacao(dd({}, [so]), dd({}, [nova, sem]));
+  const por = n => p.resultado.consultas.find(c => c.nome === n);
+  assert.equal(por('Só aqui').agenda.ligado, true);
+  assert.equal(por('Nova').agenda.ligado, false);
+  assert.equal(por('Nova').agenda.freq, 'semanal');
+  assert.equal('agenda' in por('Sem agenda'), false);
+  assert.equal(nova.agenda.ligado, true); // não muta a entrada
+  // conflito real: fica com o texto do arquivo, mas a agenda daqui se já havia
+  const local = { ...q('1', 'Top', 'sql velho'), agenda:ag(true, 'diaria') };
+  const arq = { ...q('9', 'Top', 'sql novo'), agenda:ag(true, 'mensal') };
+  const c1 = N.planoImportacao(dd({}, [local]), dd({}, [arq])).resultado.consultas[0];
+  assert.equal(c1.sql, 'sql novo');
+  assert.deepEqual(c1.agenda, local.agenda);
+  // conflito real, local sem agenda: leva a do arquivo, desligada
+  const c2 = N.planoImportacao(dd({}, [q('1', 'Top', 'sql velho')]), dd({}, [arq])).resultado.consultas[0];
+  assert.equal(c2.agenda.ligado, false);
+  assert.equal(c2.agenda.freq, 'mensal');
+});
+
+test('conflito que muda a forma dos params mantém a agenda daqui, mas desligada', () => {
+  const ag = { ligado:true, freq:'diario', a_cada:1, hora:'07:00', params:[{ modo:'periodo', periodo:'hoje', ponta:'inicio' }] };
+  const local = { ...q('1', 'Top', 'sql velho'), params:[{ nome:'d', tipo:'data', valor:'1' }], agenda:ag };
+  // mesmo nº e tipo de params: a agenda fica ligada
+  const igual = { ...q('9', 'Top', 'sql novo'), params:[{ nome:'dia', tipo:'data', valor:'2' }] };
+  assert.equal(N.planoImportacao(dd({}, [local]), dd({}, [igual])).resultado.consultas[0].agenda.ligado, true);
+  // tipo trocado, a mais ou em outra ordem: a agenda fica, desligada
+  for(const params of [[{ nome:'d', tipo:'numero', valor:'1' }],
+    [{ nome:'d', tipo:'data', valor:'1' }, { nome:'n', tipo:'numero', valor:'1' }],
+    []]){
+    const arq = { ...q('9', 'Top', 'sql novo'), params };
+    const c = N.planoImportacao(dd({}, [local]), dd({}, [arq])).resultado.consultas[0];
+    assert.deepEqual(c.agenda, { ...ag, ligado:false });
+  }
+  assert.equal(local.agenda.ligado, true); // não muta a entrada
+});
+
+test('agenda diferente não é conflito e a daqui fica', () => {
+  const local = { ...q('1', 'Top', 'sql'), agenda:{ ligado:true, freq:'diaria', params:[] } };
+  const arq = { ...q('9', 'Top', 'sql'), agenda:{ ligado:true, freq:'semanal', params:[] } };
+  const p = N.planoImportacao(dd({}, [local]), dd({}, [arq]));
+  assert.deepEqual(p.conflitos, []);
+  assert.deepEqual(p.resultado.consultas[0].agenda, local.agenda);
+  // exportar leva a agenda
+  const ex = JSON.parse(N.exportar(dd({}, [local]), { base:'x' }).conteudo);
+  assert.deepEqual(ex.dados.consultas[0].agenda, local.agenda);
+});
+
 test('cortar não cria perfil em tabela sem perfil', () => {
   const r = N.cortar([{ name:'a', nota:'x', columns:[{ name:'c', nota:'y' }] }], 1);
   assert.ok(!('perfil' in r[0]));
