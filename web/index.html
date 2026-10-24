@@ -507,6 +507,23 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 .hist__estado,.hist__rodando{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin:var(--space-2) 0;font:400 13px/20px var(--font-sans);color:var(--ink-muted)}
 .hist__estado:empty{display:none}
 .hist__fim{height:1px}
+/* Demonstração: como o aviso chega na versão instalada (imagem montada aqui, sem arquivo) */
+.hist__cab .tag{margin-left:var(--space-1)}
+.hist__aviso{margin:0 0 var(--space-4);padding:var(--space-4);border:1px dashed var(--line-strong);border-radius:var(--radius-md);background:var(--tint)}
+.hist__aviso h3{margin:0 0 var(--space-1);font:700 14px/20px var(--font-sans)}
+.hist__aviso .hist__m{margin:0 0 var(--space-3);font:500 12px/18px var(--font-sans);color:var(--ink-muted)}
+.hist__cena{display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:flex-start}
+.hist__notif{display:flex;gap:10px;width:min(340px,100%);padding:12px 14px;border-radius:14px;background:var(--surface-raised);box-shadow:var(--shadow-card);font:400 12px/18px var(--font-sans);color:var(--ink)}
+.hist__notif b,.hist__notif small{display:block}
+.hist__notif small{color:var(--ink-muted);font-size:11px}
+.hist__ic{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:8px;background:var(--brand);color:var(--on-brand);font:800 12px/1 var(--font-sans)}
+.hist__bandeja{width:min(260px,100%);font:400 12px/18px var(--font-sans)}
+.hist__barra{display:flex;justify-content:flex-end;align-items:center;gap:14px;padding:8px 14px;border-radius:10px 10px 0 0;background:#1f2126;color:#f2f2f2}
+.hist__icb{position:relative;display:grid;place-items:center;width:22px;height:22px;border-radius:5px;background:#0000ff;color:#fff;font:800 11px/1 var(--font-sans)}
+.hist__icb i{position:absolute;top:-6px;right:-8px;padding:0 4px;border-radius:var(--radius-pill);background:#ff3b30;color:#fff;font:700 9px/13px var(--font-sans);font-style:normal}
+.hist__menu{padding:6px 0;border-radius:0 0 10px 10px;background:#2b2e35;color:#f2f2f2}
+.hist__menu div{padding:4px 14px}
+.hist__menu b{color:#dbff2a}
 button.destaque{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 button.destaque:hover{background:var(--accent);border-color:var(--on-accent)}
 button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;color:var(--disabled-ink)}
@@ -952,6 +969,7 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
     </table>
   </fieldset>
   <p class="agd__resumo" id="agResumo" aria-live="polite"></p>
+  <p class="hint" id="agDemo" role="status" hidden></p>
   <label class="agd__chk agd__ligado"><input type="checkbox" id="agLigado"> Agendamento ligado</label>
   <div class="row">
     <span class="status hint" id="agErro" role="alert"></span>
@@ -1059,7 +1077,7 @@ const st = { cfg:{}, messages:[], provider:null, tools:[], busy:false, ctl:null,
   entendimento:null, entendimentoChave:null, entendimentoPronto:false, entendimentoDesconhecidas:[] };
 // Histórico de um agendamento aberto na área da conversa (id da consulta); a conversa fica guardada
 // em `guardados` e continua recebendo o que chegar enquanto isso (chatAtual).
-const hs = { id:null, gen:0, chave:'', token:0, guardados:null, rolagem:0, antes:0, acabou:false, carregando:false,
+const hs = { id:null, demo:false, gen:0, chave:'', token:0, guardados:null, rolagem:0, antes:0, acabou:false, carregando:false,
   abriu:false, rodando:false, total:0, obs:null, el:null, lista:null, estado:null, primeiro:null, ultimo:null };
 const chatAtual = () => hs.id ? hs.guardados : $('#chat');
 
@@ -1659,7 +1677,7 @@ function renderAnswer(body, pergunta, r, o){
   const viz = document.createElement('div'); viz.className = 'viz';
   viz.innerHTML = CD2Chart.render(r.visual, r.colunas, r.linhas, { x:r.x, y:r.y }); card.appendChild(viz);
   if(r.aviso){ const a = document.createElement('p'); a.className = 'hint'; a.textContent = r.aviso; card.appendChild(a); }
-  card.appendChild(sqlBox(r.sql));
+  if(r.sql) card.appendChild(sqlBox(r.sql));
   const acts = document.createElement('div'); acts.className = 'acts';
   if(o.consulta || (r.sqlBase && podeSalvar())){
     const bJoia = document.createElement('button'); bJoia.className = 'sm contorno';
@@ -2313,7 +2331,7 @@ async function confirmarImportar(){
 const VISUAL_ROTULO = { barra:'barra', linha:'linha', pizza:'pizza', tabela:'tabela', numero:'número' };
 const TIPO_ROTULO = { data:'data', datahora:'data e hora', numero:'número', texto:'texto' };
 const MAX_NOME_CONSULTA = 120, MAX_NOME_PARAM = 60;
-const sb = { menu:null, modo:'', erro:'', focar:false, voltar:null, soAgendadas:false };  // barra: item com o menu aberto, 'menu' | 'renomear' | 'apagar'
+const sb = { menu:null, modo:'', erro:'', focar:false, voltar:null, soAgendadas:false, demo:false };  // barra: item com o menu aberto, 'menu' | 'renomear' | 'apagar'
 const sv = { r:null, botao:null, linhas:[], sel:null };  // janela Salvar consulta
 const rd = { consulta:null, gen:0 };                 // janela de rodar com parâmetros
 const consultasSalvas = () => (st.notas && Array.isArray(st.notas.consultas)) ? st.notas.consultas : [];
@@ -2330,23 +2348,29 @@ function mostrarErro(el, texto){
 const gravarConsultas = mudar => gravarNotas(atual => Object.assign({}, atual, { consultas:mudar(consultasSalvas().slice()) }));
 
 /* barra lateral */
-// Na Demonstração a barra mostra consultas de exemplo (web/demo.js), sem renomear nem apagar.
+// Na Demonstração a barra mostra consultas de exemplo (web/demo.js), sem renomear nem apagar; os
+// agendados abrem um histórico fictício. lista: refeita a cada desenho da barra; vistos: históricos
+// já abertos (a bolinha some); seq: das execuções do Rodar agora. Tudo só em memória.
 const emDemo = () => !!st.provider && st.provider === demo;
+const dm = { lista:[], vistos:new Set(), seq:1000 };
+const consultasDaBarra = () => emDemo() ? dm.lista : consultasSalvas();
+const consultaPorId = id => consultasDaBarra().find(c => c.id === id) || null;
 function syncSalvas(){
   const a = $('#salvas'), on = podeSalvar() || emDemo();
   a.hidden = !on;
   $('#sAviso').hidden = !emDemo();
-  if(!on || emDemo()){ sb.menu = null; sb.modo = ''; sb.erro = ''; fecharRodar(); fecharAgendar(); ag.novidades = {}; }
-  // Banco trocado ou desconectado: o histórico aberto era do banco anterior.
-  if(hs.id && (!on || emDemo() || hs.gen !== st.catalogGen || !podeSalvar())) fecharHistorico();
+  const trocou = sb.demo !== emDemo(); sb.demo = emDemo();
+  if(!on || trocou){ sb.menu = null; sb.modo = ''; sb.erro = ''; fecharRodar(); fecharAgendar(); ag.novidades = {}; }
+  // Banco trocado ou desconectado (ou entrou/saiu da Demonstração): o histórico aberto era de antes.
+  if(hs.id && (!on || hs.demo !== emDemo() || (!hs.demo && (hs.gen !== st.catalogGen || !podeSalvar())))) fecharHistorico();
   if(on) renderSalvas();
   if(on && !emDemo()) pedirNovidades();
   if(on && !emDemo() && podeSalvar()) abrirHistoricoPedido();
 }
 function renderSalvas(){
   const a = $('#salvas'); if(a.hidden) return;
-  if(emDemo()) return renderExemplos();
-  const todas = consultasSalvas();
+  if(emDemo()) dm.lista = CD2Demo.exemplos(new Date());
+  const todas = consultasDaBarra();
   $('#sTitulo').textContent = 'Consultas salvas (' + todas.length + ')';
   const q = $('#sBusca').value.trim().toLowerCase(), box = $('#sItens');
   const agendadas = todas.filter(c => c.agenda).length;
@@ -2355,42 +2379,25 @@ function renderSalvas(){
   $('#sFAgendadas').textContent = '⏰ Só agendadas (' + agendadas + ')';
   $('#sFTodas').setAttribute('aria-pressed', String(!sb.soAgendadas));
   $('#sFAgendadas').setAttribute('aria-pressed', String(sb.soAgendadas));
-  const lista = todas.slice().reverse().filter(c => (!q || String(c.nome || '').toLowerCase().includes(q)) && (!sb.soAgendadas || c.agenda));
+  const lista = (emDemo() ? todas.slice() : todas.slice().reverse()).filter(c => (!q || String(c.nome || '').toLowerCase().includes(q)) && (!sb.soAgendadas || c.agenda));
   if(sb.menu && !todas.some(c => c.id === sb.menu)){ sb.menu = null; sb.modo = ''; sb.erro = ''; }
   box.innerHTML = '';
   let foco = null;
   for(const c of lista){ const it = itemSalva(c); box.appendChild(it.el); if(it.foco) foco = it.foco; }
   if(!lista.length){
     const p = document.createElement('p'); p.className = 'notas__mais';
-    p.textContent = todas.length ? 'Nenhuma consulta com esse nome.' : 'Nenhuma consulta salva ainda. Dê 👍 numa resposta para guardar aqui.';
+    p.textContent = todas.length || emDemo() ? 'Nenhuma consulta com esse nome.' : 'Nenhuma consulta salva ainda. Dê 👍 numa resposta para guardar aqui.';
     box.appendChild(p);
   }
   if(foco && sb.focar) foco.focus();
   sb.focar = false; sb.voltar = null;
   if(hs.id) pintarCabHistorico();
 }
-function renderExemplos(){
-  $('#sFiltro').hidden = true;
-  const todos = CD2Demo.exemplos();
-  $('#sTitulo').textContent = 'Consultas salvas (' + todos.length + ')';
-  const q = $('#sBusca').value.trim().toLowerCase(), box = $('#sItens');
-  const lista = todos.filter(e => !q || e.nome.toLowerCase().includes(q));
-  box.innerHTML = '';
-  for(const e of lista){
-    const el = document.createElement('div'); el.className = 'salvas__it'; el.setAttribute('role', 'listitem');
-    const run = document.createElement('button'); run.type = 'button'; run.className = 'salvas__run'; run.disabled = st.busy;
-    run.innerHTML = '<b></b><span></span>';
-    run.querySelector('b').textContent = e.nome;
-    run.querySelector('span').textContent = (VISUAL_ROTULO[e.visual] || 'tabela') + ' · exemplo';
-    run.title = 'Ver o exemplo, com dados fictícios';
-    run.onclick = () => mostrarExemplo(e);
-    el.appendChild(run); box.appendChild(el);
-  }
-  if(!lista.length){ const p = document.createElement('p'); p.className = 'notas__mais'; p.textContent = 'Nenhuma consulta com esse nome.'; box.appendChild(p); }
-}
 // Clique num exemplo: o card da Demonstração na conversa, com a frase do que muda com o banco.
 function mostrarExemplo(e){
   if(st.busy || !emDemo()) return;
+  if(sb.menu) fecharMenuSalva();
+  fecharHistorico(); // o card vai para a conversa à vista
   const hero = $('#hero'); if(hero) hero.remove();
   addUser('Consulta salva: ' + e.nome);
   const el = addMsg('assistant'), body = document.createElement('div'); body.className = 'body';
@@ -2420,7 +2427,7 @@ function itemSalva(c){
     const run = document.createElement('button'); run.type = 'button'; run.className = 'salvas__run'; run.disabled = st.busy;
     run.innerHTML = '<b></b><span></span>';
     run.querySelector('b').textContent = String(c.nome || '');
-    run.querySelector('span').textContent = (VISUAL_ROTULO[c.visual] || 'tabela') + (c.criada ? ' · salva ' + dataBr(c.criada).slice(0, 5) : '');
+    run.querySelector('span').textContent = (VISUAL_ROTULO[c.visual] || 'tabela') + (emDemo() ? ' · exemplo' : c.criada ? ' · salva ' + dataBr(c.criada).slice(0, 5) : '');
     marcasSalva(run, c);
     // Na instalada, a consulta agendada abre o histórico; o Rodar agora fica no menu "⋯".
     run.onclick = () => abreHistorico(c) ? abrirHistorico(c.id) : clicarSalva(c);
@@ -2448,7 +2455,8 @@ function itemSalva(c){
         ren.onclick = () => abrirMenuSalva(c, 'renomear'); ap.onclick = () => { sb.contagem = { id:c.id, n:0, pendente:!!(st.ctlKey && podeSalvar()) }; abrirMenuSalva(c, 'apagar'); contarHistorico(c); };
         menu.appendChild(rodar); menu.appendChild(agendar);
         if(c.agenda || novidadesDe(c.id)){ const hist = botaoSm('🗂 Ver histórico'); hist.onclick = () => abrirHistorico(c.id); menu.appendChild(hist); }
-        menu.appendChild(ren); menu.appendChild(ap); foco = rodar.disabled ? agendar : rodar;
+        if(!emDemo()){ menu.appendChild(ren); menu.appendChild(ap); }
+        foco = rodar.disabled ? agendar : rodar;
       }
       el.appendChild(menu);
     }
@@ -2475,6 +2483,7 @@ async function apagarSalva(c){
 // Clique na barra: sem parâmetros roda direto; com parâmetros, a janela com os valores da última vez.
 // Com uma resposta em andamento, espera (mesma regra do Enviar).
 function clicarSalva(c){
+  if(emDemo()) return mostrarExemplo(c);
   if(st.busy || !st.provider) return;
   if(sb.menu) fecharMenuSalva();
   const ps = Array.isArray(c.params) ? c.params : [];
@@ -2660,11 +2669,12 @@ const ag = { consulta:null, gen:0, tinha:false, t:null, salvando:false, novidade
   pedido:(() => { try{ return new URLSearchParams(location.search).get('agenda') || null; }catch(e){ return null; } })() };
 const instalada = () => !!(inst.status && inst.status.origem === 'instalada');
 const ehParamData = p => !!p && (p.tipo === 'data' || p.tipo === 'datahora');
-const novidadesDe = id => (ag.genNov === st.catalogGen && ag.novidades[id]) || 0;
+const novidadesDe = id => emDemo() ? (dm.vistos.has(id) ? 0 : (consultaPorId(id) || {}).novas || 0)
+  : (ag.genNov === st.catalogGen && ag.novidades[id]) || 0;
 // Relógio e bolinha de um item da barra (também usado para atualizar no lugar, sem redesenhar a lista).
-const abreHistorico = c => !!c.agenda && instalada() && !!st.ctlKey;
+const abreHistorico = c => !!c.agenda && (emDemo() || (instalada() && !!st.ctlKey));
 function marcasSalva(run, c){
-  run.title = abreHistorico(c) ? 'Ver o histórico do agendamento' : 'Rodar de novo, direto no banco';
+  run.title = abreHistorico(c) ? 'Ver o histórico do agendamento' : emDemo() ? 'Ver o exemplo, com dados fictícios' : 'Rodar de novo, direto no banco';
   const n = novidadesDe(c.id);
   let bo = run.querySelector('.salvas__bolinha');
   if(n && !bo){ bo = document.createElement('span'); bo.className = 'salvas__bolinha'; run.insertBefore(bo, run.firstChild); }
@@ -2680,8 +2690,8 @@ function marcasSalva(run, c){
   else if(rl) rl.textContent = CD2Agenda.marcaBarra(c.agenda, new Date());
 }
 function atualizarMarcas(){
-  if($('#salvas').hidden || emDemo()) return;
-  const porId = new Map(consultasSalvas().map(c => [c.id, c]));
+  if($('#salvas').hidden) return;
+  const porId = new Map(consultasDaBarra().map(c => [c.id, c]));
   document.querySelectorAll('#sItens .salvas__it[data-id]').forEach(el => {
     const c = porId.get(el.dataset.id), run = el.querySelector('.salvas__run');
     if(c && run) marcasSalva(run, c);
@@ -2707,12 +2717,12 @@ function tiqueAgenda(){ atualizarMarcas(); pedirNovidades(); }
 /* histórico de um agendamento, na área da conversa */
 // Abre de "🗂 Ver histórico", do clique numa consulta agendada (instalada) ou do ?agenda=<id>.
 // A conversa sai do #chat para hs.guardados e volta igual no "← Voltar para a conversa".
-const consultaDoHistorico = () => hs.id ? consultasSalvas().find(c => c.id === hs.id) || null : null;
+const consultaDoHistorico = () => hs.id ? consultaPorId(hs.id) : null;
 const MSG_SEM_CTL = 'O controle do banco não respondeu. Feche e abra a IA de Bolso pelo atalho INICIAR.';
 function abrirHistorico(id){
   if(sb.menu === id) fecharMenuSalva();
-  const c = consultasSalvas().find(x => x.id === id);
-  if(!c || !st.ctlKey || !podeSalvar()) return;
+  const c = consultaPorId(id);
+  if(!c || (!emDemo() && (!st.ctlKey || !podeSalvar()))) return;
   irParaGuia('conversa');
   const chat = $('#chat');
   if(hs.id){ if(hs.obs) hs.obs.disconnect(); chat.innerHTML = ''; } // já aberto: troca de consulta, a conversa continua guardada
@@ -2721,7 +2731,7 @@ function abrirHistorico(id){
     while(chat.firstChild) hs.guardados.appendChild(chat.firstChild);
     hs.rolagem = $('#main').scrollTop;
   }
-  Object.assign(hs, { id, gen:st.catalogGen, chave:st.notasChave || '', token:hs.token + 1, antes:0, acabou:false, carregando:false,
+  Object.assign(hs, { id, demo:emDemo(), gen:st.catalogGen, chave:st.notasChave || '', token:hs.token + 1, antes:0, acabou:false, carregando:false,
     abriu:false, rodando:false, total:0, obs:null, primeiro:null, ultimo:null });
   const el = document.createElement('section'); el.className = 'hist'; el.setAttribute('aria-label', 'Histórico do agendamento');
   el.innerHTML = '<div class="hist__cab"><button type="button" class="sm hist__voltar">← Voltar para a conversa</button><h2></h2>'
@@ -2732,6 +2742,11 @@ function abrirHistorico(id){
   el.querySelector('.hist__editar').onclick = () => { const x = consultaDoHistorico(); if(x) abrirAgendar(x); };
   el.querySelector('.hist__rodar').onclick = () => rodarNoHistorico(0, null);
   hs.el = el; hs.lista = el.querySelector('.hist__lista'); hs.estado = el.querySelector('.hist__estado');
+  if(hs.demo){
+    const tag = document.createElement('span'); tag.className = 'tag tag--melhoria'; tag.textContent = 'Dados fictícios';
+    el.querySelector('.hist__pilula').after(tag);
+    el.insertBefore(avisoDemo(c), hs.lista);
+  }
   chat.appendChild(el);
   pintarCabHistorico();
   $('#main').scrollTop = 0;
@@ -2777,7 +2792,11 @@ async function carregarHistorico(){
   hs.carregando = true;
   if(primeira) estadoHistorico('Carregando o histórico…');
   let r = null;
-  try{ r = await ctlRequest('GET', rotaHistorico(hs.chave, hs.id) + (hs.antes ? '&antes=' + hs.antes : '') + '&n=20', null, 10000); }catch(e){}
+  try{
+    // Demonstração: as execuções fictícias, numa página só.
+    r = hs.demo ? { status:200, data:{ itens:CD2Demo.execucoes(hs.id, new Date()), mais:false } }
+      : await ctlRequest('GET', rotaHistorico(hs.chave, hs.id) + (hs.antes ? '&antes=' + hs.antes : '') + '&n=20', null, 10000);
+  }catch(e){}
   if(tk !== hs.token) return;
   hs.carregando = false;
   if(r && r.status === 409) return bancoMudouAgenda(r);
@@ -2797,6 +2816,7 @@ async function carregarHistorico(){
 // Depois da primeira página (que já trouxe as marcas NOVO): as execuções ficam vistas e a bolinha some.
 async function marcarVisto(tk){
   const id = hs.id;
+  if(hs.demo){ dm.vistos.add(id); return atualizarMarcas(); }
   let r = null;
   try{ r = await ctlRequest('POST', '/agenda/visto', { chave:hs.chave, consulta:id }, 5000); }catch(e){}
   if(tk !== hs.token) return;
@@ -2904,7 +2924,7 @@ async function pedirRodar(chave, id, perda){
 async function rodarNoHistorico(perda, alvo){
   const c = consultaDoHistorico();
   if(!c || hs.rodando) return;
-  if(!instalada()){ fecharHistorico(); return clicarSalva(c); }
+  if(!instalada() && !hs.demo){ fecharHistorico(); return clicarSalva(c); }
   const tk = hs.token;
   hs.rodando = true; pintarCabHistorico();
   hs.el.querySelectorAll('.hist__it button.destaque').forEach(b => { b.disabled = true; });
@@ -2913,7 +2933,8 @@ async function rodarNoHistorico(perda, alvo){
   aviso.appendChild(document.createTextNode('Rodando a consulta…'));
   hs.lista.parentNode.insertBefore(aviso, hs.lista);
   $('#main').scrollTop = 0;
-  const x = await pedirRodar(hs.chave, c.id, perda);
+  // Demonstração: uma execução manual fictícia, na hora, sem cd2-ctl.
+  const x = hs.demo ? { e:CD2Demo.rodar(c.id, new Date(), ++dm.seq, alvo && alvo.e) } : await pedirRodar(hs.chave, c.id, perda);
   if(tk !== hs.token) return;
   aviso.remove();
   hs.rodando = false; pintarCabHistorico();
@@ -2925,6 +2946,26 @@ async function rodarNoHistorico(perda, alvo){
   if(alvo){ alvo.e.rodada = x.e.em; alvo.it.innerHTML = ''; alvo.it.appendChild(cardPerda(alvo.e, alvo.it)); }
   const h = hs.lista.querySelector('.hist__it h3'); if(h){ h.tabIndex = -1; h.focus(); }
 }
+// Demonstração: como o aviso chega na versão instalada (notificação do sistema e o ícone na bandeja),
+// montado aqui, estático. Nada aparece ao vivo.
+function avisoDemo(c){
+  const a = CD2Demo.aviso(c.id, new Date());
+  const d = document.createElement('div'); d.className = 'hist__aviso';
+  if(!a) return d;
+  d.innerHTML = '<h3></h3><p class="hist__m"></p><div class="hist__cena">'
+    + '<div class="hist__notif"><span class="hist__ic" aria-hidden="true">IA</span><div><b></b><span></span><small>Clique para ver</small></div></div>'
+    + '<div class="hist__bandeja"><div class="hist__barra"><span class="hist__icb" aria-hidden="true">IA<i></i></span><span></span></div><div class="hist__menu"><div><b></b></div></div></div></div>';
+  d.querySelector('h3').textContent = a.cabecalho;
+  d.querySelector('.hist__m').textContent = a.nota;
+  d.querySelector('.hist__notif b').textContent = a.titulo;
+  d.querySelector('.hist__notif span:not(.hist__ic)').textContent = a.texto;
+  d.querySelector('.hist__icb i').textContent = String(parseInt(a.novos, 10));
+  d.querySelector('.hist__barra > span:last-child').textContent = a.hora;
+  const menu = d.querySelector('.hist__menu');
+  menu.querySelector('b').textContent = a.novos;
+  for(const t of a.itens){ const x = document.createElement('div'); x.textContent = t; menu.appendChild(x); }
+  return d;
+}
 function estadoNoTopo(texto){
   const p = document.createElement('p'); p.className = 'hist__rodando'; p.setAttribute('role', 'alert'); mostrarErro(p, texto);
   hs.lista.parentNode.insertBefore(p, hs.lista);
@@ -2933,7 +2974,7 @@ function estadoNoTopo(texto){
 // ▶ Rodar agora da barra: a agendada, na instalada, roda pelo cd2-ctl (entra no histórico como
 // manual) e o card aparece na conversa; as outras, e no pen drive, seguem o rodarSalva de sempre.
 function rodarAgora(c){
-  if(!abreHistorico(c)) return clicarSalva(c);
+  if(emDemo() || !abreHistorico(c)) return clicarSalva(c);
   if(st.busy || !st.provider) return;
   if(sb.menu) fecharMenuSalva();
   rodarPeloCtl(c);
@@ -2996,6 +3037,7 @@ function abrirConviteAgenda(){ $('#convAgenda').showModal(); }
 // De onde a IA abriu, para o "⏰ Agendar…": 'instalada', 'pendrive' (o convite), 'carregando' (o
 // /instalacao ainda não respondeu) ou 'indisponivel' (sem cd2-ctl, ou ele não respondeu).
 function estadoAgendar(){
+  if(emDemo()) return 'demo'; // a janela abre com os exemplos, mas não grava
   if(instalada()) return 'instalada';
   const o = inst.status && inst.status.origem;
   if(o === 'pendrive') return 'pendrive';
@@ -3007,8 +3049,8 @@ function abrirAgendar(c){
   const ea = estadoAgendar();
   // O convite só quando é, com certeza, o pen drive: quem tem a instalada não pode vê-lo no começo.
   if(ea === 'pendrive') return abrirConviteAgenda();
-  if(ea !== 'instalada') return;
-  if(!podeSalvar()) return;
+  if(ea !== 'instalada' && ea !== 'demo') return;
+  if(ea === 'instalada' && !podeSalvar()) return;
   const ps = Array.isArray(c.params) ? c.params : [], hoje = hojeIso();
   ag.consulta = c; ag.gen = st.catalogGen; ag.tinha = !!c.agenda; ag.salvando = false;
   ag.t = CD2Agenda.telaDaAgenda(c.agenda || CD2Agenda.agendaPadrao(ps, hoje), hoje);
@@ -3018,6 +3060,7 @@ function abrirAgendar(c){
   $('#agTitulo').textContent = '⏰ Agendar "' + String(c.nome || '') + '"';
   $('#agTirar').hidden = !ag.tinha;
   $('#agSalvar').disabled = false; $('#agTirar').disabled = false;
+  $('#agDemo').hidden = true;
   mostrarErro($('#agErro'), '');
   pintarAgendar();
   $('#agendar').showModal();
@@ -3180,8 +3223,11 @@ async function gravarAgenda(agenda){
   sb.menu = null; sb.modo = ''; sb.erro = ''; sb.voltar = c.id; sb.focar = true;
   renderSalvas();
 }
+// Demonstração: Salvar e Tirar só mostram o convite; nada é gravado.
+function conviteAgendaDemo(){ const p = $('#agDemo'); p.textContent = CD2Demo.CONVITE_AGENDA; p.hidden = false; }
 function salvarAgendamento(){
   const c = ag.consulta; if(!c || ag.salvando) return;
+  if(emDemo()) return conviteAgendaDemo();
   // A janela foi aberta para outro banco (catálogo trocou): fecha sem gravar.
   if(ag.gen !== st.catalogGen || !podeSalvar()) return fecharAgendar();
   const r = atualizarResumoAgendar();
@@ -3197,6 +3243,7 @@ function salvarAgendamento(){
 }
 function tirarAgendamento(){
   if(!ag.consulta || ag.salvando) return;
+  if(emDemo()) return conviteAgendaDemo();
   if(ag.gen !== st.catalogGen || !podeSalvar()) return fecharAgendar();
   gravarAgenda(null);
 }

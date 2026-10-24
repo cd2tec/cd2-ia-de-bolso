@@ -13,9 +13,9 @@ function recorte(inicio){
   return html.slice(i, html.indexOf('\n}\n', i) + 3);
 }
 
-function montar({ status, ctlKey = 'k', semStatus = false }){
+function montar({ status, ctlKey = 'k', semStatus = false, demo = false }){
   const abertos = [];
-  const ctx = { st:{ ctlKey }, inst:{ status, semStatus }, abertos,
+  const ctx = { st:{ ctlKey }, inst:{ status, semStatus }, abertos, emDemo: () => demo,
     instalada: () => !!(status && status.origem === 'instalada'),
     abrirConviteAgenda: () => abertos.push('convite'),
     podeSalvar: () => { abertos.push('agendar'); return false; } };
@@ -47,6 +47,15 @@ test('sem cd2-ctl ou /instalacao falhou: indisponível, sem convite', () => {
     assert.equal(c.estadoAgendar(), 'indisponivel');
     c.abrirAgendar({});
     assert.deepEqual(c.abertos, []);
+  }
+});
+test('Demonstração: a janela Agendar abre com os exemplos, nunca o convite, mesmo no pen drive', () => {
+  for(const status of [null, { origem:'pendrive' }, { origem:'instalada' }]){
+    const c = montar({ status, demo:true });
+    assert.equal(c.estadoAgendar(), 'demo');
+    try{ c.abrirAgendar({}); }catch(e){} // segue para montar a janela (sem dublês de DOM aqui)
+    assert.ok(!c.abertos.includes('convite'));
+    assert.ok(!c.abertos.includes('agendar'), 'na Demonstração não depende de podeSalvar');
   }
 });
 test('o item do menu usa o estado: desligado com "Carregando…" enquanto não sabe', () => {
