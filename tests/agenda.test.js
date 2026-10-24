@@ -45,6 +45,29 @@ test('a cada 3 dias ancorado no início', () => {
   assert.deepEqual(h.map(d => d.getDate()), [24, 27, 30]);
   assert.equal(h[0].getHours(), 7);
 });
+test('a cada X dias e a cada 2 semanas não rodam antes do início', () => {
+  const a = { ligado:true, freq:'diario', a_cada:3, hora:'07:00', inicio:'2026-11-01' };
+  const h = A.horarios(a, new Date(2026,9,20), new Date(2026,10,8));
+  assert.deepEqual(h.map(d => [d.getMonth() + 1, d.getDate()]), [[11,1], [11,4], [11,7]]);
+  assert.deepEqual(A.proximo(a, new Date(2026,9,24,12,0)), new Date(2026,10,1,7,0));
+  assert.ok(A.resumo(a, new Date(2026,9,24,12,0)).endsWith('Próxima: 01/11, 07:00.'));
+  const s = { ligado:true, freq:'semanal', a_cada:2, hora:'07:00', dias:[1], inicio:'2026-11-02' };
+  assert.deepEqual(A.horarios(s, new Date(2026,9,1), new Date(2026,10,20)).map(d => [d.getMonth() + 1, d.getDate()]), [[11,2], [11,16]]);
+  assert.deepEqual(A.proximo(s, new Date(2026,9,24,12,0)), new Date(2026,10,2,7,0));
+  const t = { ligado:true, freq:'diario', a_cada:1, hora:'07:00', inicio:'2026-11-01' };
+  assert.deepEqual(A.proximo(t, new Date(2026,9,24,12,0)), new Date(2026,10,1,7,0));
+});
+test('resumo semanal diz "toda segunda", "todo sábado" e mantém "a cada 2 semanas"', () => {
+  const agora = new Date(2026,9,24,12,0);
+  const r = a => A.resumo({ ligado:true, freq:'semanal', a_cada:1, hora:'07:00', ...a }, agora).split('.')[0];
+  assert.equal(r({ dias:[1] }), 'Vai rodar toda segunda, às 07:00');
+  assert.equal(r({ dias:[1,3] }), 'Vai rodar toda segunda e quarta, às 07:00');
+  assert.equal(r({ dias:[1,3,5] }), 'Vai rodar toda segunda, quarta e sexta, às 07:00');
+  assert.equal(r({ dias:[6] }), 'Vai rodar todo sábado, às 07:00');
+  assert.equal(r({ dias:[0] }), 'Vai rodar todo domingo, às 07:00');
+  assert.equal(r({ dias:[1,2,3,4,5] }), 'Vai rodar de segunda a sexta, às 07:00');
+  assert.equal(r({ dias:[1], a_cada:2, inicio:'2026-10-19' }), 'Vai rodar a cada 2 semanas, toda segunda, às 07:00');
+});
 test('validar recusa 4 minutos', () => assert.equal(A.validar({ freq:'minutos', a_cada:4 }).erro, 'O intervalo mínimo é de 5 minutos.'));
 test('validar: outros erros e aceitos', () => {
   assert.equal(A.validar({ freq:'semanal', a_cada:1, hora:'07:00', dias:[] }).erro, 'Escolha pelo menos um dia.');
@@ -85,6 +108,10 @@ const d = (periodo, ponta, tipo = 'data', n) => A.valorDoParam({ modo:'periodo',
 test('dias', () => { assert.equal(d('hoje','inicio'), '2026-10-24'); assert.equal(d('ontem','fim'), '2026-10-23'); });
 test('semana de domingo a sábado', () => {
   assert.equal(d('esta_semana','inicio'), '2026-10-18'); assert.equal(d('esta_semana','fim'), '2026-10-24');
+  const qua = new Date(2026, 9, 21, 9, 0); // quarta: a semana ainda termina no sábado
+  assert.equal(A.valorDoParam({ modo:'periodo', periodo:'esta_semana', ponta:'inicio' }, 'data', qua), '2026-10-18');
+  assert.equal(A.valorDoParam({ modo:'periodo', periodo:'esta_semana', ponta:'fim' }, 'data', qua), '2026-10-24');
+  assert.equal(A.valorDoParam({ modo:'periodo', periodo:'esta_semana', ponta:'fim' }, 'datahora', qua), '2026-10-24 23:59:59');
   assert.equal(d('semana_passada','inicio'), '2026-10-11'); assert.equal(d('semana_passada','fim'), '2026-10-17');
 });
 test('mês', () => { assert.equal(d('este_mes','fim'), '2026-10-31'); assert.equal(d('mes_passado','inicio'), '2026-09-01'); });

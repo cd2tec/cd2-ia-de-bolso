@@ -85,6 +85,8 @@ function minutosDoDia(a, y, m, d){
     return out;
   }
   const h = minutosDe(a.hora);
+  // "A partir de": todo dia e toda semana não rodam antes do início (a âncora não pode puxar para trás).
+  if((a.freq === 'diario' || a.freq === 'semanal') && diaDe(a.inicio) != null && n < diaDe(a.inicio)) return [];
   if(a.freq === 'diario') return modulo(n - ancora(a), a.a_cada) === 0 ? [h] : [];
   if(a.freq === 'semanal'){
     if(diasDe(a).indexOf(dw) < 0) return [];
@@ -162,7 +164,9 @@ function resumo(a, agora){
   } else if(a.freq === 'diario'){
     t = (a.a_cada === 1 ? 'todo dia' : 'a cada ' + a.a_cada + ' dias') + ', às ' + a.hora;
   } else if(a.freq === 'semanal'){
-    const dias = textoDias(a, NOMES, true) || 'todos os dias';
+    let dias = textoDias(a, NOMES, true) || 'todos os dias';
+    // Dias soltos levam "toda"/"todo": 'toda segunda e quarta', 'todo sábado'; faixa e todos ficam como estão.
+    if(dias.indexOf('de ') !== 0 && dias !== 'todos os dias') dias = (/^(sábado|domingo)/.test(dias) ? 'todo ' : 'toda ') + dias;
     t = (a.a_cada === 2 ? 'a cada 2 semanas, ' : '') + dias + ', às ' + a.hora;
   } else {
     t = (a.dia_mes === 'ultimo' ? 'no último dia do mês' : 'todo dia ' + a.dia_mes) + ', às ' + a.hora;
@@ -236,7 +240,7 @@ function valorDoParam(p, tipo, ref){
   else if(per.id === 'ultimos_dias'){
     if(!inteiro(p.n) || p.n < 1) return null;
     a = new Date(y, m, d - p.n); b = new Date(y, m, d);
-  } else if(per.id === 'esta_semana'){ a = new Date(y, m, d - ref.getDay()); b = new Date(y, m, d); }
+  } else if(per.id === 'esta_semana'){ a = new Date(y, m, d - ref.getDay()); b = new Date(y, m, d - ref.getDay() + 6); }
   else if(per.id === 'semana_passada'){ a = new Date(y, m, d - ref.getDay() - 7); b = new Date(y, m, d - ref.getDay() - 1); }
   else if(per.id === 'este_mes'){ a = new Date(y, m, 1); b = new Date(y, m + 1, 0); }
   else { a = new Date(y, m - 1, 1); b = new Date(y, m, 0); } // mes_passado
