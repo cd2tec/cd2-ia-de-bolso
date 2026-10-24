@@ -83,7 +83,9 @@ function buildCatalog(rows){
     const name = String(r.table_name);
     let t = by.get(name);
     if(!t){
-      t = { name, type:String(r.table_type).toUpperCase() === 'VIEW' ? 'VIEW' : 'TABLE', rows:Math.max(0, Number(r.num_rows) || 0), tokens:tokens(name), columns:[] };
+      t = { name, type:String(r.table_type).toUpperCase() === 'VIEW' ? 'VIEW' : 'TABLE', rows:Math.max(0, Number(r.num_rows) || 0),
+        // Planilha e DBF não informam linhas (num_rows nulo): a tela e o prompt não mostram "cerca de 0 linhas".
+        semContagem:r.num_rows == null || r.num_rows === '', tokens:tokens(name), columns:[] };
       by.set(name, t);
     }
     if(t.columns.length >= MAX_COLS_TABLE) continue;
@@ -166,7 +168,7 @@ function rankTables(catalog, pergunta, opts){
     scored.push({ t, score, hitCols });
   }
   scored.sort((a, b) => b.score - a.score || a.t.name.localeCompare(b.t.name));
-  return scored.slice(0, max).map(({ t, score, hitCols }) => ({ name:t.name, type:t.type, rows:t.rows, score,
+  return scored.slice(0, max).map(({ t, score, hitCols }) => ({ name:t.name, type:t.type, rows:t.rows, semContagem:!!t.semContagem, score,
     columns:pickColumns(t.columns, hitCols, maxCols), perfil:t.perfil || null, nota:t.nota || '' }));
 }
 

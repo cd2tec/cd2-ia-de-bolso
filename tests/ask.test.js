@@ -604,3 +604,18 @@ test('resultadoSalva: o depois do runSql (vazio, erro, timeout, visual e frase)'
   assert.deepEqual(A.resultadoSalva(salva(), { ok:false, timeout:true, front:true }, [], 'S', 'firebird'), { ok:false, motivo:'timeout_front', sql:'S' });
   assert.deepEqual(A.resultadoSalva(salva(), { ok:false, timeout:true }, [], 'S', 'oracle'), { ok:false, motivo:'timeout', sql:'S' });
 });
+
+test('planilha e DBF não informam linhas: nada de "cerca de 0 linhas" no prompt', () => {
+  const cat = Cat.buildCatalog([
+    { table_name:'fi_titulo', table_type:'TABLE', num_rows:null, column_name:'vlroriginal', data_type:'NUMERIC', ordinal:1 },
+    { table_name:'vazia', table_type:'TABLE', num_rows:0, column_name:'x', data_type:'TEXT', ordinal:1 }
+  ]);
+  const semConta = cat.tables.find(t => t.name === 'fi_titulo'), zero = cat.tables.find(t => t.name === 'vazia');
+  assert.equal(semConta.semContagem, true); assert.equal(zero.semContagem, false);
+  const tabelas = Cat.rankTables(cat, 'titulo vazia', 5);
+  assert.equal(tabelas.find(t => t.name === 'fi_titulo').semContagem, true);
+  tabelas.find(t => t.name === 'fi_titulo').perfil = { papel:'movimento', colunas:{ valor:'vlroriginal' } };
+  const sys = A.buildMessages({ pergunta:'p', tabelas, motor:'excel' })[0].content;
+  assert.match(sys, /- fi_titulo \(movimento; valor: vlroriginal\): /);
+  assert.match(sys, /- vazia \(cerca de 0 linhas\): /);
+});

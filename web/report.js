@@ -47,8 +47,8 @@ function linhaTabela(t){
   const uteis = [c.data ? 'data: ' + c.data : '', c.valor ? 'valor: ' + c.valor : '', c.quantidade ? 'quantidade: ' + c.quantidade : ''].filter(Boolean).join('; ');
   const linhas = n => 'cerca de ' + Number(n).toLocaleString('pt-BR') + (Number(n) === 1 ? ' linha' : ' linhas');
   const campos = (t.columns || []).filter(x => x.nota).map(x => esc(x.name) + ': ' + esc(x.nota)).join('; ');
-  const tam = t.type === 'VIEW' ? (t.rows ? 'view, ' + linhas(t.rows) : 'view') : linhas(t.rows || 0);
-  return '<li><b>' + esc(t.name) + '</b> <span class="pr-meta">(' + esc(tam) + ')</span>'
+  const tam = t.type === 'VIEW' ? (t.rows ? 'view, ' + linhas(t.rows) : 'view') : t.semContagem ? '' : linhas(t.rows || 0);
+  return '<li><b>' + esc(t.name) + '</b>' + (tam ? ' <span class="pr-meta">(' + esc(tam) + ')</span>' : '')
     + (uteis ? '<br><span class="pr-meta">' + esc(uteis) + '</span>' : '')
     + (p.descricao ? '<br>' + esc(p.descricao) : '')
     + (t.nota ? '<br><span class="pr-nota">Comentário: ' + esc(t.nota) + '</span>' : '')
