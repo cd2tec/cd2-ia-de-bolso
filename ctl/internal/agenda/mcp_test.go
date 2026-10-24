@@ -145,3 +145,19 @@ func TestConsultarPrazo(t *testing.T) {
 		t.Fatal("ErrPrazo deve ser a do pacote")
 	}
 }
+
+func TestConsultarSemToolboxDaErrSemConexao(t *testing.T) {
+	s := httptest.NewServer(&falso{})
+	url := s.URL
+	s.Close() // ninguém escutando: conexão recusada
+	_, err := NovoCliente(url).Consultar(context.Background(), "select 1")
+	if !errors.Is(err, ErrSemConexao) {
+		t.Fatalf("err = %v; quer ErrSemConexao", err)
+	}
+	// Prazo continua sendo ErrPrazo, não falta de conexão.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := NovoCliente(url).Consultar(ctx, "select 1"); !errors.Is(err, ErrPrazo) {
+		t.Fatalf("ctx cancelado: err = %v; quer ErrPrazo", err)
+	}
+}

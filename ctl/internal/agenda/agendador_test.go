@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,6 +45,8 @@ type ambiente struct {
 	consultar func(ctx context.Context, sql string) (string, error)
 	chamadas  atomic.Int32
 	agora     func() time.Time // nil: sábado 24/10 12:00
+	lerErr    error            // != nil: Consultas falha com ele
+	pronto    func() bool      // nil: o banco está pronto
 }
 
 func (f *ambiente) relogio(r func() time.Time) {
@@ -98,11 +101,20 @@ func novoAgendador(t *testing.T, f *ambiente) *Agendador {
 		Consultas: func(notas.Banco) (json.RawMessage, error) {
 			f.mu.Lock()
 			defer f.mu.Unlock()
+			if f.lerErr != nil {
+				return nil, f.lerErr
+			}
 			return json.Marshal(map[string]any{"versao": 1, "tabelas": map[string]any{}, "consultas": f.consultas})
 		},
 		Consultar: func(ctx context.Context, sql string) (string, error) {
 			f.chamadas.Add(1)
 			return f.consultar(ctx, sql)
+		},
+		Pronto: func() bool {
+			f.mu.Lock()
+			p := f.pronto
+			f.mu.Unlock()
+			return p == nil || p()
 		},
 		Motor: motorComum(t),
 		Hist:  NovoHistorico(t.TempDir()),
@@ -683,5 +695,81 @@ func TestAvisosGuardaCem(t *testing.T) {
 	av, ultimo := a.Avisos(0)
 	if len(av) != 100 || av[0].Seq != 51 || ultimo != 150 {
 		t.Errorf("len %d primeiro %d último %d", len(av), av[0].Seq, ultimo)
+	}
+}
+
+var as14 = map[string]any{"ligado": true, "freq": "diario", "a_cada": 1, "hora": "14:00"}
+
+func TestEsperaOBancoFicarPronto(t *testing.T) {
+	f := novoAmbiente()
+	f.por("c1", "Vendas", as14)
+	var n atomic.Int32
+	f.pronto = func() bool { return n.Add(1) > 3 } // toolbox ainda subindo nas 3 primeiras
+	a := novoAgendador(t, f)
+	a.espera = time.Millisecond
+	ligarExecutor(t, a)
+	a.Passo(dia(26, 14, 0).Add(10 * time.Second))
+	a.esperarFila()
+	is := historico(t, a, "c1")
+	if len(is) != 1 || is[0].Resultado == nil || !is[0].Resultado.Ok || f.chamadas.Load() != 1 || n.Load() < 4 {
+		t.Fatalf("histórico = %+v, chamadas %d, pronto? %d vezes", is, f.chamadas.Load(), n.Load())
+	}
+}
+
+func TestBancoNaoFicouPronto(t *testing.T) {
+	f := novoAmbiente()
+	f.por("c1", "Vendas", as14)
+	f.pronto = func() bool {
+		f.agora = func() time.Time { return dia(26, 14, 2) } // passou a folga esperando (f.mu já está preso)
+		return false
+	}
+	a := novoAgendador(t, f)
+	a.espera = time.Millisecond
+	ligarExecutor(t, a)
+	a.Passo(dia(26, 14, 0).Add(10 * time.Second))
+	a.esperarFila()
+	is := historico(t, a, "c1")
+	if len(is) != 1 || is[0].Tipo != "agendada" || is[0].Resultado == nil || is[0].Resultado.Ok ||
+		is[0].Resultado.Erro != "O banco ainda não estava pronto." || f.chamadas.Load() != 0 {
+		t.Fatalf("histórico = %+v, chamadas %d", is, f.chamadas.Load())
+	}
+}
+
+func TestSemConexaoViraTextoSimples(t *testing.T) {
+	f := novoAmbiente()
+	f.consultar = func(context.Context, string) (string, error) {
+		return "", fmt.Errorf("%w: dial tcp 127.0.0.1:6000: connect: connection refused", ErrSemConexao)
+	}
+	f.por("c1", "Vendas", as14)
+	a := novoAgendador(t, f)
+	ligarExecutor(t, a)
+	a.Passo(dia(26, 14, 0))
+	a.esperarFila()
+	is := historico(t, a, "c1")
+	if len(is) != 1 || is[0].Resultado == nil || is[0].Resultado.Erro != "Não consegui falar com o banco." {
+		t.Fatalf("histórico = %+v", is)
+	}
+}
+
+func TestErroPassageiroAoRelerAindaGrava(t *testing.T) {
+	f := novoAmbiente()
+	f.consultar = func(context.Context, string) (string, error) {
+		f.mu.Lock()
+		f.lerErr = errors.New("notas: arquivo ocupado")
+		f.mu.Unlock()
+		return linhasT, nil
+	}
+	f.por("c1", "Vendas", as14)
+	a := novoAgendador(t, f)
+	ligarExecutor(t, a)
+	a.Passo(dia(26, 14, 0))
+	a.esperarFila()
+	f.lerErr = nil
+	is := historico(t, a, "c1")
+	if len(is) != 1 || is[0].Resultado == nil || !is[0].Resultado.Ok {
+		t.Fatalf("histórico = %+v", is)
+	}
+	if av, _ := a.Avisos(0); len(av) != 1 || av[0].Titulo != "IA de Bolso · Vendas" {
+		t.Errorf("avisos = %+v", av)
 	}
 }

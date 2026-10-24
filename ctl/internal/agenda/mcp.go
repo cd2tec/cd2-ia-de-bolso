@@ -22,6 +22,9 @@ const (
 // ErrPrazo: o prazo do contexto de quem chamou estourou.
 var ErrPrazo = errors.New("prazo da consulta estourou")
 
+// ErrSemConexao: o pedido nem chegou ao toolbox (conexão recusada, erro de rede).
+var ErrSemConexao = errors.New("sem conexão com o toolbox")
+
 // errSessao: o toolbox não reconhece a sessão (404/400), provavelmente reiniciou.
 type errSessao struct{ status int }
 
@@ -154,7 +157,7 @@ func (c *Cliente) rpc(ctx context.Context, metodo string, params any, notif bool
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %v", ErrSemConexao, err)
 	}
 	defer resp.Body.Close()
 	if sid := resp.Header.Get("Mcp-Session-Id"); sid != "" {

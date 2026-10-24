@@ -25,6 +25,11 @@ var (
 )
 
 // mensagens são os textos de web/ask.js MENSAGENS usados no aviso quando não há frase nem erro.
+const (
+	msgNaoPronto  = "O banco ainda não estava pronto."
+	msgSemConexao = "Não consegui falar com o banco."
+)
+
 var mensagens = map[string]string{
 	"sql":           "Não consegui montar essa consulta.",
 	"timeout":       "A consulta demorou demais e foi cancelada para proteger o banco.",
@@ -37,6 +42,7 @@ type Opcoes struct {
 	Banco     func() (notas.Banco, bool)                 // banco conectado agora
 	Consultas func(notas.Banco) (json.RawMessage, error) // notas.Store.Ler
 	Consultar func(ctx context.Context, sql string) (string, error)
+	Pronto    func() bool // o toolbox já atende (não está subindo nem caído); nil: sempre
 	Motor     *Motor
 	Hist      *Historico
 	Tick      time.Duration // 30 s em produção
@@ -93,10 +99,13 @@ type Agendador struct {
 	acordar  chan struct{}
 	avisos   []Aviso
 	seqAviso int64
+
+	espera time.Duration // de quanto em quanto confere se o banco ficou pronto (1 s)
 }
 
 func NovoAgendador(o Opcoes) *Agendador {
-	a := &Agendador{o: o, ocupadas: map[string]int{}, acordar: make(chan struct{}, 1), feitos: map[string]time.Time{}}
+	a := &Agendador{o: o, ocupadas: map[string]int{}, acordar: make(chan struct{}, 1), feitos: map[string]time.Time{},
+		espera: time.Second}
 	a.vazia = sync.NewCond(&a.mu)
 	return a
 }
@@ -378,10 +387,16 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 			return Execucao{}, a.perda(it.chave, it.id, agora, "anterior", it.ref, it.ref, 1)
 		}
 	}
+	pronto, err := a.esperarPronto(ctx, it)
+	if err != nil {
+		return Execucao{}, err
+	}
 	var res Resultado
 	var valores []string
 	p, err := a.o.Motor.Preparar(c.raw, it.ref, b.Motor)
 	switch {
+	case !pronto:
+		res.Erro = msgNaoPronto
 	case err != nil:
 		res.Erro = err.Error()
 	case p.Erro != "":
@@ -396,6 +411,8 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 			return Execucao{}, ctx.Err() // o ctl está fechando: não grava
 		case errors.Is(err, ErrPrazo) || errors.Is(err, context.DeadlineExceeded):
 			res.Motivo = "timeout_front"
+		case errors.Is(err, ErrSemConexao):
+			res.Erro = msgSemConexao
 		case err != nil:
 			res.Erro = err.Error() // banco fora do ar é execução com erro
 		default:
@@ -404,8 +421,12 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 			}
 		}
 	}
-	if _, c, err = a.reler(it); err != nil {
-		return Execucao{}, err // apagada ou banco trocado enquanto rodava
+	// Apagada ou banco trocado enquanto rodava: descarta. Outro erro de leitura (passageiro) não
+	// joga a execução fora: grava com a consulta que já estava em mãos.
+	if _, c2, err := a.reler(it); err == nil {
+		c = c2
+	} else if errors.Is(err, ErrSemConsulta) || errors.Is(err, ErrBancoMudou) {
+		return Execucao{}, err
 	}
 	tipo := "agendada"
 	if it.manual {
@@ -424,6 +445,36 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 		a.avisar(c.id, "IA de Bolso · "+c.nome, "Rodou às "+it.ref.In(time.Local).Format("15:04")+" · "+textoDoResultado(res))
 	}
 	return e, nil
+}
+
+// esperarPronto espera o toolbox ficar pronto (ele ainda pode estar subindo logo depois de
+// abrir), conferindo a cada a.espera, até o fim da folga do horário (manual: 1 min a partir de
+// agora). false: não ficou pronto a tempo. Erro só quando o ctl fecha ou quem pediu desistiu.
+func (a *Agendador) esperarPronto(ctx context.Context, it item) (bool, error) {
+	if a.o.Pronto == nil {
+		return true, nil
+	}
+	limite := it.ref.Add(folga)
+	if it.manual {
+		limite = agoraDe(a.o.Agora()).Add(folga)
+	}
+	var desistiu <-chan struct{}
+	if it.ctx != nil {
+		desistiu = it.ctx.Done()
+	}
+	for !a.o.Pronto() {
+		if !agoraDe(a.o.Agora()).Before(limite) {
+			return false, nil
+		}
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		case <-desistiu:
+			return false, it.ctx.Err()
+		case <-time.After(a.espera):
+		}
+	}
+	return true, nil
 }
 
 func textoDoResultado(r Resultado) string {

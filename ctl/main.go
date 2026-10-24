@@ -127,6 +127,8 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 				st := ctl.Status()
 				return notas.Banco{Motor: st.Motor, Host: st.Host, Porta: st.Porta, Base: st.Base, Usuario: st.Usuario, Schema: st.Schema}, st.Motor != ""
 			},
+			// Logo depois de abrir o toolbox ainda está subindo: a execução espera ele ficar pronto.
+			Pronto:    func() bool { return ctl.Status().Estado == control.Rodando },
 			Consultas: func(b notas.Banco) (json.RawMessage, error) { return notasStore.Ler(b) },
 			Consultar: agenda.NovoCliente(fmt.Sprintf("http://127.0.0.1:%d/mcp", tbPort)).Consultar,
 			Motor:     motor,
