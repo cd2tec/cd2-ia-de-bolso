@@ -69,7 +69,8 @@ header.top{position:sticky;top:0;z-index:10;background:var(--surface-raised);bor
 .top nav a.link{color:var(--ink);text-decoration:none;font:600 14px/20px var(--font-sans);transition:color .15s;white-space:nowrap}
 .top nav a.link:hover{color:var(--brand)}
 .btn svg{width:16px;height:16px;flex:none}
-@media (max-width:1180px){.top nav{gap:var(--space-4)}}
+@media (max-width:1440px){.top nav{gap:var(--space-4)}}
+@media (max-width:1360px){.top nav a.link[href="#pra-que-serve"],.top nav a.link[href="#cuidados"]{display:none}}
 @media (max-width:1060px){.top nav a.link{display:none}}
 @media (max-width:420px){.top__gratis{display:none}}
 @media (max-width:480px){.brand .sep,.brand .product span{display:none}.brand{gap:var(--space-3)}.brand .logo{height:22px}}
@@ -102,6 +103,22 @@ header.top{position:sticky;top:0;z-index:10;background:var(--surface-raised);bor
 .tela{margin:0 0 var(--space-8)}
 .tela img{display:block;width:100%;height:auto;border-radius:var(--radius-md);border:1px solid var(--border);box-shadow:0 20px 48px rgba(13,18,51,.16),0 2px 8px rgba(13,18,51,.08)}
 .tela figcaption{margin-top:var(--space-3);font:500 13px/20px var(--font-sans);color:var(--ink-muted);max-width:72ch}
+/* destaque dos agendamentos: seção azul com dois prints; o seletor Claro/Escuro troca os dois, sem JavaScript */
+#agendamentos .tag{margin-bottom:0}
+.novo{display:inline-flex;align-items:center;gap:var(--space-2);margin-top:var(--space-6);padding:6px 14px;border-radius:var(--radius-pill);background:var(--accent);color:var(--on-accent);font:700 13px/20px var(--font-sans);text-decoration:none}
+.novo:hover{background:#eaff6b}
+.agenda__topo{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
+.agenda__telas{display:grid;grid-template-columns:3fr 2fr;gap:var(--space-6);align-items:start;margin:0 0 var(--space-12)}
+.agenda__telas figure{margin:0}
+.agenda__telas img{display:block;width:100%;height:auto;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,.4);box-shadow:0 28px 64px rgba(1,0,60,.45),0 4px 12px rgba(1,0,60,.25)}
+.agenda__telas figcaption{margin-top:var(--space-3);font:500 13px/20px var(--font-sans);color:var(--ink-muted)}
+.agenda__telas .crop{overflow:hidden;border-radius:var(--radius-md)}
+#agendamentos .so{margin:var(--space-6) 0 var(--space-8)}
+#agendamentos:has(#ag-escuro:checked) .tema-claro,#agendamentos:has(#ag-claro:checked) .tema-escuro{display:none}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-6)}
+#agendamentos .card{border-color:rgba(255,255,255,.25)}
+#agendamentos .card p{color:var(--ink-muted)}
+@media (max-width:900px){.agenda__telas,.grid3{grid-template-columns:1fr}}
 @media (max-width:1060px){.hero__grid h1{font-size:46px;line-height:52px}}
 .arcs{position:absolute;right:-180px;top:40px;width:720px;height:auto;z-index:0;pointer-events:none}
 .arcs path{fill:none;stroke:#ffffff;stroke-width:2;vector-effect:non-scaling-stroke;opacity:.55}
@@ -241,6 +258,7 @@ src="https://www.facebook.com/tr?id=804031478836109&ev=PageView&noscript=1"
       <a class="product" href="#">IA de Bolso <span>em pen drive</span></a>
     </div>
     <nav aria-label="Seções">
+      <a class="link" href="#agendamentos">Agendamentos</a>
       <a class="link" href="#pra-que-serve">Pra que serve</a>
       <a class="link" href="#pendrive">Criar o pen drive</a>
       <a class="link" href="#seus-dados">Seus dados</a>
@@ -266,6 +284,7 @@ src="https://www.facebook.com/tr?id=804031478836109&ev=PageView&noscript=1"
         <a class="btn btn--primary" href="https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/CD2-IA-de-Bolso-Mac.dmg">Baixar para Mac <span class="btn__arrow" aria-hidden="true">↓</span></a>
       </div>
       <p class="hero__nota">Grátis. Você só precisa de um pen drive de 16 GB.</p>
+      <a class="novo" href="#agendamentos">Novo: consultas que rodam sozinhas e avisam você <span aria-hidden="true">→</span></a>
     </div>
     <figure class="hero__shot">
       <img class="tema-claro" src="assets/telas/conversa-claro.webp" width="2560" height="2048" alt="Tela da IA de Bolso no tema claro: à esquerda a barra Consultas salvas; no meio, a pergunta &quot;Total por mês em fi titulo&quot; vira um gráfico de linha com o total de cada mês, tirado de um banco Oracle, com a consulta usada e os botões Salvar consulta, CSV e Imprimir/PDF. Na faixa das guias, à direita, o botão Reiniciar conversa.">
@@ -282,6 +301,38 @@ src="https://www.facebook.com/tr?id=804031478836109&ev=PageView&noscript=1"
 </div>
 
 <main>
+  <section class="s t-blue" id="agendamentos">
+    <div class="wrap">
+      <div class="agenda__topo"><span class="eyebrow">Agendamentos</span><span class="tag tag--melhoria"><i></i>Novo</span></div>
+      <h2>Ela roda sozinha. <em>E avisa você.</em></h2>
+      <p class="lead">Escolha uma consulta salva, diga de quanto em quanto tempo ela roda e pronto: o flash de vendas no horário de pico, a ruptura de estoque toda manhã. Cada resultado fica guardado e chega como aviso no computador, mesmo com a janela fechada.</p>
+      <span class="so" role="group" aria-label="Tema da tela">
+        <input type="radio" name="ag-tema" id="ag-claro" checked><label for="ag-claro">Claro</label>
+        <input type="radio" name="ag-tema" id="ag-escuro"><label for="ag-escuro">Escuro</label>
+      </span>
+      <div class="agenda__telas">
+        <figure>
+          <img class="tema-claro" src="assets/telas/agenda-historico-claro.webp" width="2560" height="2048" loading="lazy" alt="Histórico do agendamento Flash de vendas de hoje, no tema claro: à esquerda, a barra Consultas salvas com o filtro Só agendadas e o relógio de cada consulta agendada, com a próxima execução. No meio, o cabeçalho com a frequência &quot;a cada 1 h&quot; e os botões Editar agendamento e Rodar agora; abaixo, o quadro Como o aviso chega, com a notificação do sistema e o menu do ícone da bandeja mostrando 3 resultados novos; e o card da execução das 19:00, marcado como novo, com o gráfico de venda por hora.">
+          <img class="tema-escuro" src="assets/telas/agenda-historico-escuro.webp" width="2560" height="2048" loading="lazy" alt="O mesmo histórico do agendamento Flash de vendas de hoje, no tema escuro.">
+          <figcaption>Cada execução vira um card guardado no histórico da consulta, com gráfico, CSV e PDF. O que não rodou porque a IA estava fechada aparece numa linha só, com <strong>Rodar agora</strong>.</figcaption>
+        </figure>
+        <figure>
+          <img class="tema-claro" src="assets/telas/agenda-janela-claro.webp" width="2560" height="2048" loading="lazy" alt="Janela Agendar &quot;Flash de vendas de hoje&quot;, no tema claro: Quando rodar com as opções A cada X minutos, A cada X horas (escolhida), Todo dia, Semanal e Mensal; a cada 1 hora, só das 08:00 às 20:00; os dias de segunda a sábado marcados; o parâmetro Data com o período Hoje; o resumo &quot;Vai rodar de segunda a sábado, de hora em hora, das 08:00 às 20:00. Próxima: hoje, 20:00.&quot; e os botões Cancelar, Tirar agendamento e Salvar agendamento.">
+          <img class="tema-escuro" src="assets/telas/agenda-janela-escuro.webp" width="2560" height="2048" loading="lazy" alt="A mesma janela Agendar, no tema escuro.">
+          <figcaption>A janela <strong>Agendar</strong> mostra, em português, quando a consulta vai rodar e a próxima vez.</figcaption>
+        </figure>
+      </div>
+      <div class="grid3">
+        <div class="card"><span class="tag tag--melhoria"><i></i>Quando</span><h3>No ritmo da loja.</h3><p>A cada X minutos (a partir de 5), de hora em hora, todo dia, toda semana ou todo mês. Dá para limitar ao horário da loja e escolher os dias.</p></div>
+        <div class="card"><span class="tag tag--melhoria"><i></i>Períodos</span><h3>"Hoje" é sempre hoje.</h3><p>A data da consulta vira um período calculado em cada execução: hoje, ontem, esta semana, este mês, últimas X horas. Ninguém precisa mexer na consulta todo dia.</p></div>
+        <div class="card"><span class="tag tag--melhoria"><i></i>Aviso</span><h3>Chega mesmo com a janela fechada.</h3><p>Cada resultado aparece como notificação do Windows ou do Mac e numa marca no ícone da IA de Bolso. Um clique abre o histórico daquela consulta.</p></div>
+        <div class="card"><span class="tag tag--concluido"><i></i>Histórico</span><h3>Guardado para sempre.</h3><p>Todas as execuções ficam no computador, separadas por dia, com o que rodou no horário e o que você rodou na mão. Você pode rodar de novo a qualquer momento.</p></div>
+        <div class="card"><span class="tag tag--concluido"><i></i>Sem surpresa</span><h3>Nada roda atrasado.</h3><p>Se o computador estava desligado ou dormindo no horário, a IA não roda depois sozinha. Ela mostra o que não rodou e deixa você decidir. A consulta continua só de leitura, uma por vez, para não pesar no sistema.</p></div>
+        <div class="card"><span class="tag tag--atencao"><i></i>Versão instalada</span><h3>No computador, R$ 25.</h3><p>O agendamento roda na cópia instalada, que fica aberta perto do relógio. No pen drive você vê e experimenta tudo, inclusive no modo Demonstração, e instala quando quiser.</p></div>
+      </div>
+    </div>
+  </section>
+
   <section class="s" id="pra-que-serve">
     <div class="wrap">
       <span class="eyebrow">Pra que serve</span>
@@ -370,7 +421,7 @@ src="https://www.facebook.com/tr?id=804031478836109&ev=PageView&noscript=1"
       <div class="grid2">
         <div class="card"><span class="tag tag--concluido"><i></i>Entendimento</span><h3>Ela lê antes de responder.</h3><p>Ao conectar, a IA lê algumas linhas de cada tabela e classifica o papel dela: movimento, itens de movimento, cadastro ou parâmetro. Depois escreve uma frase sobre cada uma, em segundo plano, enquanto você já pergunta. Isso fica guardado no computador, por banco, e não é refeito a cada abertura. Se o banco não parecer de um sistema de varejo, ela avisa.</p></div>
         <div class="card"><span class="tag tag--concluido"><i></i>Comentários</span><h3>Uma frase sua vale muito.</h3><p>"SEQPESSOA é o cliente." "Esta tabela é o caixa do dia." Quem cuida do sistema escreve o comentário na tabela ou no campo e, a partir dali, a IA usa isso para escolher a tabela certa e montar a consulta. O texto da IA já vem preenchido; é só corrigir o que estiver errado.</p></div>
-        <div class="card"><span class="tag tag--concluido"><i></i>Consultas salvas</span><h3>Gostou da resposta? Dê um joinha.</h3><p>O botão <strong>👍</strong> na resposta salva a consulta com um nome. Ela vai para a barra da esquerda, na Conversa, e dali em diante roda direto no banco, sem passar pela IA: mesmo número, toda vez. Um valor fixo da consulta, como uma data ou um código, pode virar um campo que você preenche na hora de rodar.</p></div>
+        <div class="card"><span class="tag tag--concluido"><i></i>Consultas salvas</span><h3>Gostou da resposta? Dê um joinha.</h3><p>O botão <strong>👍</strong> na resposta salva a consulta com um nome. Ela vai para a barra da esquerda, na Conversa, e dali em diante roda direto no banco, sem passar pela IA: mesmo número, toda vez. Um valor fixo da consulta, como uma data ou um código, pode virar um campo que você preenche na hora de rodar. Na cópia instalada, ela também pode <a href="#agendamentos">rodar sozinha, no horário que você escolher</a>.</p></div>
         <div class="card"><span class="tag tag--melhoria"><i></i>Leve junto</span><h3>Exporta, importa e atualiza.</h3><p><strong>Exportar</strong> gera um arquivo com os comentários e as consultas salvas, para levar a outro computador ou guardar. <strong>Importar</strong> junta o que vem no arquivo com o que já existe e avisa antes de sobrescrever alguma coisa. <strong>Atualizar com o banco</strong> lê o banco de novo e traz tabelas e campos novos sem perder o que você escreveu.</p></div>
       </div>
     </div>
