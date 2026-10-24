@@ -183,6 +183,83 @@ function rotuloCurto(a){
   return '';
 }
 
-const api = { MAX_HORARIOS, validar, horarios, proximo, resumo, rotuloCurto };
+// ---- períodos relativos, calculados a cada execução ----
+const PERIODOS = [
+  { id:'hoje', rotulo:'Hoje', faixa:false, so_hora:false },
+  { id:'ontem', rotulo:'Ontem', faixa:false, so_hora:false },
+  { id:'hora_atual', rotulo:'Hora atual', faixa:false, so_hora:true },
+  { id:'ultimas_horas', rotulo:'Últimas X horas', faixa:false, so_hora:true },
+  { id:'ultimos_dias', rotulo:'Últimos X dias', faixa:true, so_hora:false },
+  { id:'esta_semana', rotulo:'Esta semana', faixa:true, so_hora:false },
+  { id:'semana_passada', rotulo:'Semana passada', faixa:true, so_hora:false },
+  { id:'este_mes', rotulo:'Este mês', faixa:true, so_hora:false },
+  { id:'mes_passado', rotulo:'Mês passado', faixa:true, so_hora:false }
+];
+const SIGLAS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+const ERRO_PERIODO = ': período inválido para este parâmetro.';
+
+// Períodos oferecidos para um parâmetro; `temPar` diz se há outro parâmetro de data para fechar a faixa.
+function periodosPara(tipo, temPar){
+  if(tipo !== 'data' && tipo !== 'datahora') return [];
+  return PERIODOS.filter(p => !(tipo === 'data' && p.so_hora) && !(p.faixa && !temPar));
+}
+
+const fmtData = dt => dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate());
+const fmtHora = dt => pad(dt.getHours()) + ':' + pad(dt.getMinutes()) + ':' + pad(dt.getSeconds());
+
+// Valor do parâmetro em `ref`, ou null se a combinação não vale.
+function valorDoParam(p, tipo, ref){
+  if(!p) return null;
+  if(p.modo === 'fixo') return p.valor == null ? null : String(p.valor);
+  const y = ref.getFullYear(), m = ref.getMonth(), d = ref.getDate();
+  if(p.modo === 'dia_semana'){
+    if(tipo !== 'numero' && tipo !== 'texto') return null;
+    const w = ref.getDay();
+    if(p.formato === '0a6') return String(w);
+    if(p.formato === '1a7') return String(w + 1);
+    return p.formato === 'sigla' ? SIGLAS[w] : null;
+  }
+  if(p.modo !== 'periodo' || (tipo !== 'data' && tipo !== 'datahora')) return null;
+  const per = PERIODOS.filter(x => x.id === p.periodo)[0];
+  if(!per || (p.ponta !== 'inicio' && p.ponta !== 'fim')) return null;
+  if(per.so_hora && tipo !== 'datahora') return null;
+  const ini = p.ponta === 'inicio';
+  if(per.id === 'hora_atual') return fmtData(ref) + ' ' + (ini ? pad(ref.getHours()) + ':00:00' : fmtHora(ref));
+  if(per.id === 'ultimas_horas'){
+    if(!inteiro(p.n) || p.n < 1) return null;
+    const x = ini ? new Date(y, m, d, ref.getHours() - p.n, ref.getMinutes(), ref.getSeconds()) : ref;
+    return fmtData(x) + ' ' + fmtHora(x);
+  }
+  let a, b; // primeiro e último dia do período
+  if(per.id === 'hoje') a = b = new Date(y, m, d);
+  else if(per.id === 'ontem') a = b = new Date(y, m, d - 1);
+  else if(per.id === 'ultimos_dias'){
+    if(!inteiro(p.n) || p.n < 1) return null;
+    a = new Date(y, m, d - p.n); b = new Date(y, m, d);
+  } else if(per.id === 'esta_semana'){ a = new Date(y, m, d - ref.getDay()); b = new Date(y, m, d); }
+  else if(per.id === 'semana_passada'){ a = new Date(y, m, d - ref.getDay() - 7); b = new Date(y, m, d - ref.getDay() - 1); }
+  else if(per.id === 'este_mes'){ a = new Date(y, m, 1); b = new Date(y, m + 1, 0); }
+  else { a = new Date(y, m - 1, 1); b = new Date(y, m, 0); } // mes_passado
+  const dia = fmtData(ini ? a : b);
+  return tipo === 'datahora' ? dia + (ini ? ' 00:00:00' : ' 23:59:59') : dia;
+}
+
+// Valores dos parâmetros da consulta para esta execução; sem agenda.params[i] usa o valor salvo.
+function valoresDaExecucao(consulta, ref){
+  const ps = (consulta && consulta.params) || [], ag = (consulta && consulta.agenda && consulta.agenda.params) || [];
+  const valores = [];
+  for(let i = 0; i < ps.length; i++){
+    const a = ag[i];
+    const v = a ? valorDoParam(a, ps[i].tipo, ref) : (ps[i].valor == null ? '' : String(ps[i].valor));
+    if(v == null) return { ok:false, erro:ps[i].nome + ERRO_PERIODO };
+    valores.push(v);
+  }
+  return { ok:true, valores };
+}
+
+// Mesmo período, na ponta final: sugestão para o segundo parâmetro de data.
+const parSugerido = p => Object.assign({}, p, { ponta:'fim' });
+
+const api = { MAX_HORARIOS, validar, horarios, proximo, resumo, rotuloCurto, PERIODOS, periodosPara, valorDoParam, valoresDaExecucao, parSugerido };
 if(isNode) module.exports = api; else root.CD2Agenda = api;
 })(typeof window !== 'undefined' ? window : globalThis);

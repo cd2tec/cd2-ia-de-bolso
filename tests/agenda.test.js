@@ -78,3 +78,58 @@ test('horarios corta em MAX_HORARIOS', () => {
   const a = { ligado:true, freq:'minutos', a_cada:5 };
   assert.equal(A.horarios(a, new Date(2026,0,1), new Date(2027,0,1)).length, A.MAX_HORARIOS);
 });
+
+// ---- períodos calculados a cada execução ----
+const ref = new Date(2026, 9, 24, 14, 37, 12); // sábado
+const d = (periodo, ponta, tipo = 'data', n) => A.valorDoParam({ modo:'periodo', periodo, ponta, n }, tipo, ref);
+test('dias', () => { assert.equal(d('hoje','inicio'), '2026-10-24'); assert.equal(d('ontem','fim'), '2026-10-23'); });
+test('semana de domingo a sábado', () => {
+  assert.equal(d('esta_semana','inicio'), '2026-10-18'); assert.equal(d('esta_semana','fim'), '2026-10-24');
+  assert.equal(d('semana_passada','inicio'), '2026-10-11'); assert.equal(d('semana_passada','fim'), '2026-10-17');
+});
+test('mês', () => { assert.equal(d('este_mes','fim'), '2026-10-31'); assert.equal(d('mes_passado','inicio'), '2026-09-01'); });
+test('horas', () => {
+  assert.equal(d('hora_atual','inicio','datahora'), '2026-10-24 14:00:00');
+  assert.equal(d('hora_atual','fim','datahora'), '2026-10-24 14:37:12');
+  assert.equal(d('ultimas_horas','inicio','datahora', 2), '2026-10-24 12:37:12');
+  assert.equal(d('ultimos_dias','inicio','data', 7), '2026-10-17');
+});
+test('fim de datahora de período de dia vai até 23:59:59', () => {
+  assert.equal(d('hoje','fim','datahora'), '2026-10-24 23:59:59');
+  assert.equal(d('hoje','inicio','datahora'), '2026-10-24 00:00:00');
+});
+test('período de hora não vale para data; n inválido e tipo numero dão null', () => {
+  assert.equal(d('hora_atual','inicio','data'), null);
+  assert.equal(d('ultimos_dias','inicio','data', 0), null);
+  assert.equal(d('hoje','inicio','numero'), null);
+});
+test('dia da semana', () => {
+  const v = f => A.valorDoParam({ modo:'dia_semana', formato:f }, 'numero', ref);
+  assert.equal(v('0a6'), '6'); assert.equal(v('1a7'), '7');
+  assert.equal(A.valorDoParam({ modo:'dia_semana', formato:'sigla' }, 'texto', ref), 'SAB');
+});
+test('valoresDaExecucao mistura fixo e período', () => {
+  const c = { params:[{ tipo:'data', nome:'ini', valor:'2020-01-01' }, { tipo:'data', nome:'fim', valor:'2020-01-01' }, { tipo:'numero', nome:'n', valor:'9' }],
+    agenda:{ params:[{ modo:'periodo', periodo:'hoje', ponta:'inicio' }, { modo:'periodo', periodo:'hoje', ponta:'fim' }, { modo:'fixo', valor:'01' }] } };
+  assert.deepEqual(A.valoresDaExecucao(c, ref), { ok:true, valores:['2026-10-24','2026-10-24','01'] });
+});
+test('valoresDaExecucao usa o valor salvo sem agenda e rejeita combinação inválida', () => {
+  const c = { params:[{ tipo:'numero', nome:'n', valor:'9' }, { tipo:'texto', nome:'t', valor:'x' }] };
+  assert.deepEqual(A.valoresDaExecucao(c, ref), { ok:true, valores:['9','x'] });
+  c.agenda = { params:[{ modo:'periodo', periodo:'hoje', ponta:'inicio' }] };
+  assert.deepEqual(A.valoresDaExecucao(c, ref), { ok:false, erro:'n: período inválido para este parâmetro.' });
+});
+test('periodosPara', () => {
+  const ids = (t, par) => A.periodosPara(t, par).map(p => p.id);
+  const sd = ids('data', false);
+  assert.ok(sd.includes('hoje') && !sd.includes('esta_semana') && !sd.includes('hora_atual') && !sd.includes('ultimas_horas'));
+  assert.deepEqual(ids('datahora', true), A.PERIODOS.map(p => p.id));
+  assert.ok(!ids('datahora', false).includes('ultimos_dias') && ids('datahora', false).includes('hora_atual'));
+  assert.deepEqual(ids('numero', true), []);
+  assert.deepEqual(A.PERIODOS.map(p => p.rotulo), ['Hoje','Ontem','Hora atual','Últimas X horas','Últimos X dias','Esta semana','Semana passada','Este mês','Mês passado']);
+});
+test('parSugerido põe ponta fim sem mudar o original', () => {
+  const p = { modo:'periodo', periodo:'ultimos_dias', n:3, ponta:'inicio' };
+  assert.deepEqual(A.parSugerido(p), { modo:'periodo', periodo:'ultimos_dias', n:3, ponta:'fim' });
+  assert.equal(p.ponta, 'inicio');
+});
