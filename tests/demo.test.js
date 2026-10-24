@@ -99,7 +99,7 @@ test('exemplos da barra: de 4 a 6, nomes únicos e cada um com gráfico que dese
 });
 
 test('exemplos da barra: textos exatos e nunca "sem IA"', () => {
-  assert.equal(D.EXEMPLOS_TOPO, 'Exemplos. Com o seu banco, você salva com 👍 as perguntas que mais usa e vê o resultado atualizado num clique.');
+  assert.match(D.EXEMPLOS_TOPO, /^Exemplos. Com o seu banco, você salva com 👍 as perguntas que mais usa/);
   assert.equal(D.EXEMPLO_FRASE, 'No seu banco, esta consulta traz os números atualizados num clique.');
   for(const t of [D.EXEMPLOS_TOPO, D.EXEMPLO_FRASE, ...D.EXEMPLOS.map(e => e.nome)]) assert.doesNotMatch(t, /sem IA/i);
 });
@@ -130,4 +130,168 @@ test('resposta das planilhas: passo a passo curto, motor certo e sem prometer o 
   assert.ok(passos && passos.numerada && passos.lista.length <= 4);
   assert.ok(r.blocos.length <= 4, 'resposta tem que ser breve');
   assert.match(D.instrucao(r), /Termine a resposta dizendo/);
+});
+
+// ---- agendamento na Demonstração ----
+const A = require('../web/agenda.js');
+const AGORA = new Date(2026, 9, 24, 14, 37); // sábado, 14:37
+
+test('flash de vendas: gráfico novo, de hora em hora das 08h até agora', () => {
+  const g = D.grafico('flash_de_vendas', { hora:14 });
+  assert.deepEqual(g.colunas, ['Hora', 'Venda (R$)']);
+  assert.equal(g.x, 'Hora'); assert.equal(g.y, 'Venda (R$)');
+  assert.ok(g.visual === 'barra' || g.visual === 'linha');
+  assert.deepEqual(g.linhas.map(r => r.Hora), ['08h', '09h', '10h', '11h', '12h', '13h', '14h']);
+  assert.match(G.render(g.visual, g.colunas, g.linhas, { x:g.x, y:g.y }), /<svg/);
+  // A frase cita o pico do que já está na tabela.
+  const pico = g.linhas.reduce((a, b) => b['Venda (R$)'] > a['Venda (R$)'] ? b : a);
+  assert.ok(g.frase.includes(pico.Hora), g.frase);
+  // Sem hora: o dia todo, até 20h; antes das 8h, pelo menos a primeira hora.
+  assert.equal(D.grafico('flash_de_vendas').linhas.length, 13);
+  assert.equal(D.grafico('flash_de_vendas', { hora:6 }).linhas.length, 1);
+  assert.equal(D.grafico('flash_de_vendas', { hora:23 }).linhas.length, 13);
+  assert.ok(!D.TOOLS.some(t => t.name === 'flash_de_vendas'), 'não é ferramenta do modelo');
+});
+
+test('exemplos agendados: flash de vendas e ruptura, com agenda válida e bolinha', () => {
+  const ex = D.exemplos(AGORA);
+  const flash = ex.find(e => e.nome === 'Flash de vendas de hoje'), rup = ex.find(e => e.nome === 'Curva A em ruptura nas lojas');
+  assert.ok(flash && rup);
+  assert.deepEqual(flash.agenda.janela, { de:'08:00', ate:'20:00' });
+  assert.equal(flash.agenda.freq, 'horas'); assert.equal(flash.agenda.a_cada, 1);
+  assert.deepEqual(flash.agenda.dias, [1, 2, 3, 4, 5, 6]);
+  assert.equal(rup.agenda.freq, 'semanal'); assert.equal(rup.agenda.hora, '07:30');
+  for(const e of [flash, rup]){ assert.ok(A.validar(e.agenda).ok, e.id); assert.equal(e.agenda.ligado, true); }
+  assert.equal(flash.novas, 2); assert.equal(rup.novas, 1);
+  assert.equal(ex.filter(e => e.agenda).length, 2);
+  for(const e of ex) if(!e.agenda) assert.ok(!e.novas, e.id);
+  // O flash tem um parâmetro de data fictício, com o período "hoje" na agenda.
+  assert.deepEqual(flash.params, [{ nome:'Data', tipo:'data', valor:'2026-10-24' }]);
+  assert.deepEqual(flash.agenda.params, [{ modo:'periodo', periodo:'hoje', ponta:'inicio' }]);
+  assert.equal(A.marcaBarra(flash.agenda, AGORA), '⏰ a cada 1 h · próxima 15:00');
+  // O gráfico do flash vai até a hora de agora.
+  assert.equal(flash.g.linhas[flash.g.linhas.length - 1].Hora, '14h');
+  // Cada chamada devolve agendas novas (a tela pode mexer sem estragar o exemplo).
+  flash.agenda.dias.push(0);
+  assert.deepEqual(D.exemplos(AGORA).find(e => e.id === flash.id).agenda.dias, [1, 2, 3, 4, 5, 6]);
+});
+
+const TIPOS = ['agendada', 'manual', 'perda'];
+function confereExecucao(e){
+  assert.ok(Number.isInteger(e.seq) && e.seq > 0);
+  assert.ok(TIPOS.includes(e.tipo), e.tipo);
+  assert.ok(A.dataDe(e.em) && A.dataDe(e.ref), 'em/ref no formato do cd2-ctl');
+  assert.ok(Array.isArray(e.valores));
+  if(e.tipo === 'perda'){
+    assert.ok(e.n >= 1 && A.dataDe(e.de) && A.dataDe(e.ate) && e.motivo);
+    assert.equal(e.resultado, undefined);
+    return;
+  }
+  const r = e.resultado;
+  assert.equal(typeof r.ok, 'boolean');
+  if(r.ok){
+    for(const k of ['visual', 'x', 'y', 'titulo', 'frase']) assert.ok(r[k], k);
+    assert.ok(Array.isArray(r.colunas) && Array.isArray(r.linhas) && Array.isArray(r.todas));
+  } else assert.ok(r.erro);
+}
+
+test('execuções fictícias do flash: agendada nova, manual, perda, erro e dias anteriores', () => {
+  const flash = D.exemplos(AGORA).find(e => e.nome === 'Flash de vendas de hoje');
+  const l = D.execucoes(flash.id, AGORA);
+  l.forEach(confereExecucao);
+  // Da mais nova para a mais velha, seq decrescente e nada no futuro.
+  for(let i = 1; i < l.length; i++) assert.ok(l[i].seq < l[i - 1].seq);
+  for(const e of l) assert.ok(A.diaDaExecucao(e) <= AGORA);
+  assert.equal(l[0].tipo, 'agendada'); assert.equal(l[0].novo, true);
+  assert.equal(l[0].resultado.ok, true);
+  assert.equal(l[0].resultado.titulo, flash.g.titulo);
+  assert.equal(A.textoExecucao(l[0]), 'Rodou às 14:00 (agendada)');
+  assert.deepEqual(l[0].valores, ['2026-10-24']);
+  assert.ok(l.some(e => e.tipo === 'manual'));
+  const perda = l.find(e => e.tipo === 'perda');
+  assert.equal(perda.n, 3); assert.equal(perda.motivo, 'fechada'); assert.ok(!perda.rodada);
+  assert.match(A.tituloPerda(perda), /^Não rodou 3 vezes entre /);
+  const erro = l.find(e => e.resultado && !e.resultado.ok);
+  assert.equal(erro.resultado.erro, 'Não consegui falar com o banco.');
+  // Novidades: as marcadas como NOVO batem com a bolinha.
+  assert.equal(l.filter(e => e.novo).length, flash.novas);
+  // Dias anteriores: pelo menos três grupos de dia.
+  assert.ok(A.agruparPorDia(l, AGORA).length >= 3);
+});
+
+test('execuções fictícias da ruptura e de exemplo sem agenda', () => {
+  const rup = D.exemplos(AGORA).find(e => e.nome === 'Curva A em ruptura nas lojas');
+  const l = D.execucoes(rup.id, AGORA);
+  l.forEach(confereExecucao);
+  assert.equal(l[0].tipo, 'agendada'); assert.equal(A.textoExecucao(l[0]), 'Rodou às 07:30 (agendada)');
+  assert.equal(l.filter(e => e.novo).length, rup.novas);
+  assert.ok(A.agruparPorDia(l, AGORA).length >= 2);
+  // Antes das 7:30 a mais nova é a de ontem.
+  const cedo = D.execucoes(rup.id, new Date(2026, 9, 24, 6, 0));
+  assert.equal(A.rotuloDia(A.diaDaExecucao(cedo[0]), new Date(2026, 9, 24, 6, 0)), 'Ontem, 23/10');
+  assert.deepEqual(D.execucoes('ex-perdas', AGORA), []);
+  assert.deepEqual(D.execucoes('nao-existe', AGORA), []);
+});
+
+test('rodar agora na Demonstração: execução manual na hora, depois da última', () => {
+  const flash = D.exemplos(AGORA).find(e => e.nome === 'Flash de vendas de hoje');
+  const l = D.execucoes(flash.id, AGORA);
+  const e = D.rodar(flash.id, AGORA, l[0].seq + 1);
+  confereExecucao(e);
+  assert.equal(e.tipo, 'manual'); assert.equal(e.seq, l[0].seq + 1);
+  assert.equal(A.textoExecucao(e), 'Rodou às 14:37 (manual)');
+  assert.equal(e.resultado.ok, true);
+  // Da perda: referente ao último horário perdido.
+  const perda = l.find(x => x.tipo === 'perda');
+  const p = D.rodar(flash.id, AGORA, 99, perda);
+  assert.equal(p.ref, perda.ate);
+  assert.match(A.textoExecucao(p), /^Rodou às 14:37 \(referente a /);
+  assert.equal(D.rodar('nao-existe', AGORA, 1), null);
+});
+
+test('aviso de exemplo: notificação e bandeja, sem nada ao vivo', () => {
+  const flash = D.exemplos(AGORA).find(e => e.nome === 'Flash de vendas de hoje');
+  const a = D.aviso(flash.id, AGORA);
+  assert.equal(a.titulo, 'IA de Bolso · Flash de vendas de hoje');
+  assert.equal(a.texto, 'Rodou às 14:00 · ' + D.execucoes(flash.id, AGORA)[0].resultado.frase);
+  assert.equal(a.novos, '3 resultados novos');
+  assert.deepEqual(a.itens, ['⏰ Flash de vendas de hoje (2)', '⏰ Curva A em ruptura nas lojas (1)']);
+  assert.equal(a.cabecalho, 'Como o aviso chega');
+  assert.equal(a.nota, 'Na versão instalada, cada execução avisa assim, mesmo com a janela fechada.');
+  assert.equal(D.aviso('ex-perdas', AGORA), null);
+});
+
+test('convite do agendamento na Demonstração: texto exato', () => {
+  assert.equal(D.CONVITE_AGENDA, 'Na Demonstração os agendamentos são exemplos. Conecte o banco na versão instalada para agendar de verdade.');
+});
+
+test('roteiro: agendamento cai na resposta certa, sem roubar as outras', () => {
+  for(const q of ['dá pra rodar sozinho todo dia?', 'Como funciona o agendamento?', 'Como configuro um agendamento?',
+    'Dá pra rodar automático de hora em hora?', 'Você me avisa quando a ruptura aparecer?', 'Manda notificação?',
+    'Consigo monitorar as vendas toda hora?', 'Dá pra apagar um agendamento?'])
+    assert.equal((D.roteiro(q) || {}).id, 'agendamento', q);
+  for(const q of ['Qual a venda por horário hoje?', 'Mostre as vendas por hora', 'Quanto vendemos ontem?'])
+    assert.equal(D.roteiro(q), null, q);
+});
+
+test('roteiro do agendamento: fatos, gráfico do flash, barra e fecho', () => {
+  const r = D.ROTEIRO.find(x => x.id === 'agendamento');
+  const t = D.texto(r);
+  assert.match(t, /mínimo 5/);
+  assert.match(t, /de hora em hora, todo dia, semanal ou mensal/);
+  assert.match(t, /hoje, ontem, esta semana, este mês, últimas X horas/);
+  assert.match(t, /histórico/); assert.match(t, /notificação do sistema/); assert.match(t, /mesmo com a janela fechada/);
+  assert.match(t, /não roda depois sozinha/);
+  assert.match(t, /flash de vendas no horário de pico e ruptura de estoque toda manhã/);
+  assert.deepEqual(r.blocos.filter(b => b.grafico).map(b => b.grafico), ['flash_de_vendas']);
+  assert.match(r.blocos[r.blocos.length - 1].p, /⏰/);
+  assert.match(D.instrucao(r), /Termine a resposta dizendo, com as suas palavras, que o agendamento é da versão instalada no computador\./);
+  // Antes de 'conectar' e de 'aprendizado' (que casariam "configur" e "como funciona").
+  const i = id => D.ROTEIRO.findIndex(x => x.id === id);
+  assert.ok(i('agendamento') < i('conectar') && i('agendamento') < i('aprendizado') && i('agendamento') < i('seguranca'));
+});
+
+test('boas-vindas e topo da barra falam do agendamento', () => {
+  assert.match(D.texto(D.roteiro('O que você consegue fazer?')), /agend/i);
+  assert.equal(D.EXEMPLOS_TOPO, 'Exemplos. Com o seu banco, você salva com 👍 as perguntas que mais usa, vê o resultado atualizado num clique e agenda para rodar sozinha.');
 });
