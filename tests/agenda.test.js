@@ -133,3 +133,69 @@ test('parSugerido põe ponta fim sem mudar o original', () => {
   assert.deepEqual(A.parSugerido(p), { modo:'periodo', periodo:'ultimos_dias', n:3, ponta:'fim' });
   assert.equal(p.ponta, 'inicio');
 });
+
+// ---- o que a janela Agendar e a barra lateral usam ----
+const PS = [{ tipo:'data', nome:'Data inicial', valor:'2026-10-01' }, { tipo:'datahora', nome:'Data final', valor:'2026-10-02 00:00:00' },
+  { tipo:'numero', nome:'Loja', valor:'1' }, { tipo:'texto', nome:'UF', valor:'PR' }];
+test('agendaPadrao: de hora em hora, todos os dias, período de hoje nas datas e o valor salvo no resto', () => {
+  const a = A.agendaPadrao(PS, '2026-10-24');
+  assert.deepEqual(a, { ligado:true, freq:'horas', a_cada:1, janela:null, dias:[], inicio:'2026-10-24', params:[
+    { modo:'periodo', periodo:'hoje', ponta:'inicio' }, { modo:'periodo', periodo:'hoje', ponta:'fim' },
+    { modo:'fixo', valor:'1' }, { modo:'fixo', valor:'PR' }] });
+  assert.ok(A.validar(a).ok);
+  assert.deepEqual(A.agendaPadrao([], '2026-10-24').params, []);
+});
+test('pontaDe: o segundo parâmetro de data é o fim, os outros o início', () => {
+  assert.deepEqual(PS.map((p, i) => A.pontaDe(PS, i)), ['inicio', 'fim', 'inicio', 'inicio']);
+  const tres = [{ tipo:'data' }, { tipo:'data' }, { tipo:'data' }];
+  assert.deepEqual(tres.map((p, i) => A.pontaDe(tres, i)), ['inicio', 'fim', 'inicio']);
+});
+test('textoProxima: HH:MM hoje, dd/mm HH:MM em outro dia, null desligada', () => {
+  const a = { ligado:true, freq:'horas', a_cada:1, janela:{ de:'08:00', ate:'20:00' }, dias:[1,2,3,4,5,6] };
+  assert.equal(A.textoProxima(a, new Date(2026,9,24,14,0)), '15:00');
+  assert.equal(A.textoProxima(a, new Date(2026,9,24,20,0)), '26/10 08:00');
+  assert.equal(A.textoProxima({ ...a, ligado:false }, new Date(2026,9,24,14,0)), null);
+});
+test('marcaBarra', () => {
+  const a = { ligado:true, freq:'horas', a_cada:1 };
+  assert.equal(A.marcaBarra(a, new Date(2026,9,24,14,10)), '⏰ a cada 1 h · próxima 15:00');
+  assert.equal(A.marcaBarra({ ...a, ligado:false }, new Date(2026,9,24,14,10)), '⏰ a cada 1 h · desligado');
+});
+test('tela de ida e volta guarda a agenda', () => {
+  const casos = [
+    { ligado:true, freq:'horas', a_cada:2, janela:{ de:'08:00', ate:'20:00' }, dias:[1,2,3,4,5,6], inicio:'2026-10-24', params:[] },
+    { ligado:false, freq:'minutos', a_cada:5, janela:null, dias:[], inicio:'2026-10-24', params:[] },
+    { ligado:true, freq:'diario', a_cada:3, hora:'07:30', inicio:'2026-10-24', params:[] },
+    { ligado:true, freq:'semanal', a_cada:2, hora:'07:30', dias:[1,3,5], inicio:'2026-10-19', params:[] },
+    { ligado:true, freq:'mensal', dia_mes:'ultimo', hora:'06:00', inicio:'2026-10-24', params:[] },
+    { ligado:true, freq:'mensal', dia_mes:15, hora:'06:00', inicio:'2026-10-24', params:[{ modo:'fixo', valor:'1' }] }
+  ];
+  for(const a of casos) assert.deepEqual(A.agendaDaTela(A.telaDaAgenda(a, '2026-10-24')), { ok:true, agenda:a });
+});
+test('tela: valores que vêm dos campos (texto) e troca de frequência', () => {
+  const t = A.telaDaAgenda(A.agendaPadrao([], '2026-10-24'), '2026-10-24');
+  assert.equal(t.dias.filter(Boolean).length, 7);
+  t.freq = 'minutos'; t.n.minutos = '3';
+  assert.deepEqual(A.agendaDaTela(t), { ok:false, erro:'O intervalo mínimo é de 5 minutos.' });
+  t.n.minutos = '10';
+  assert.equal(A.agendaDaTela(t).agenda.a_cada, 10);
+  t.n.minutos = 'x';
+  assert.deepEqual(A.agendaDaTela(t), { ok:false, erro:'Intervalo inválido.' });
+  t.freq = 'semanal'; t.semanas = '1';
+  const s = A.agendaDaTela(t).agenda;
+  assert.deepEqual(s.dias, [0,1,2,3,4,5,6]); // semanal guarda os dias marcados, mesmo todos
+  t.freq = 'mensal'; t.dia_mes = '31';
+  assert.equal(A.agendaDaTela(t).agenda.dia_mes, 31);
+});
+test('tela sem nenhum dia marcado recusa, também de hora em hora', () => {
+  const t = A.telaDaAgenda(A.agendaPadrao([], '2026-10-24'), '2026-10-24');
+  t.dias = [false, false, false, false, false, false, false];
+  assert.deepEqual(A.agendaDaTela(t), { ok:false, erro:'Escolha pelo menos um dia.' });
+  t.freq = 'mensal'; // mensal não usa os dias
+  assert.equal(A.agendaDaTela(t).ok, true);
+});
+test('tela de agenda semanal sem dias abre com segunda a sexta', () => {
+  const t = A.telaDaAgenda({ ligado:true, freq:'semanal', a_cada:1, hora:'07:00', dias:[] }, '2026-10-24');
+  assert.deepEqual(t.dias, [false, true, true, true, true, true, false]);
+  assert.equal(t.inicio, '2026-10-24');
+});

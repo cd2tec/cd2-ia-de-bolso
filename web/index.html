@@ -480,6 +480,45 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 .salvas__aviso{margin:0;font:500 12px/18px var(--font-sans);color:var(--ink-muted)}
 .salvas__aviso[hidden]{display:none}
 .salvas__erro{flex:0 0 100%;margin:0;padding:0 var(--space-2) var(--space-2);font:500 12px/18px var(--font-sans);color:var(--ink)}
+/* agendamento: filtro, relógio e bolinha na barra; janela Agendar e o convite do pen drive */
+.salvas__filtro{display:flex;flex-wrap:wrap;gap:var(--space-1)}
+.salvas__filtro[hidden]{display:none}
+.salvas__filtro button{height:24px;padding:0 var(--space-3);border:0;border-radius:var(--radius-pill);background:var(--tint);color:var(--ink);font:500 11px/16px var(--font-sans)}
+.salvas__filtro button[aria-pressed=true]{background:var(--ink-brand);color:var(--on-brand);font-weight:700}
+.salvas__filtro button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.salvas__bolinha{float:right;margin-left:var(--space-1);padding:1px 7px;border-radius:var(--radius-pill);background:var(--ink-brand);color:var(--on-brand);font:700 10px/14px var(--font-sans)}
+.salvas__relogio{display:block;margin-top:var(--space-1);font:600 11px/16px var(--font-sans);color:var(--ink-brand)}
+#agendar{width:min(660px,94vw)}
+#agendar h2,#convAgenda h2{margin-top:0;overflow-wrap:anywhere}
+#convAgenda p{margin:0 0 var(--space-3);font:400 14px/22px var(--font-sans)}
+.agd fieldset{border:0;margin:var(--space-6) 0 0;padding:0;min-width:0}
+.agd [hidden]{display:none}
+.agd legend{padding:0;margin:0 0 var(--space-2);font:600 13px/16px var(--font-sans)}
+.agd select{width:auto;height:36px;font-size:14px}
+.agd input[type=number],.agd input[type=time],.agd input[type=date],.agd input[type=datetime-local],.agd input[type=text]{width:auto;height:36px;padding:0 var(--space-2);background:var(--surface-raised);color:var(--ink);border:1px solid var(--border-field);border-radius:var(--radius-sm);font:400 14px/20px var(--font-sans)}
+.agd input[type=number]{width:72px}
+.agd input[type=text]{width:140px}
+.agd input:disabled{opacity:.5}
+.agd__chk input[type=checkbox]{accent-color:var(--ink-brand);width:18px;height:18px;margin:0}
+.agd__seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--border-field);border-radius:var(--radius-md);overflow:hidden}
+.agd__seg label,.agd__dias label{position:relative;margin:0;cursor:pointer}
+.agd__seg input,.agd__dias input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.agd__seg span{display:block;padding:6px var(--space-3);font:500 12px/18px var(--font-sans)}
+.agd__seg input:checked + span{background:var(--ink-brand);color:var(--on-brand);font-weight:700}
+.agd__dias{display:flex;flex-wrap:wrap;gap:var(--space-1)}
+.agd__dias span{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--border-field);border-radius:50%;font:600 12px/1 var(--font-sans)}
+.agd__dias input:checked + span{background:var(--ink-brand);border-color:var(--ink-brand);color:var(--on-brand)}
+.agd__seg input:focus-visible + span,.agd__dias input:focus-visible + span{outline:2px solid var(--focus);outline-offset:2px}
+.agd__linha{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin-top:var(--space-3);font:400 14px/20px var(--font-sans)}
+.agd__rot,.agd__chk{display:inline-flex;align-items:center;gap:var(--space-2);margin:0;font:400 14px/20px var(--font-sans);cursor:pointer}
+.agd__params{border-collapse:collapse;width:100%;font-size:13px}
+.agd__params th{text-align:left;font:700 11px/16px var(--font-sans);text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted)}
+.agd__params th,.agd__params td{padding:var(--space-2) var(--space-1);border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.agd__params label{margin:0;font:600 13px/18px var(--font-sans);overflow-wrap:anywhere}
+.agd__valor{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.agd__ponta{color:var(--ink-muted);font-size:12px}
+.agd__resumo{margin:var(--space-4) 0 0;padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);background:var(--tint);font:400 13px/20px var(--font-sans)}
+.agd__ligado{margin-top:var(--space-3)}
 .answer .valores{margin:0 0 var(--space-2);font:600 13px/20px var(--font-sans);color:var(--ink-muted)}
 .answer .acts{flex-wrap:wrap}
 #salvar{width:min(660px,92vw)}
@@ -577,6 +616,10 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
     <div class="salvas__corpo" id="sCorpo">
       <p class="salvas__aviso" id="sAviso" hidden></p>
       <input type="text" id="sBusca" placeholder="🔎 Buscar…" aria-label="Buscar consulta salva pelo nome" spellcheck="false" autocomplete="off">
+      <div class="salvas__filtro" id="sFiltro" role="group" aria-label="Filtrar as consultas salvas" hidden>
+        <button type="button" id="sFTodas" aria-pressed="true">Todas</button>
+        <button type="button" id="sFAgendadas" aria-pressed="false">⏰ Só agendadas (0)</button>
+      </div>
       <div class="salvas__itens" id="sItens" role="list"></div>
     </div>
   </aside>
@@ -847,6 +890,68 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
   </div>
 </dialog>
 
+<dialog id="agendar" class="agd" aria-labelledby="agTitulo">
+  <h2 id="agTitulo"></h2>
+  <fieldset>
+    <legend>Quando rodar</legend>
+    <div class="agd__seg">
+      <label><input type="radio" name="agFreq" value="minutos"><span>A cada X minutos</span></label>
+      <label><input type="radio" name="agFreq" value="horas"><span>A cada X horas</span></label>
+      <label><input type="radio" name="agFreq" value="diario"><span>Todo dia</span></label>
+      <label><input type="radio" name="agFreq" value="semanal"><span>Semanal</span></label>
+      <label><input type="radio" name="agFreq" value="mensal"><span>Mensal</span></label>
+    </div>
+    <div class="agd__linha">
+      <span id="agGrupoN">A cada <input type="number" id="agN" min="1" step="1" inputmode="numeric"> <span id="agNUn"></span></span>
+      <select id="agSemanas" aria-label="Repetir"><option value="1">Toda semana</option><option value="2">A cada 2 semanas</option></select>
+      <select id="agDiaMes" aria-label="Dia do mês"></select>
+      <label class="agd__rot" id="agGrupoHora">às <input type="time" id="agHora" aria-label="Horário"></label>
+    </div>
+    <div class="agd__linha" id="agLinhaJanela">
+      <label class="agd__chk"><input type="checkbox" id="agJanela"> Só das</label>
+      <input type="time" id="agDe" aria-label="Das"> às <input type="time" id="agAte" aria-label="Até">
+    </div>
+    <div class="agd__linha" id="agLinhaInicio"><label class="agd__rot">A partir de <input type="date" id="agInicio"></label></div>
+  </fieldset>
+  <fieldset id="agFsDias">
+    <legend>Nos dias</legend>
+    <div class="agd__dias" id="agDias">
+        <label><input type="checkbox" data-dia="0" aria-label="domingo"><span aria-hidden="true">D</span></label>
+        <label><input type="checkbox" data-dia="1" aria-label="segunda"><span aria-hidden="true">S</span></label>
+        <label><input type="checkbox" data-dia="2" aria-label="terça"><span aria-hidden="true">T</span></label>
+        <label><input type="checkbox" data-dia="3" aria-label="quarta"><span aria-hidden="true">Q</span></label>
+        <label><input type="checkbox" data-dia="4" aria-label="quinta"><span aria-hidden="true">Q</span></label>
+        <label><input type="checkbox" data-dia="5" aria-label="sexta"><span aria-hidden="true">S</span></label>
+        <label><input type="checkbox" data-dia="6" aria-label="sábado"><span aria-hidden="true">S</span></label>
+    </div>
+  </fieldset>
+  <fieldset id="agFsParams">
+    <legend>Parâmetros</legend>
+    <table class="agd__params">
+      <thead><tr><th scope="col">Parâmetro</th><th scope="col">Valor em cada execução</th></tr></thead>
+      <tbody id="agParams"></tbody>
+    </table>
+  </fieldset>
+  <p class="agd__resumo" id="agResumo" aria-live="polite"></p>
+  <label class="agd__chk agd__ligado"><input type="checkbox" id="agLigado"> Agendamento ligado</label>
+  <div class="row">
+    <span class="status hint" id="agErro" role="alert"></span>
+    <button id="agCancelar">Cancelar</button>
+    <button id="agTirar">Tirar agendamento</button>
+    <button class="primary" id="agSalvar">Salvar agendamento</button>
+  </div>
+</dialog>
+
+<dialog id="convAgenda" aria-labelledby="caTitulo">
+  <h2 id="caTitulo">⏰ Agendamento é da versão instalada</h2>
+  <p>Deixe a IA de Bolso rodar suas consultas sozinha: flash de vendas no pico, ruptura de estoque toda manhã. O resultado chega como notificação e fica guardado no histórico.</p>
+  <p class="hint">Funciona com a IA de Bolso instalada neste computador. Suas notas e consultas salvas continuam aqui.</p>
+  <div class="row">
+    <button id="caAgoraNao">Agora não</button>
+    <button class="primary" id="caInstalar">Instalar no computador</button>
+  </div>
+</dialog>
+
 <dialog id="importar" aria-labelledby="impTitulo">
   <h2 id="impTitulo">Importar notas e consultas</h2>
   <div class="imp__alerta" id="impBanco" hidden></div>
@@ -915,6 +1020,7 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 <script src="notas.js?v=0.21.0"></script>
 <script src="consultas.js?v=0.21.0"></script>
 <script src="entendimento.js?v=0.21.0"></script>
+<script src="agenda.js?v=0.21.0"></script>
 <script src="ask.js?v=0.21.0"></script>
 <script src="report.js?v=0.21.0"></script>
 <script src="demo.js?v=0.21.0"></script>
@@ -2177,7 +2283,7 @@ async function confirmarImportar(){
 const VISUAL_ROTULO = { barra:'barra', linha:'linha', pizza:'pizza', tabela:'tabela', numero:'número' };
 const TIPO_ROTULO = { data:'data', datahora:'data e hora', numero:'número', texto:'texto' };
 const MAX_NOME_CONSULTA = 120, MAX_NOME_PARAM = 60;
-const sb = { menu:null, modo:'', erro:'', focar:false, voltar:null };  // barra: item com o menu aberto, 'menu' | 'renomear' | 'apagar'
+const sb = { menu:null, modo:'', erro:'', focar:false, voltar:null, soAgendadas:false };  // barra: item com o menu aberto, 'menu' | 'renomear' | 'apagar'
 const sv = { r:null, botao:null, linhas:[], sel:null };  // janela Salvar consulta
 const rd = { consulta:null, gen:0 };                 // janela de rodar com parâmetros
 const consultasSalvas = () => (st.notas && Array.isArray(st.notas.consultas)) ? st.notas.consultas : [];
@@ -2200,8 +2306,9 @@ function syncSalvas(){
   const a = $('#salvas'), on = podeSalvar() || emDemo();
   a.hidden = !on;
   $('#sAviso').hidden = !emDemo();
-  if(!on || emDemo()){ sb.menu = null; sb.modo = ''; sb.erro = ''; fecharRodar(); }
+  if(!on || emDemo()){ sb.menu = null; sb.modo = ''; sb.erro = ''; fecharRodar(); fecharAgendar(); ag.novidades = {}; }
   if(on) renderSalvas();
+  if(on && !emDemo()) pedirNovidades();
 }
 function renderSalvas(){
   const a = $('#salvas'); if(a.hidden) return;
@@ -2209,7 +2316,13 @@ function renderSalvas(){
   const todas = consultasSalvas();
   $('#sTitulo').textContent = 'Consultas salvas (' + todas.length + ')';
   const q = $('#sBusca').value.trim().toLowerCase(), box = $('#sItens');
-  const lista = todas.slice().reverse().filter(c => !q || String(c.nome || '').toLowerCase().includes(q));
+  const agendadas = todas.filter(c => c.agenda).length;
+  if(!agendadas) sb.soAgendadas = false;
+  $('#sFiltro').hidden = !agendadas;
+  $('#sFAgendadas').textContent = '⏰ Só agendadas (' + agendadas + ')';
+  $('#sFTodas').setAttribute('aria-pressed', String(!sb.soAgendadas));
+  $('#sFAgendadas').setAttribute('aria-pressed', String(sb.soAgendadas));
+  const lista = todas.slice().reverse().filter(c => (!q || String(c.nome || '').toLowerCase().includes(q)) && (!sb.soAgendadas || c.agenda));
   if(sb.menu && !todas.some(c => c.id === sb.menu)){ sb.menu = null; sb.modo = ''; sb.erro = ''; }
   box.innerHTML = '';
   let foco = null;
@@ -2223,6 +2336,7 @@ function renderSalvas(){
   sb.focar = false; sb.voltar = null;
 }
 function renderExemplos(){
+  $('#sFiltro').hidden = true;
   const todos = CD2Demo.exemplos();
   $('#sTitulo').textContent = 'Consultas salvas (' + todos.length + ')';
   const q = $('#sBusca').value.trim().toLowerCase(), box = $('#sItens');
@@ -2256,7 +2370,7 @@ function botaoSm(texto, cls){ const b = document.createElement('button'); b.type
 function fecharMenuSalva(){ sb.voltar = sb.menu; sb.focar = true; sb.menu = null; sb.modo = ''; sb.erro = ''; renderSalvas(); }
 function abrirMenuSalva(c, modo){ sb.rascunho = null; sb.menu = c.id; sb.modo = modo; sb.erro = ''; sb.focar = true; renderSalvas(); }
 function itemSalva(c){
-  const el = document.createElement('div'); el.className = 'salvas__it'; el.setAttribute('role', 'listitem');
+  const el = document.createElement('div'); el.className = 'salvas__it'; el.setAttribute('role', 'listitem'); el.dataset.id = c.id;
   const aberto = sb.menu === c.id;
   let foco = null;
   if(aberto && sb.modo === 'renomear'){
@@ -2274,6 +2388,7 @@ function itemSalva(c){
     run.querySelector('b').textContent = String(c.nome || '');
     run.querySelector('span').textContent = (VISUAL_ROTULO[c.visual] || 'tabela') + (c.criada ? ' · salva ' + dataBr(c.criada).slice(0, 5) : '');
     run.title = 'Rodar de novo, direto no banco';
+    marcasSalva(run, c);
     run.onclick = () => clicarSalva(c);
     const mais = document.createElement('button'); mais.type = 'button'; mais.className = 'salvas__mais'; mais.textContent = '⋯';
     mais.setAttribute('aria-label', 'Opções da consulta ' + String(c.nome || '')); mais.setAttribute('aria-expanded', String(aberto));
@@ -2288,9 +2403,13 @@ function itemSalva(c){
         sim.onclick = () => apagarSalva(c); nao.onclick = fecharMenuSalva;
         menu.appendChild(t); menu.appendChild(sim); menu.appendChild(nao); foco = nao;
       }else{
-        const ren = botaoSm('Renomear'), ap = botaoSm('Apagar');
+        const rodar = botaoSm('▶ Rodar agora'), agendar = botaoSm('⏰ Agendar…'), ren = botaoSm('✎ Renomear'), ap = botaoSm('🗑 Apagar');
+        rodar.disabled = st.busy;
+        rodar.onclick = () => clicarSalva(c); agendar.onclick = () => abrirAgendar(c);
         ren.onclick = () => abrirMenuSalva(c, 'renomear'); ap.onclick = () => abrirMenuSalva(c, 'apagar');
-        menu.appendChild(ren); menu.appendChild(ap); foco = ren;
+        menu.appendChild(rodar); menu.appendChild(agendar);
+        if(c.agenda || novidadesDe(c.id)){ const hist = botaoSm('🗂 Ver histórico'); hist.onclick = () => abrirHistorico(c.id); menu.appendChild(hist); }
+        menu.appendChild(ren); menu.appendChild(ap); foco = rodar.disabled ? agendar : rodar;
       }
       el.appendChild(menu);
     }
@@ -2491,6 +2610,253 @@ async function confirmarSalvar(){
   $('#salvar').close();
   if(sv.botao){ sv.botao.textContent = '👍 Salva'; sv.botao.disabled = true; }
   sv.r = null; sv.botao = null;
+}
+/* agendamento das consultas salvas (web/agenda.js): marcas na barra e a janela Agendar */
+// Agendar só na versão instalada; no pen drive o "⏰ Agendar…" abre o convite. As marcas (⏰) aparecem
+// nos dois, porque a agenda vai nas notas; a bolinha das execuções não vistas, só na instalada.
+const ag = { consulta:null, gen:0, tinha:false, t:null, salvando:false, novidades:{}, genNov:-1, ultimo:0, pedindo:false };
+const instalada = () => !!(inst.status && inst.status.origem === 'instalada');
+const ehParamData = p => !!p && (p.tipo === 'data' || p.tipo === 'datahora');
+const novidadesDe = id => (ag.genNov === st.catalogGen && ag.novidades[id]) || 0;
+// Relógio e bolinha de um item da barra (também usado para atualizar no lugar, sem redesenhar a lista).
+function marcasSalva(run, c){
+  const n = novidadesDe(c.id);
+  let bo = run.querySelector('.salvas__bolinha');
+  if(n && !bo){ bo = document.createElement('span'); bo.className = 'salvas__bolinha'; run.insertBefore(bo, run.firstChild); }
+  if(bo && !n) bo.remove();
+  else if(bo){
+    bo.innerHTML = '<span aria-hidden="true"></span><span class="oculto"></span>';
+    bo.firstChild.textContent = String(n);
+    bo.lastChild.textContent = (n === 1 ? '1 execução nova' : n + ' execuções novas') + ', ';
+  }
+  let rl = run.querySelector('.salvas__relogio');
+  if(c.agenda && !rl){ rl = document.createElement('span'); rl.className = 'salvas__relogio'; run.appendChild(rl); }
+  if(rl && !c.agenda) rl.remove();
+  else if(rl) rl.textContent = CD2Agenda.marcaBarra(c.agenda, new Date());
+}
+function atualizarMarcas(){
+  if($('#salvas').hidden || emDemo()) return;
+  const porId = new Map(consultasSalvas().map(c => [c.id, c]));
+  document.querySelectorAll('#sItens .salvas__it[data-id]').forEach(el => {
+    const c = porId.get(el.dataset.id), run = el.querySelector('.salvas__run');
+    if(c && run) marcasSalva(run, c);
+  });
+}
+// Execuções não vistas, por consulta (GET /agenda/novidades): a cada 30 s e ao voltar o foco, só na
+// instalada e com um banco de verdade conectado.
+async function pedirNovidades(){
+  if(ag.pedindo || !st.ctlKey || !instalada() || !podeSalvar()) return;
+  const gen = st.catalogGen;
+  ag.pedindo = true;
+  let r = null;
+  try{ r = await ctlRequest('GET', '/agenda/novidades?desde=' + ag.ultimo, null, 5000); }catch(e){}
+  finally{ ag.pedindo = false; }
+  if(gen !== st.catalogGen || !r || r.status !== 200 || !Array.isArray(r.data.novidades)) return;
+  if(Number.isInteger(r.data.ultimo) && r.data.ultimo >= 0) ag.ultimo = r.data.ultimo;
+  const nov = {};
+  for(const n of r.data.novidades) if(n && typeof n.consulta === 'string' && n.n > 0) nov[n.consulta] = n.n;
+  ag.novidades = nov; ag.genNov = gen;
+  atualizarMarcas();
+}
+function tiqueAgenda(){ atualizarMarcas(); pedirNovidades(); }
+// O histórico ainda não tem tela: por enquanto o botão só fecha o menu.
+function abrirHistorico(id){ if(sb.menu === id) fecharMenuSalva(); }
+function abrirConviteAgenda(){ $('#convAgenda').showModal(); }
+
+/* janela Agendar */
+function abrirAgendar(c){
+  if(!instalada()) return abrirConviteAgenda();
+  if(!podeSalvar()) return;
+  const ps = Array.isArray(c.params) ? c.params : [], hoje = hojeIso();
+  ag.consulta = c; ag.gen = st.catalogGen; ag.tinha = !!c.agenda; ag.salvando = false;
+  ag.t = CD2Agenda.telaDaAgenda(c.agenda || CD2Agenda.agendaPadrao(ps, hoje), hoje);
+  // Um parâmetro por parâmetro da consulta: o que faltar entra com o padrão.
+  const padrao = CD2Agenda.agendaPadrao(ps, hoje).params;
+  ag.t.params = padrao.map((p, i) => ag.t.params[i] || p);
+  $('#agTitulo').textContent = '⏰ Agendar "' + String(c.nome || '') + '"';
+  $('#agTirar').hidden = !ag.tinha;
+  $('#agSalvar').disabled = false; $('#agTirar').disabled = false;
+  mostrarErro($('#agErro'), '');
+  pintarAgendar();
+  $('#agendar').showModal();
+  const f = $('#agendar input[name=agFreq]:checked'); if(f) f.focus();
+}
+function fecharAgendar(){
+  const d = $('#agendar'); if(d.open) d.close();
+  ag.consulta = null; ag.t = null;
+}
+// Põe o estado (ag.t) nos campos. Chamada ao abrir e ao trocar de frequência.
+function pintarAgendar(){
+  const t = ag.t;
+  document.querySelectorAll('#agendar input[name=agFreq]').forEach(r => { r.checked = r.value === t.freq; });
+  $('#agN').value = t.n[t.freq] != null ? String(t.n[t.freq]) : '';
+  $('#agSemanas').value = String(t.semanas);
+  $('#agDiaMes').value = String(t.dia_mes);
+  $('#agHora').value = t.hora;
+  $('#agJanela').checked = t.janela; $('#agDe').value = t.de; $('#agAte').value = t.ate;
+  $('#agInicio').value = t.inicio || '';
+  document.querySelectorAll('#agDias input').forEach(b => { b.checked = !!t.dias[+b.dataset.dia]; });
+  $('#agLigado').checked = t.ligado;
+  mostrarCamposAgendar(); pintarParamsAgendar(); atualizarResumoAgendar();
+}
+// Mostra só os campos da frequência escolhida.
+function mostrarCamposAgendar(){
+  const t = ag.t, f = t.freq, intervalo = f === 'minutos' || f === 'horas';
+  const un = { minutos:'minutos', horas:'hora(s)', diario:'dia(s)' }[f];
+  $('#agGrupoN').hidden = !un;
+  if(un){ $('#agNUn').textContent = un; $('#agN').min = f === 'minutos' ? '5' : '1'; $('#agN').setAttribute('aria-label', 'A cada quantos ' + (f === 'minutos' ? 'minutos' : f === 'horas' ? 'horas' : 'dias')); }
+  $('#agSemanas').hidden = f !== 'semanal';
+  $('#agDiaMes').hidden = f !== 'mensal';
+  $('#agGrupoHora').hidden = intervalo;
+  $('#agLinhaJanela').hidden = !intervalo;
+  $('#agDe').disabled = $('#agAte').disabled = !t.janela;
+  // A data de início é a âncora do "a cada X dias" e do "a cada 2 semanas".
+  $('#agLinhaInicio').hidden = !((f === 'diario' && String(t.n.diario).trim() !== '1') || (f === 'semanal' && String(t.semanas) === '2'));
+  $('#agFsDias').hidden = !(intervalo || f === 'semanal');
+}
+function atualizarResumoAgendar(){
+  const r = CD2Agenda.agendaDaTela(ag.t), res = $('#agResumo');
+  res.textContent = r.ok ? CD2Agenda.resumo(r.agenda, new Date()) : '';
+  res.hidden = !r.ok;
+  mostrarErro($('#agErro'), r.ok ? '' : r.erro);
+  $('#agSalvar').disabled = !r.ok || ag.salvando;
+  return r;
+}
+const FORMATOS_DIA = {
+  numero:[['0a6', 'Número de 0 a 6 (domingo = 0)'], ['1a7', 'Número de 1 a 7 (domingo = 1)']],
+  texto:[['sigla', 'Sigla (DOM, SEG… SAB)'], ['0a6', 'Número de 0 a 6 (domingo = 0)'], ['1a7', 'Número de 1 a 7 (domingo = 1)']]
+};
+function opcao(sel, valor, texto){ const o = document.createElement('option'); o.value = valor; o.textContent = texto; sel.appendChild(o); }
+// Tabela dos parâmetros: data escolhe um período ou uma data fixa; número e texto, valor fixo ou o dia da semana.
+function pintarParamsAgendar(){
+  const ps = (ag.consulta && Array.isArray(ag.consulta.params)) ? ag.consulta.params : [], tb = $('#agParams');
+  const ativo = document.activeElement && tb.contains(document.activeElement) ? document.activeElement.id : '';
+  tb.innerHTML = '';
+  $('#agFsParams').hidden = !ps.length;
+  const temPar = ps.filter(ehParamData).length >= 2;
+  ps.forEach((p, i) => {
+    const a = ag.t.params[i], nome = nomeParam(p, i), data = ehParamData(p);
+    const tr = document.createElement('tr'), td1 = document.createElement('td'), td2 = document.createElement('td');
+    const lb = document.createElement('label'); lb.htmlFor = 'agP' + i + 'm'; lb.textContent = nome; td1.appendChild(lb);
+    const box = document.createElement('div'); box.className = 'agd__valor';
+    const sel = document.createElement('select'); sel.id = 'agP' + i + 'm';
+    if(data){
+      CD2Agenda.periodosPara(p.tipo, temPar).forEach(x => opcao(sel, x.id, '📅 ' + x.rotulo));
+      opcao(sel, 'fixo', 'Data fixa…');
+      sel.value = a.modo === 'periodo' ? a.periodo : 'fixo';
+    }else{
+      opcao(sel, 'fixo', 'Valor fixo'); opcao(sel, 'dia_semana', 'Dia da semana de hoje');
+      sel.value = a.modo === 'dia_semana' ? 'dia_semana' : 'fixo';
+    }
+    sel.onchange = () => trocarModoParam(i, sel.value);
+    box.appendChild(sel);
+    if(a.modo === 'periodo' && (a.periodo === 'ultimos_dias' || a.periodo === 'ultimas_horas')){
+      const n = document.createElement('input'); n.type = 'number'; n.id = 'agP' + i + 'n'; n.min = '1'; n.step = '1'; n.inputMode = 'numeric';
+      n.value = Number.isInteger(a.n) ? String(a.n) : '';
+      n.setAttribute('aria-label', (a.periodo === 'ultimos_dias' ? 'Quantos dias' : 'Quantas horas') + ', em ' + nome);
+      n.addEventListener('input', () => { const v = n.value.trim(); a.n = /^\d+$/.test(v) ? Number(v) : null; });
+      // Ao terminar de digitar, o par (o segundo parâmetro de data) acompanha.
+      n.addEventListener('change', () => { if(sugerirPar(i)) pintarParamsAgendar(); });
+      box.appendChild(n);
+    }
+    if(a.modo === 'periodo' && temPar){ const s = document.createElement('span'); s.className = 'agd__ponta'; s.textContent = a.ponta === 'fim' ? '(fim do período)' : '(início do período)'; box.appendChild(s); }
+    if(a.modo === 'fixo'){
+      const v = document.createElement('input'); v.id = 'agP' + i + 'v'; v.autocomplete = 'off'; v.spellcheck = false;
+      v.type = p.tipo === 'data' ? 'date' : p.tipo === 'datahora' ? 'datetime-local' : 'text';
+      if(p.tipo === 'datahora') v.step = '1';
+      if(p.tipo === 'numero') v.inputMode = 'decimal';
+      const valor = String(a.valor == null ? '' : a.valor);
+      v.value = p.tipo === 'datahora' ? valor.replace(' ', 'T') : valor;
+      v.setAttribute('aria-label', 'Valor fixo de ' + nome);
+      v.addEventListener('input', () => { a.valor = v.value.trim(); });
+      box.appendChild(v);
+    }
+    if(a.modo === 'dia_semana'){
+      const f = document.createElement('select'); f.id = 'agP' + i + 'f'; f.setAttribute('aria-label', 'Como o banco grava o dia da semana, em ' + nome);
+      (FORMATOS_DIA[p.tipo] || FORMATOS_DIA.texto).forEach(([v, t]) => opcao(f, v, t));
+      f.value = a.formato; if(f.value !== a.formato){ a.formato = f.value; }
+      f.onchange = () => { a.formato = f.value; };
+      box.appendChild(f);
+    }
+    td2.appendChild(box); tr.appendChild(td1); tr.appendChild(td2); tb.appendChild(tr);
+  });
+  if(ativo){ const el = document.getElementById(ativo); if(el) el.focus(); }
+}
+function trocarModoParam(i, v){
+  const ps = ag.consulta.params, p = ps[i], antes = ag.t.params[i];
+  let novo;
+  if(v === 'fixo') novo = { modo:'fixo', valor:p.valor != null ? String(p.valor) : '' };
+  else if(v === 'dia_semana') novo = { modo:'dia_semana', formato:p.tipo === 'texto' ? 'sigla' : '0a6' };
+  else{
+    novo = { modo:'periodo', periodo:v, ponta:CD2Agenda.pontaDe(ps, i) };
+    if(v === 'ultimos_dias' || v === 'ultimas_horas') novo.n = (antes && Number.isInteger(antes.n)) ? antes.n : (v === 'ultimos_dias' ? 7 : 2);
+  }
+  ag.t.params[i] = novo;
+  sugerirPar(i);
+  pintarParamsAgendar();
+}
+// Período de faixa no primeiro parâmetro de data: o segundo recebe o mesmo período, na ponta final.
+function sugerirPar(i){
+  const ps = ag.consulta.params, datas = ps.map((p, k) => ehParamData(p) ? k : -1).filter(k => k >= 0);
+  if(datas.length < 2 || i !== datas[0]) return false;
+  const a = ag.t.params[i], per = a.modo === 'periodo' && CD2Agenda.PERIODOS.find(x => x.id === a.periodo);
+  if(!per || !per.faixa) return false;
+  ag.t.params[datas[1]] = CD2Agenda.parSugerido(a);
+  return true;
+}
+// Lê um campo da janela para o estado e atualiza o resumo.
+function mudouAgendar(e){
+  const t = ag.t, el = e.target; if(!t) return;
+  if(el.name === 'agFreq'){ t.freq = el.value; return pintarAgendar(); }
+  if(el.id === 'agN'){ if(t.n[t.freq] !== undefined) t.n[t.freq] = el.value; }
+  else if(el.id === 'agSemanas') t.semanas = el.value;
+  else if(el.id === 'agDiaMes') t.dia_mes = el.value;
+  else if(el.id === 'agHora') t.hora = el.value;
+  else if(el.id === 'agJanela') t.janela = el.checked;
+  else if(el.id === 'agDe') t.de = el.value;
+  else if(el.id === 'agAte') t.ate = el.value;
+  else if(el.id === 'agInicio') t.inicio = el.value;
+  else if(el.id === 'agLigado') t.ligado = el.checked;
+  else if(el.dataset && el.dataset.dia != null) t.dias[+el.dataset.dia] = el.checked;
+  else return; // parâmetros: cada campo guarda o seu valor
+  mostrarCamposAgendar(); atualizarResumoAgendar();
+}
+// Grava a consulta com a agenda nova (agenda = null tira) pela fila das notas.
+async function gravarAgenda(agenda){
+  const c = ag.consulta;
+  ag.salvando = true; $('#agSalvar').disabled = true; $('#agTirar').disabled = true;
+  const ok = await gravarConsultas(l => l.map(x => {
+    if(x.id !== c.id) return x;
+    const y = Object.assign({}, x);
+    if(agenda) y.agenda = agenda; else delete y.agenda;
+    return y;
+  }));
+  ag.salvando = false; $('#agTirar').disabled = false;
+  if(ag.consulta !== c) return;
+  if(!ok){ atualizarResumoAgendar(); return mostrarErro($('#agErro'), 'Não deu para salvar: ' + st.notasErro); }
+  fecharAgendar();
+  sb.menu = null; sb.modo = ''; sb.erro = ''; sb.voltar = c.id; sb.focar = true;
+  renderSalvas();
+}
+function salvarAgendamento(){
+  const c = ag.consulta; if(!c || ag.salvando) return;
+  // A janela foi aberta para outro banco (catálogo trocou): fecha sem gravar.
+  if(ag.gen !== st.catalogGen || !podeSalvar()) return fecharAgendar();
+  const r = atualizarResumoAgendar();
+  if(!r.ok) return;
+  // Confere agora os valores (período e fixos) pelo mesmo montarSql da execução.
+  const v = CD2Agenda.valoresDaExecucao({ params:c.params, agenda:r.agenda }, new Date());
+  if(!v.ok) return mostrarErro($('#agErro'), v.erro);
+  const m = CD2Consultas.montarSql(c, v.valores);
+  if(!m.ok) return mostrarErro($('#agErro'), m.erro);
+  // Valor fixo guardado como entrou no SQL (número com ponto, data e hora completa).
+  r.agenda.params = r.agenda.params.map((p, i) => p.modo === 'fixo' ? { modo:'fixo', valor:String(m.valores[i]) } : p);
+  gravarAgenda(r.agenda);
+}
+function tirarAgendamento(){
+  if(!ag.consulta || ag.salvando) return;
+  if(ag.gen !== st.catalogGen || !podeSalvar()) return fecharAgendar();
+  gravarAgenda(null);
 }
 /* ---------- modo Demonstração: gráficos, roteiro e convite para conectar o banco ---------- */
 function demoCard(g, sobre, pergunta){
@@ -2972,7 +3338,7 @@ async function iniciarInstalacao(){
   }
   const r = await instPedir('GET', '/instalacao');
   if(r && r.status === 200){
-    inst.status = r.data; syncImportar();
+    inst.status = r.data; syncImportar(); pedirNovidades();
     const mostra = !!CD2Instalar.telaInicial(r.data);
     $('#pPendrive').hidden = !mostra; $('#bInstalar').hidden = !mostra;
     // Só a IA do pen drive escuta a chave que volta do pagamento noutra aba.
@@ -3079,6 +3445,22 @@ $('#svValor').addEventListener('input', () => { sv.sel = null; });
 $('#svComo').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); adicionarParam(); } });
 $('#svValor').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); adicionarParam(); } });
 document.addEventListener('selectionchange', aoSelecionarSql);
+$('#sFTodas').onclick = () => { sb.soAgendadas = false; renderSalvas(); };
+$('#sFAgendadas').onclick = () => { sb.soAgendadas = true; renderSalvas(); };
+for(let d = 1; d <= 31; d++) opcao($('#agDiaMes'), String(d), 'Todo dia ' + d);
+opcao($('#agDiaMes'), 'ultimo', 'No último dia do mês');
+$('#agendar').addEventListener('input', mudouAgendar);
+$('#agendar').addEventListener('change', mudouAgendar);
+$('#agCancelar').onclick = fecharAgendar;
+$('#agTirar').onclick = tirarAgendamento;
+$('#agSalvar').onclick = salvarAgendamento;
+// Enquanto grava, a janela não fecha: o resultado (ou o erro) aparece nela.
+$('#agendar').addEventListener('cancel', e => { if(ag.salvando) e.preventDefault(); });
+$('#agendar').addEventListener('close', () => { if(!ag.salvando){ ag.consulta = null; ag.t = null; } });
+$('#caAgoraNao').onclick = () => $('#convAgenda').close();
+$('#caInstalar').onclick = () => { $('#convAgenda').close(); abrirInstalar(); };
+setInterval(tiqueAgenda, 30000);
+window.addEventListener('focus', tiqueAgenda);
 $('#rCancelar').onclick = () => $('#rodar').close();
 $('#rRodar').onclick = confirmarRodar;
 $('#cfgSave').onclick = saveCfg;

@@ -260,6 +260,73 @@ function valoresDaExecucao(consulta, ref){
 // Mesmo período, na ponta final: sugestão para o segundo parâmetro de data.
 const parSugerido = p => Object.assign({}, p, { ponta:'fim' });
 
-const api = { MAX_HORARIOS, validar, horarios, proximo, resumo, rotuloCurto, PERIODOS, periodosPara, valorDoParam, valoresDaExecucao, parSugerido };
+// ---- o que a tela usa: a barra lateral e a janela Agendar ----
+const ehData = p => !!p && (p.tipo === 'data' || p.tipo === 'datahora');
+// Ponta do período para o parâmetro i: o segundo parâmetro de data fecha a faixa, os outros abrem.
+function pontaDe(params, i){
+  let k = 0;
+  for(let j = 0; j < i; j++) if(ehData(params[j])) k++;
+  return k === 1 ? 'fim' : 'inicio';
+}
+// Agenda nova: de hora em hora, todos os dias, com o período de hoje nas datas e o valor salvo no resto.
+function agendaPadrao(params, hoje){
+  const ps = Array.isArray(params) ? params : [];
+  return { ligado:true, freq:'horas', a_cada:1, janela:null, dias:[], inicio:hoje,
+    params:ps.map((p, i) => ehData(p) ? { modo:'periodo', periodo:'hoje', ponta:pontaDe(ps, i) }
+      : { modo:'fixo', valor:p && p.valor != null ? String(p.valor) : '' }) };
+}
+// Próxima execução para a barra: 'HH:MM' se for hoje, 'dd/mm HH:MM' se não; null se não há.
+function textoProxima(a, agora){
+  const p = proximo(a, agora);
+  if(!p) return null;
+  const h = pad(p.getHours()) + ':' + pad(p.getMinutes());
+  const mesmoDia = p.getFullYear() === agora.getFullYear() && p.getMonth() === agora.getMonth() && p.getDate() === agora.getDate();
+  return mesmoDia ? h : pad(p.getDate()) + '/' + pad(p.getMonth() + 1) + ' ' + h;
+}
+function marcaBarra(a, agora){
+  if(!a) return '';
+  const p = textoProxima(a, agora);
+  return '⏰ ' + rotuloCurto(a) + (a.ligado === false ? ' · desligado' : p ? ' · próxima ' + p : '');
+}
+// Estado da janela Agendar: cada frequência guarda o seu "a cada", e os dias são 7 caixas (0=domingo).
+// Os números podem chegar como texto, do jeito que os campos dão.
+function telaDaAgenda(a, hoje){
+  a = a || {};
+  const f = FREQS.indexOf(a.freq) >= 0 ? a.freq : 'horas';
+  const n = { minutos:15, horas:1, diario:1 };
+  if(n[f] != null && inteiro(a.a_cada)) n[f] = a.a_cada;
+  const marc = diasDe(a), j = a.janela;
+  const dias = [0, 1, 2, 3, 4, 5, 6].map(d => marc.length ? marc.indexOf(d) >= 0 : f === 'semanal' ? d >= 1 && d <= 5 : true);
+  return { ligado:a.ligado !== false, freq:f, n, semanas:f === 'semanal' && a.a_cada === 2 ? 2 : 1,
+    hora:minutosDe(a.hora) != null ? a.hora : '08:00', janela:!!j, de:(j && j.de) || '08:00', ate:(j && j.ate) || '18:00',
+    dias, dia_mes:a.dia_mes != null ? a.dia_mes : 1, inicio:a.inicio || hoje,
+    params:(Array.isArray(a.params) ? a.params : []).map(p => Object.assign({}, p)) };
+}
+const num = v => /^\s*\d+\s*$/.test(String(v == null ? '' : v)) ? Number(v) : NaN;
+// Estado da janela -> agenda para gravar, só com os campos da frequência, já validada.
+function agendaDaTela(t){
+  const f = t.freq, a = { ligado:!!t.ligado, freq:f };
+  if(f === 'minutos' || f === 'horas' || f === 'semanal'){
+    const marc = [0, 1, 2, 3, 4, 5, 6].filter(d => t.dias[d]);
+    if(!marc.length) return { ok:false, erro:ERRO_DIAS };
+    a.dias = f !== 'semanal' && marc.length === 7 ? [] : marc;
+  }
+  if(f === 'minutos' || f === 'horas'){
+    a.a_cada = num(t.n[f]);
+    a.janela = t.janela ? { de:t.de, ate:t.ate } : null;
+  } else {
+    a.hora = t.hora;
+    if(f === 'diario') a.a_cada = num(t.n.diario);
+    else if(f === 'semanal') a.a_cada = num(t.semanas);
+    else a.dia_mes = t.dia_mes === 'ultimo' ? 'ultimo' : num(t.dia_mes);
+  }
+  a.inicio = t.inicio;
+  a.params = (t.params || []).map(p => Object.assign({}, p));
+  const v = validar(a);
+  return v.ok ? { ok:true, agenda:a } : v;
+}
+
+const api = { MAX_HORARIOS, validar, horarios, proximo, resumo, rotuloCurto, PERIODOS, periodosPara, valorDoParam, valoresDaExecucao, parSugerido,
+  pontaDe, agendaPadrao, textoProxima, marcaBarra, telaDaAgenda, agendaDaTela };
 if(isNode) module.exports = api; else root.CD2Agenda = api;
 })(typeof window !== 'undefined' ? window : globalThis);
