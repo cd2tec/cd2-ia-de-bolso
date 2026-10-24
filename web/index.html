@@ -2441,6 +2441,9 @@ function itemSalva(c){
       }else{
         const rodar = botaoSm('▶ Rodar agora'), agendar = botaoSm('⏰ Agendar…'), ren = botaoSm('✎ Renomear'), ap = botaoSm('🗑 Apagar');
         rodar.disabled = st.busy;
+        const ea = estadoAgendar();
+        agendar.disabled = ea === 'carregando' || ea === 'indisponivel';
+        if(agendar.disabled) agendar.title = ea === 'carregando' ? 'Carregando…' : 'O agendamento não está disponível agora.';
         rodar.onclick = () => rodarAgora(c); agendar.onclick = () => abrirAgendar(c);
         ren.onclick = () => abrirMenuSalva(c, 'renomear'); ap.onclick = () => { sb.contagem = { id:c.id, n:0, pendente:!!(st.ctlKey && podeSalvar()) }; abrirMenuSalva(c, 'apagar'); contarHistorico(c); };
         menu.appendChild(rodar); menu.appendChild(agendar);
@@ -2990,10 +2993,21 @@ function abrirHistoricoPedido(){
   if(consultasSalvas().some(c => c.id === id)) abrirHistorico(id);
 }
 function abrirConviteAgenda(){ $('#convAgenda').showModal(); }
+// De onde a IA abriu, para o "⏰ Agendar…": 'instalada', 'pendrive' (o convite), 'carregando' (o
+// /instalacao ainda não respondeu) ou 'indisponivel' (sem cd2-ctl, ou ele não respondeu).
+function estadoAgendar(){
+  if(instalada()) return 'instalada';
+  const o = inst.status && inst.status.origem;
+  if(o === 'pendrive') return 'pendrive';
+  return st.ctlKey && !inst.status && !inst.semStatus ? 'carregando' : 'indisponivel';
+}
 
 /* janela Agendar */
 function abrirAgendar(c){
-  if(!instalada()) return abrirConviteAgenda();
+  const ea = estadoAgendar();
+  // O convite só quando é, com certeza, o pen drive: quem tem a instalada não pode vê-lo no começo.
+  if(ea === 'pendrive') return abrirConviteAgenda();
+  if(ea !== 'instalada') return;
   if(!podeSalvar()) return;
   const ps = Array.isArray(c.params) ? c.params : [], hoje = hojeIso();
   ag.consulta = c; ag.gen = st.catalogGen; ag.tinha = !!c.agenda; ag.salvando = false;
@@ -3671,8 +3685,10 @@ async function iniciarInstalacao(){
     return;
   }
   const r = await instPedir('GET', '/instalacao');
+  inst.semStatus = !(r && r.status === 200);
+  if(inst.semStatus) renderSalvas(); // o "⏰ Agendar…" do menu sai de "Carregando…"
   if(r && r.status === 200){
-    inst.status = r.data; syncImportar(); pedirNovidades();
+    inst.status = r.data; syncImportar(); pedirNovidades(); renderSalvas();
     const mostra = !!CD2Instalar.telaInicial(r.data);
     $('#pPendrive').hidden = !mostra; $('#bInstalar').hidden = !mostra;
     // Só a IA do pen drive escuta a chave que volta do pagamento noutra aba.
