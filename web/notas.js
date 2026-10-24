@@ -120,8 +120,16 @@ const chaveConsulta = c => String(c.nome).trim().toLowerCase();
 const formaParams = ps => JSON.stringify((Array.isArray(ps) ? ps : []).map(p => p && typeof p === 'object' ? [p.nome, p.tipo, p.inicio, p.fim] : p));
 const igualConsulta = (a, b) => ['sql', 'visual', 'x', 'y'].every(k => a[k] === b[k]) && formaParams(a.params) === formaParams(b.params);
 
+// Agenda que vem de arquivo chega desligada (cópia, sem mutar); agenda malformada cai.
+function agendaDesligada(c){
+  const o = { ...c };
+  if(objeto(c.agenda)) o.agenda = { ...c.agenda, ligado:false, params:Array.isArray(c.agenda.params) ? c.agenda.params.slice() : [] };
+  else delete o.agenda;
+  return o;
+}
+
 // Junta o que chega com o que existe. Só há conflito quando os dois lados têm texto e ele difere;
-// nesse caso o resultado fica com o que chega. Não muta as entradas.
+// nesse caso o resultado fica com o que chega (menos a agenda: não conta como diferença e a daqui fica). Não muta as entradas.
 function planoImportacao(atual, chegando){
   const res = enxuto(atual);
   const tabelas = {};
@@ -142,7 +150,8 @@ function planoImportacao(atual, chegando){
     }
   }
   const consultas = res.consultas.map(c => ({ ...c }));
-  for(const c of cheg.consultas){
+  for(const bruta of cheg.consultas){
+    const c = agendaDesligada(bruta);
     const i = consultas.findIndex(x => chaveConsulta(x) === chaveConsulta(c));
     if(i < 0){
       let id = c.id;
@@ -152,7 +161,10 @@ function planoImportacao(atual, chegando){
     } else if(!igualConsulta(consultas[i], c)){
       const mesmoSql = consultas[i].sql === c.sql;
       conflitos.push({ tipo:'consulta', onde:consultas[i].nome, antes:mesmoSql ? JSON.stringify(consultas[i].params) : consultas[i].sql, depois:mesmoSql ? JSON.stringify(c.params) : c.sql });
+      // a agenda daqui prevalece; sem ela, leva a do arquivo (já desligada)
+      const agenda = consultas[i].agenda || c.agenda;
       consultas[i] = { ...c, id:consultas[i].id };
+      if(agenda) consultas[i].agenda = agenda; else delete consultas[i].agenda;
     }
   }
   return { novas, conflitos, resultado:{ versao:1, tabelas, consultas } };
