@@ -3,6 +3,9 @@ package agenda
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -40,6 +43,13 @@ type ambiente struct {
 	consultas []map[string]any
 	consultar func(ctx context.Context, sql string) (string, error)
 	chamadas  atomic.Int32
+	agora     func() time.Time // nil: sábado 24/10 12:00
+}
+
+func (f *ambiente) relogio(r func() time.Time) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.agora = r
 }
 
 func (f *ambiente) por(id, nome string, agenda any) {
@@ -72,7 +82,14 @@ func novoAmbiente() *ambiente {
 func novoAgendador(t *testing.T, f *ambiente) *Agendador {
 	t.Helper()
 	return NovoAgendador(Opcoes{
-		Agora: func() time.Time { return time.Date(2026, 10, 24, 12, 0, 0, 0, time.Local) },
+		Agora: func() time.Time {
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			if f.agora != nil {
+				return f.agora()
+			}
+			return time.Date(2026, 10, 24, 12, 0, 0, 0, time.Local)
+		},
 		Banco: func() (notas.Banco, bool) {
 			f.mu.Lock()
 			defer f.mu.Unlock()
@@ -281,6 +298,7 @@ func TestAvisoSemFrase(t *testing.T) {
 		texto     string
 	}{
 		{"prazo", func(context.Context, string) (string, error) { return "", ErrPrazo }, mensagens["timeout_front"]},
+		{"banco fora do ar", func(context.Context, string) (string, error) { return "", errors.New("conexão recusada") }, "conexão recusada"},
 		{"vazio", func(context.Context, string) (string, error) { return "[]", nil }, mensagens["vazio"]},
 		{"erro do banco", func(context.Context, string) (string, error) { return `ERRO: relation "x" does not exist`, nil }, `relation "x" does not exist`},
 		{"tabela", func(context.Context, string) (string, error) { return `[{"a":1,"b":2,"c":3}]`, nil }, "1 linha."},
@@ -303,6 +321,9 @@ func TestAvisoSemFrase(t *testing.T) {
 		av, _ := a.Avisos(0)
 		if len(av) != 1 || av[0].Texto != "Rodou às 14:00 · "+c.texto {
 			t.Errorf("%s: avisos = %+v", c.nome, av)
+		}
+		if is := historico(t, a, "c1"); c.nome == "banco fora do ar" && (len(is) != 1 || is[0].Resultado.Motivo != "") {
+			t.Errorf("%s: %+v", c.nome, is)
 		}
 	}
 }
@@ -411,6 +432,131 @@ func TestBancoMudouNaFila(t *testing.T) {
 	a.esperarFila()
 	if f.chamadas.Load() != 0 {
 		t.Fatalf("rodou no outro banco")
+	}
+	for _, b := range []notas.Banco{bancoT, {Motor: "postgres", Host: "outro"}} {
+		if is, _, _ := a.o.Hist.Pagina(notas.Chave(b), "c1", 0, 50); len(is) != 0 {
+			t.Errorf("%s: %+v", b.Host, is)
+		}
+	}
+}
+
+func TestApagadaDuranteConsultar(t *testing.T) {
+	f := novoAmbiente()
+	f.consultar = func(context.Context, string) (string, error) {
+		f.apagar("c1")
+		return linhasT, nil
+	}
+	f.por("c1", "Vendas", cada5)
+	a := novoAgendador(t, f)
+	ligarExecutor(t, a)
+	a.Passo(dia(26, 10, 0))
+	a.esperarFila()
+	if is := historico(t, a, "c1"); len(is) != 0 || f.chamadas.Load() != 1 {
+		t.Fatalf("histórico = %+v, chamadas %d", is, f.chamadas.Load())
+	}
+	if av, _ := a.Avisos(0); len(av) != 0 {
+		t.Errorf("avisos = %+v", av)
+	}
+}
+
+func TestVencidoNaFilaViraAnterior(t *testing.T) {
+	f := novoAmbiente()
+	f.por("c1", "Vendas", cada5)
+	a := novoAgendador(t, f)
+	a.Passo(dia(26, 10, 0)) // sem executor: fica na fila
+	f.relogio(func() time.Time { return dia(26, 10, 6) })
+	ligarExecutor(t, a)
+	a.esperarFila()
+	is := historico(t, a, "c1")
+	if len(is) != 1 || is[0].Tipo != "perda" || is[0].Motivo != "anterior" || is[0].N != 1 ||
+		!is[0].De.Equal(dia(26, 10, 0)) || !is[0].Ate.Equal(dia(26, 10, 0)) || f.chamadas.Load() != 0 {
+		t.Fatalf("histórico = %+v, chamadas %d", is, f.chamadas.Load())
+	}
+	if av, _ := a.Avisos(0); len(av) != 0 {
+		t.Errorf("avisos = %+v", av)
+	}
+}
+
+func TestAtrasoCurtoViraDormindo(t *testing.T) {
+	f := novoAmbiente()
+	f.por("c1", "Vendas", map[string]any{"ligado": true, "freq": "diario", "a_cada": 1, "hora": "07:30"})
+	a := novoAgendador(t, f)
+	ligarExecutor(t, a)
+	a.Passo(dia(26, 7, 29).Add(50 * time.Second))
+	a.Passo(dia(26, 7, 31).Add(time.Second)) // 71 s depois: menos que 3 ticks
+	a.esperarFila()
+	is := historico(t, a, "c1")
+	if len(is) != 1 || is[0].Motivo != "dormindo" || !is[0].Ate.Equal(dia(26, 7, 30)) || f.chamadas.Load() != 0 {
+		t.Fatalf("histórico = %+v", is)
+	}
+}
+
+// Relógio de verdade: o monotônico para quando o computador dorme, e a parede anda. As
+// decisões seguem a parede, e nada guardado leva a leitura monotônica.
+func TestRelogioDeParede(t *testing.T) {
+	t1 := time.Now()
+	slot := t1.Add(time.Hour)
+	f := novoAmbiente()
+	f.relogio(time.Now)
+	f.por("c1", "Vendas", map[string]any{"ligado": true, "freq": "diario", "a_cada": 1, "hora": slot.Format("15:04")})
+	a := novoAgendador(t, f)
+	ligarExecutor(t, a)
+	a.Passo(t1)
+	a.Passo(t1.Add(30 * time.Second))
+	if strings.Contains(a.ultimo.String(), "m=") {
+		t.Errorf("ultimo com monotônico: %v", a.ultimo)
+	}
+	a.Passo(time.Now().Round(0).Add(2 * time.Hour)) // acordou: a parede pulou 2 h
+	a.esperarFila()
+	is := historico(t, a, "c1")
+	if len(is) != 1 || is[0].Motivo != "dormindo" || is[0].N != 1 || f.chamadas.Load() != 0 {
+		t.Fatalf("histórico = %+v, chamadas %d", is, f.chamadas.Load())
+	}
+	e, err := a.RodarAgora(context.Background(), bancoT, "c1", 0)
+	if err != nil || strings.Contains(e.Em.String(), "m=") || strings.Contains(e.Ref.String(), "m=") {
+		t.Errorf("manual: em %v ref %v, %v", e.Em, e.Ref, err)
+	}
+	if agoraDe(t1) != t1.Round(0) || strings.Contains(agoraDe(t1).String(), "m=") {
+		t.Errorf("agoraDe = %v", agoraDe(t1))
+	}
+}
+
+func TestPerdaQueFalhaNaoAvancaAberta(t *testing.T) {
+	f := novoAmbiente()
+	ag := map[string]any{"ligado": true, "freq": "diario", "a_cada": 1, "hora": "07:00"}
+	f.por("c1", "Vendas", ag)
+	f.por("c2", "Compras", ag)
+	a := novoAgendador(t, f)
+	ligarExecutor(t, a)
+	chave := notas.Chave(bancoT)
+	_ = a.o.Hist.MarcarAberta(chave, dia(25, 20, 0))
+	trava := filepath.Join(a.o.Hist.dir, chave, "c1.estado.json")
+	if err := os.MkdirAll(trava, 0o700); err != nil { // estado ilegível: Anexar falha
+		t.Fatal(err)
+	}
+	a.Passo(dia(26, 8, 0))
+	a.esperarFila()
+	if b, _, _ := a.o.Hist.Aberta(chave); !b.Equal(dia(25, 20, 0)) {
+		t.Errorf("aberta avançou: %v", b)
+	}
+	if av, _ := a.Avisos(0); len(av) != 0 {
+		t.Errorf("avisos = %+v", av)
+	}
+	if err := os.Remove(trava); err != nil {
+		t.Fatal(err)
+	}
+	a.Passo(dia(26, 8, 0).Add(30 * time.Second))
+	a.esperarFila()
+	for _, id := range []string{"c1", "c2"} {
+		if is := historico(t, a, id); len(is) != 1 || is[0].Motivo != "fechada" {
+			t.Errorf("%s: %+v", id, is)
+		}
+	}
+	if b, _, _ := a.o.Hist.Aberta(chave); !b.Equal(dia(26, 8, 0).Add(30 * time.Second)) {
+		t.Errorf("aberta = %v", b)
+	}
+	if av, _ := a.Avisos(0); len(av) != 1 || av[0].Texto != "2 execuções não rodaram enquanto a IA estava fechada" {
+		t.Errorf("avisos = %+v", av)
 	}
 }
 

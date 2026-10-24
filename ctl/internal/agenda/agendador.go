@@ -79,6 +79,10 @@ type Agendador struct {
 	chave  string    // banco do último tick; "" sem banco ou antes do primeiro
 	subiu  bool      // já houve tick com banco desde que o processo subiu
 	ultimo time.Time // último tick com este banco
+	// feitos: por chave/id, o último horário já tratado (na fila, perdido ou gravado como perda);
+	// evita repetir quando um tick falha no meio e o seguinte refaz.
+	feitos        map[string]time.Time
+	totalAbertura int // perdas da abertura somadas entre tentativas, para o aviso único
 
 	mu       sync.Mutex
 	vazia    *sync.Cond // fila vazia e nada rodando
@@ -92,7 +96,7 @@ type Agendador struct {
 }
 
 func NovoAgendador(o Opcoes) *Agendador {
-	a := &Agendador{o: o, ocupadas: map[string]int{}, acordar: make(chan struct{}, 1)}
+	a := &Agendador{o: o, ocupadas: map[string]int{}, acordar: make(chan struct{}, 1), feitos: map[string]time.Time{}}
 	a.vazia = sync.NewCond(&a.mu)
 	return a
 }
@@ -161,9 +165,15 @@ func (a *Agendador) Rodar(ctx context.Context) {
 	}
 }
 
+// agoraDe tira a leitura monotônica: o relógio monotônico para quando o computador dorme, e
+// os horários da agenda são de parede. Toda comparação com um Agora passa por aqui.
+func agoraDe(t time.Time) time.Time { return t.Round(0) }
+
 // Passo é um tick: acha as perdas, põe na fila o que está na hora e marca a IA aberta.
-// Erro de leitura das notas deixa o tick sem efeito: o próximo tenta de novo.
+// Erro de leitura, ou de gravação de uma perda, deixa o tick sem avançar: o próximo tenta de
+// novo, e os horários já tratados de cada consulta (feitos) não se repetem.
 func (a *Agendador) Passo(agora time.Time) {
+	agora = agoraDe(agora)
 	b, ok := a.o.Banco()
 	if !ok {
 		a.chave = ""
@@ -196,33 +206,54 @@ func (a *Agendador) Passo(agora time.Time) {
 			}
 		}
 	} else {
-		desde = maisTarde(lim, a.ultimo)
-		if agora.Sub(a.ultimo) > 3*a.o.Tick {
-			perdaDe, motivo = a.ultimo, "dormindo"
-		}
+		perdaDe, desde, motivo = a.ultimo, maisTarde(lim, a.ultimo), "dormindo"
 	}
-	total := 0
+	total, falhou := 0, false
 	for _, c := range cs {
+		k := chave + "/" + c.id
+		feito := a.feitos[k]
+		depois := func(hs []time.Time) []time.Time { // só os horários ainda não tratados
+			i := 0
+			for i < len(hs) && !hs[i].After(feito) {
+				i++
+			}
+			return hs[i:]
+		}
 		if motivo != "" && perdaDe.Before(lim) {
 			hs, err := a.o.Motor.Horarios(c.raw, perdaDe, lim)
-			if err == nil && len(hs) > 0 {
-				a.perda(chave, c.id, agora, motivo, hs[0], hs[len(hs)-1], len(hs))
+			if hs = depois(hs); err == nil && len(hs) > 0 {
+				if a.perda(chave, c.id, agora, motivo, hs[0], hs[len(hs)-1], len(hs)) != nil {
+					falhou = true
+					continue // nem roda: o próximo tick refaz esta consulta inteira
+				}
 				total += len(hs)
+				feito = hs[len(hs)-1]
 			}
 		}
 		hs, err := a.o.Motor.Horarios(c.raw, desde, agora)
 		if err != nil {
+			a.feitos[k] = feito
 			continue
 		}
-		for _, h := range hs {
-			if !a.enfileirar(item{chave: chave, id: c.id, ref: h}, true) {
-				a.perda(chave, c.id, agora, "anterior", h, h, 1)
+		for _, h := range depois(hs) {
+			if !a.enfileirar(item{chave: chave, id: c.id, ref: h}, true) &&
+				a.perda(chave, c.id, agora, "anterior", h, h, 1) != nil {
+				falhou = true
+				break
 			}
+			feito = h
 		}
+		a.feitos[k] = feito
 	}
 	if abrindo && !a.subiu && total > 0 {
-		texto := strconv.Itoa(total) + " execuções não rodaram enquanto a IA estava fechada"
-		if total == 1 {
+		a.totalAbertura += total
+	}
+	if falhou {
+		return
+	}
+	if abrindo && !a.subiu && a.totalAbertura > 0 {
+		texto := strconv.Itoa(a.totalAbertura) + " execuções não rodaram enquanto a IA estava fechada"
+		if a.totalAbertura == 1 {
 			texto = "1 execução não rodou enquanto a IA estava fechada"
 		}
 		a.avisar("", "IA de Bolso", texto)
@@ -231,8 +262,9 @@ func (a *Agendador) Passo(agora time.Time) {
 	_ = a.o.Hist.MarcarAberta(chave, agora)
 }
 
-func (a *Agendador) perda(chave, id string, em time.Time, motivo string, de, ate time.Time, n int) {
-	_, _ = a.o.Hist.Anexar(chave, id, Execucao{Tipo: "perda", Ref: ate, Em: em, Motivo: motivo, De: &de, Ate: &ate, N: n})
+func (a *Agendador) perda(chave, id string, em time.Time, motivo string, de, ate time.Time, n int) error {
+	_, err := a.o.Hist.Anexar(chave, id, Execucao{Tipo: "perda", Ref: ate, Em: em, Motivo: motivo, De: &de, Ate: &ate, N: n})
+	return err
 }
 
 // enfileirar põe o item no fim da fila. Com exclusivo, recusa (false) se a consulta já está na
@@ -315,19 +347,36 @@ func (a *Agendador) esperarFila() {
 	}
 }
 
-// rodar relê a consulta e o banco, roda e grava. Consulta apagada ou banco trocado: descarta.
-func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
+// reler devolve o banco conectado e a consulta, se o banco ainda é o do item e a consulta existe.
+func (a *Agendador) reler(it item) (notas.Banco, consulta, error) {
 	b, ok := a.o.Banco()
 	if !ok || notas.Chave(b) != it.chave {
-		return Execucao{}, ErrBancoMudou
+		return b, consulta{}, ErrBancoMudou
 	}
 	cs, err := a.consultas(b)
 	if err != nil {
-		return Execucao{}, err
+		return b, consulta{}, err
 	}
 	c, ok := acharConsulta(cs, it.id)
 	if !ok {
-		return Execucao{}, ErrSemConsulta
+		return b, consulta{}, ErrSemConsulta
+	}
+	return b, c, nil
+}
+
+// rodar relê a consulta e o banco, roda e grava. Consulta apagada ou banco trocado, antes ou
+// durante a consulta: descarta. Agendada que já tem um horário mais novo vencido vira perda
+// "anterior" em vez de rodar atrasada.
+func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
+	b, c, err := a.reler(it)
+	if err != nil {
+		return Execucao{}, err
+	}
+	if !it.manual {
+		agora := agoraDe(a.o.Agora())
+		if hs, err := a.o.Motor.Horarios(c.raw, it.ref, agora); err == nil && len(hs) > 0 {
+			return Execucao{}, a.perda(it.chave, it.id, agora, "anterior", it.ref, it.ref, 1)
+		}
 	}
 	var res Resultado
 	var valores []string
@@ -348,18 +397,21 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 		case errors.Is(err, ErrPrazo) || errors.Is(err, context.DeadlineExceeded):
 			res.Motivo = "timeout_front"
 		case err != nil:
-			res.Motivo, res.Erro = "sql", err.Error() // banco fora do ar é execução com erro
+			res.Erro = err.Error() // banco fora do ar é execução com erro
 		default:
 			if res, err = a.o.Motor.Resultado(c.raw, texto, valores); err != nil {
 				res = Resultado{Erro: err.Error()}
 			}
 		}
 	}
+	if _, c, err = a.reler(it); err != nil {
+		return Execucao{}, err // apagada ou banco trocado enquanto rodava
+	}
 	tipo := "agendada"
 	if it.manual {
 		tipo = "manual"
 	}
-	e, err := a.o.Hist.Anexar(it.chave, it.id, Execucao{Tipo: tipo, Ref: it.ref, Em: a.o.Agora(), Valores: valores, Resultado: &res})
+	e, err := a.o.Hist.Anexar(it.chave, it.id, Execucao{Tipo: tipo, Ref: it.ref, Em: agoraDe(a.o.Agora()), Valores: valores, Resultado: &res})
 	if err != nil {
 		return e, err
 	}
@@ -390,7 +442,7 @@ func textoDoResultado(r Resultado) string {
 // perdaSeq > 0, usa o último horário da perda como referência e marca a perda como rodada.
 func (a *Agendador) RodarAgora(ctx context.Context, b notas.Banco, id string, perdaSeq int64) (Execucao, error) {
 	chave := notas.Chave(b)
-	ref := a.o.Agora()
+	ref := agoraDe(a.o.Agora())
 	if perdaSeq > 0 {
 		is, _, err := a.o.Hist.Pagina(chave, id, perdaSeq+1, 1)
 		if err != nil {
