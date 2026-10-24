@@ -301,31 +301,39 @@ async function ask(o){
 
 // Consulta salva: monta o SQL com os valores, passa pela mesma guarda e roda direto, sem o modelo.
 // O visual salvo vai para o pickVisual, que ainda decide pelo que o banco devolveu agora.
-async function rodarSalva(o){
-  const c = (o && o.consulta) || {};
-  const m = Consultas.montarSql(c, o.valores);
+// prepararSalva e resultadoSalva são o antes e o depois do runSql; o cd2-ctl usa os mesmos dois.
+function prepararSalva(c, valores, motor){
+  const m = Consultas.montarSql(c, valores);
   if(!m.ok) return { ok:false, motivo:'param', erro:m.erro };
   const g = Tb.guardSql(m.sql);
   // barrado: o guardSql recusou o SQL montado (não foi ao banco); a tela explica o porquê.
   if(!g.ok) return { ok:false, motivo:'sql', sql:m.sql, barrado:true };
-  const sql = Tb.prepareSql(g.sql, o.motor);
-  checkAbort(o.signal);
-  const r = await o.runSql(sql, o.signal);
-  checkAbort(o.signal);
+  // valores: o que de fato entrou no SQL (número já normalizado).
+  return { ok:true, sql:Tb.prepareSql(g.sql, motor), valores:m.valores };
+}
+// r é o retorno do runner ({ ok, rows } ou { ok:false, error, timeout, front }).
+function resultadoSalva(c, r, valores, sql, motor){
+  c = c || {};
   if(!r.ok){
-    if(r.timeout) return { ok:false, motivo:(r.front && (o.motor === 'sqlserver' || o.motor === 'oracle' || o.motor === 'firebird')) ? 'timeout_front' : 'timeout', sql };
+    if(r.timeout) return { ok:false, motivo:(r.front && (motor === 'sqlserver' || motor === 'oracle' || motor === 'firebird')) ? 'timeout_front' : 'timeout', sql };
     return { ok:false, motivo:'sql', sql };
   }
   if(!r.rows.length || r.rows.every(l => Object.values(l).every(v => v == null || v === ''))) return { ok:false, motivo:'vazio', sql };
   const colunas = Object.keys(r.rows[0]);
   const v = pickVisual({ visual:c.visual, x:c.x, y:c.y }, colunas, r.rows);
-  const params = Array.isArray(c.params) ? c.params : [];
-  const vs = Array.isArray(o.valores) ? o.valores : [];
   const out = { ok:true, visual:v.visual, x:v.x, y:v.y, titulo:String(c.nome || ''),
-    frase:frase({ visual:v.visual, x:v.x, y:v.y, linhas:v.linhas, todas:r.rows }), colunas, linhas:v.linhas, todas:r.rows, sql,
-    valores:Array.isArray(m.valores) ? m.valores : params.map((p, i) => vs[i] == null ? p.valor : vs[i]) };
+    frase:frase({ visual:v.visual, x:v.x, y:v.y, linhas:v.linhas, todas:r.rows }), colunas, linhas:v.linhas, todas:r.rows, sql, valores };
   if(v.aviso) out.aviso = v.aviso;
   return out;
+}
+async function rodarSalva(o){
+  const c = (o && o.consulta) || {};
+  const p = prepararSalva(c, o.valores, o.motor);
+  if(!p.ok) return p;
+  checkAbort(o.signal);
+  const r = await o.runSql(p.sql, o.signal);
+  checkAbort(o.signal);
+  return resultadoSalva(c, r, p.valores, p.sql, o.motor);
 }
 
 function modelCaller(o){
@@ -363,6 +371,6 @@ function toolRunner(client, o){
   };
 }
 
-const api = { VISUALS, MENSAGENS, SCHEMA, parseRows, parseModelJson, isTimeout, pickVisual, frase, buildMessages, somaDoCabecalho, ask, rodarSalva, modelCaller, toolRunner };
+const api = { VISUALS, MENSAGENS, SCHEMA, parseRows, parseModelJson, isTimeout, pickVisual, frase, buildMessages, somaDoCabecalho, ask, prepararSalva, resultadoSalva, rodarSalva, modelCaller, toolRunner };
 if(isNode) module.exports = api; else root.CD2Ask = api;
 })(typeof window !== 'undefined' ? window : globalThis);

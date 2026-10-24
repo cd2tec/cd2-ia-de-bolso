@@ -99,6 +99,18 @@ func TestPrepararPeriodoInvalido(t *testing.T) {
 	}
 }
 
+func TestPrepararValorInvalido(t *testing.T) {
+	m := novoMotor(t)
+	ag := map[string]any{"params": []any{map[string]any{"modo": "fixo", "valor": "2026-02-30"}}}
+	p, err := m.Preparar(consultaComData(t, ag), time.Now(), "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Erro != "dia: data inválida." || p.SQL != "" {
+		t.Errorf("Preparo = %+v", p)
+	}
+}
+
 func TestHorariosIgualAoNode(t *testing.T) {
 	m := novoMotor(t)
 	ag := map[string]any{"ligado": true, "freq": "horas", "a_cada": 1,
@@ -156,15 +168,15 @@ func TestResultadoVazio(t *testing.T) {
 
 func TestResultadoErroDoBanco(t *testing.T) {
 	m := novoMotor(t)
-	cases := map[string]string{
-		"ERRO: relation \"x\" does not exist":                "sql",
-		"ERRO: canceling statement due to statement timeout": "timeout",
-		"isto não é json":                                    "sql",
+	cases := []struct{ texto, motivo, erro string }{
+		{"ERRO: relation \"x\" does not exist", "sql", "relation \"x\" does not exist"},
+		{"ERRO: canceling statement due to statement timeout", "timeout", ""},
+		{"isto não é json", "sql", "Resposta inesperada do banco: isto não é json"},
 	}
-	for texto, motivo := range cases {
-		r, err := m.Resultado(consultaComData(t, nil), texto, nil)
-		if err != nil || r.Ok || r.Motivo != motivo {
-			t.Errorf("%q: %+v, %v; quero motivo %q", texto, r, err, motivo)
+	for _, c := range cases {
+		r, err := m.Resultado(consultaComData(t, nil), c.texto, []string{"2026-10-01"})
+		if err != nil || r.Ok || r.Motivo != c.motivo || r.Erro != c.erro {
+			t.Errorf("%q: %+v, %v; quero motivo %q, erro %q", c.texto, r, err, c.motivo, c.erro)
 		}
 	}
 }

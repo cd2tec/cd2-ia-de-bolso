@@ -21,11 +21,12 @@ var intlJS string
 // modulos são os arquivos de web/, na ordem em que um só pode exigir os anteriores.
 var modulos = []string{"chart", "catalog", "notas", "toolbox", "consultas", "ask", "agenda"}
 
-// cola expõe ao Go os trechos de rodarSalva (ask.js) antes e depois do runSql, e os horários da
-// agenda. Tudo entra e sai como JSON; datas em milissegundos Unix.
+// cola liga o Go aos mesmos prepararSalva e resultadoSalva que o rodarSalva (ask.js) usa antes e
+// depois do runSql, e aos horários da agenda. Tudo entra e sai como JSON; datas em ms Unix.
+// Sem tela, o motivo da recusa vai em erro: o texto do guardSql, ou o erro que o banco devolveu.
 const cola = `(function(g){
 "use strict";
-const Ask = g.__mod['./ask.js'], Tb = g.__mod['./toolbox.js'], Cons = g.__mod['./consultas.js'], Ag = g.__mod['./agenda.js'];
+const Ask = g.__mod['./ask.js'], Tb = g.__mod['./toolbox.js'], Ag = g.__mod['./agenda.js'];
 g.__cd2 = {
   horarios(cj, de, ate){
     const c = JSON.parse(cj), a = c && c.agenda;
@@ -39,22 +40,15 @@ g.__cd2 = {
       if(!v.ok) return JSON.stringify({ erro:v.erro });
       valores = v.valores;
     }
-    const m = Cons.montarSql(c, valores);
-    if(!m.ok) return JSON.stringify({ erro:m.erro });
-    const gs = Tb.guardSql(m.sql);
-    if(!gs.ok) return JSON.stringify({ erro:gs.error });
-    return JSON.stringify({ sql:Tb.prepareSql(gs.sql, motor), valores:m.valores });
+    const p = Ask.prepararSalva(c, valores, motor);
+    if(p.ok) return JSON.stringify({ sql:p.sql, valores:p.valores });
+    return JSON.stringify({ erro:p.barrado ? Tb.guardSql(p.sql).error : p.erro });
   },
-  resultado(cj, texto){
-    const c = JSON.parse(cj) || {};
+  resultado(cj, texto, valores){
     const r = Ask.parseRows(texto);
-    if(!r.ok) return JSON.stringify({ ok:false, motivo:Ask.isTimeout(r.error) ? 'timeout' : 'sql' });
-    if(!r.rows.length || r.rows.every(l => Object.values(l).every(v => v == null || v === ''))) return JSON.stringify({ ok:false, motivo:'vazio' });
-    const colunas = Object.keys(r.rows[0]);
-    const v = Ask.pickVisual({ visual:c.visual, x:c.x, y:c.y }, colunas, r.rows);
-    const out = { ok:true, visual:v.visual, x:v.x, y:v.y, titulo:String(c.nome || ''),
-      frase:Ask.frase({ visual:v.visual, x:v.x, y:v.y, linhas:v.linhas, todas:r.rows }), colunas, linhas:v.linhas, todas:r.rows };
-    if(v.aviso) out.aviso = v.aviso;
+    if(!r.ok && Ask.isTimeout(r.error)) r.timeout = true;
+    const out = Ask.resultadoSalva(JSON.parse(cj), r, valores, '');
+    if(!r.ok && !r.timeout) out.erro = r.error;
     return JSON.stringify(out);
   }
 };
@@ -76,7 +70,8 @@ type Preparo struct {
 }
 
 // Resultado tem os campos do retorno de rodarSalva. Motivo: "sql" | "vazio" | "timeout" |
-// "timeout_front" (este último quem põe é o agendador, quando o prazo dele estoura).
+// "timeout_front" (este último quem põe é o agendador, quando o prazo dele estoura). Erro leva o
+// erro do banco quando Motivo é "sql", ou a recusa do Preparar.
 type Resultado struct {
 	Ok      bool             `json:"ok"`
 	Motivo  string           `json:"motivo,omitempty"`
@@ -185,12 +180,14 @@ func (m *Motor) Preparar(consulta json.RawMessage, ref time.Time, motor string) 
 	return p, err
 }
 
-// Resultado faz o trecho de rodarSalva depois do runSql sobre o texto devolvido pela tool:
-// parseRows, a regra do vazio, pickVisual e frase. valores não entra no cálculo: os valores que
-// rodaram ficam na Execucao, não no Resultado.
+// Resultado faz o trecho de rodarSalva depois do runSql (resultadoSalva) sobre o texto devolvido
+// pela tool. valores segue para o resultadoSalva como no rodarSalva, mas não volta no Resultado:
+// os valores que rodaram ficam na Execucao.
 func (m *Motor) Resultado(consulta json.RawMessage, textoTool string, valores []string) (Resultado, error) {
-	_ = valores
+	if valores == nil {
+		valores = []string{}
+	}
 	var r Resultado
-	err := m.chamar(&r, "resultado", string(consulta), textoTool)
+	err := m.chamar(&r, "resultado", string(consulta), textoTool, valores)
 	return r, err
 }

@@ -585,3 +585,22 @@ test('rodarSalva: parâmetro inválido não vai ao banco; vazio, erro e timeout 
   assert.deepEqual(await A.rodarSalva({ consulta:salva(), motor:'postgres', runSql:fila([{ ok:false, timeout:true, front:true }]) }), { ok:false, motivo:'timeout', sql });
   assert.deepEqual(await A.rodarSalva({ consulta:salva(), motor:'oracle', runSql:fila([{ ok:false, timeout:true, front:true }]) }), { ok:false, motivo:'timeout_front', sql });
 });
+
+test('prepararSalva: o antes do runSql (montarSql, guardSql, prepareSql)', () => {
+  const p = A.prepararSalva(salva(), ['2026-09-01', 'NORTE'], 'sqlserver');
+  assert.deepEqual(p, { ok:true, valores:['2026-09-01', 'NORTE'],
+    sql:"SELECT loja, SUM(valor) AS total FROM venda WHERE dt_venda >= '2026-09-01' AND loja LIKE '%NORTE%' GROUP BY loja ORDER BY total DESC OFFSET 0 ROWS" });
+  assert.deepEqual(A.prepararSalva(salva(), [], 'postgres').valores, ['2026-10-01', 'CENTRO']);
+  assert.deepEqual(A.prepararSalva(salva(), ['2026-02-30', 'X'], 'postgres'), { ok:false, motivo:'param', erro:'Desde: data inválida.' });
+  assert.deepEqual(A.prepararSalva({ sql:'DELETE FROM x', params:[] }, [], 'postgres'), { ok:false, motivo:'sql', sql:'DELETE FROM x', barrado:true });
+});
+
+test('resultadoSalva: o depois do runSql (vazio, erro, timeout, visual e frase)', () => {
+  const r = A.resultadoSalva(salva(), { ok:true, rows:LINHAS }, ['v'], 'SQL', 'postgres');
+  assert.equal(r.ok, true); assert.equal(r.titulo, 'Vendas do centro'); assert.equal(r.visual, 'barra');
+  assert.equal(r.frase, 'Maior: B, 30. Total: 40 em 2 categorias.'); assert.equal(r.sql, 'SQL'); assert.deepEqual(r.valores, ['v']);
+  assert.deepEqual(A.resultadoSalva(salva(), { ok:true, rows:[{ a:null }] }, [], 'S', 'postgres'), { ok:false, motivo:'vazio', sql:'S' });
+  assert.deepEqual(A.resultadoSalva(salva(), { ok:false, error:'boom' }, [], 'S', 'postgres'), { ok:false, motivo:'sql', sql:'S' });
+  assert.deepEqual(A.resultadoSalva(salva(), { ok:false, timeout:true, front:true }, [], 'S', 'firebird'), { ok:false, motivo:'timeout_front', sql:'S' });
+  assert.deepEqual(A.resultadoSalva(salva(), { ok:false, timeout:true }, [], 'S', 'oracle'), { ok:false, motivo:'timeout', sql:'S' });
+});
