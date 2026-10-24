@@ -56,6 +56,9 @@ window.CD2_COR_TOPO = { claro:'#ffffff', escuro:'#2b2e35' };
   --font-sans:"Manrope","Segoe UI",Arial,sans-serif;
   --font-mono:ui-monospace,Menlo,Consolas,monospace;
   --shadow-card:0 4px 16px rgba(13,18,51,.08);
+  /* bandeja do sistema no aviso de exemplo da Demonstração */
+  --bandeja-bg:#1f2126; --bandeja-menu:#2b2e35; --bandeja-ink:#f2f2f2; --bandeja-destaque:#dbff2a;
+  --bandeja-borda:transparent; --bandeja-marca:#ff3b30; --bandeja-marca-ink:#ffffff;
 }
 /* Escuro Gray Tech: os mesmos tokens, grafite derivado de #464a53/#6a717f. O JS do <head> resolve
    "sistema" e põe data-tema no <html>. Só na tela: o impresso (PDF) fica sempre claro. */
@@ -75,6 +78,7 @@ window.CD2_COR_TOPO = { claro:'#ffffff', escuro:'#2b2e35' };
   --grafico-1:#019eff; --grafico-eixo:#a1a6ae;
   --pizza-1:#019eff; --pizza-2:#dbff2a; --pizza-3:#a1a6ae; --pizza-4:#553fe6; --pizza-5:#f2f2f2; --pizza-6:#0333f7;
   --shadow-card:0 4px 16px rgba(0,0,0,.4); --contorno-primario:rgba(242,242,242,.24);
+  --bandeja-bg:#464a53; --bandeja-menu:#3a3e46; --bandeja-borda:rgba(242,242,242,.24);
 }
 }
 *{box-sizing:border-box}
@@ -517,13 +521,13 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 .hist__notif b,.hist__notif small{display:block}
 .hist__notif small{color:var(--ink-muted);font-size:11px}
 .hist__ic{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:8px;background:var(--brand);color:var(--on-brand);font:800 12px/1 var(--font-sans)}
-.hist__bandeja{width:min(260px,100%);font:400 12px/18px var(--font-sans)}
-.hist__barra{display:flex;justify-content:flex-end;align-items:center;gap:14px;padding:8px 14px;border-radius:10px 10px 0 0;background:#1f2126;color:#f2f2f2}
-.hist__icb{position:relative;display:grid;place-items:center;width:22px;height:22px;border-radius:5px;background:#0000ff;color:#fff;font:800 11px/1 var(--font-sans)}
-.hist__icb i{position:absolute;top:-6px;right:-8px;padding:0 4px;border-radius:var(--radius-pill);background:#ff3b30;color:#fff;font:700 9px/13px var(--font-sans);font-style:normal}
-.hist__menu{padding:6px 0;border-radius:0 0 10px 10px;background:#2b2e35;color:#f2f2f2}
+.hist__bandeja{width:min(260px,100%);border:1px solid var(--bandeja-borda);border-radius:10px;overflow:hidden;color:var(--bandeja-ink);font:400 12px/18px var(--font-sans)}
+.hist__barra{display:flex;justify-content:flex-end;align-items:center;gap:14px;padding:8px 14px;background:var(--bandeja-bg)}
+.hist__icb{position:relative;display:grid;place-items:center;width:22px;height:22px;border-radius:5px;background:var(--surface-brand);color:var(--on-brand);font:800 11px/1 var(--font-sans)}
+.hist__icb i{position:absolute;top:-6px;right:-8px;padding:0 4px;border-radius:var(--radius-pill);background:var(--bandeja-marca);color:var(--bandeja-marca-ink);font:700 9px/13px var(--font-sans);font-style:normal}
+.hist__menu{padding:6px 0;background:var(--bandeja-menu)}
 .hist__menu div{padding:4px 14px}
-.hist__menu b{color:#dbff2a}
+.hist__menu b{color:var(--bandeja-destaque)}
 button.destaque{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 button.destaque:hover{background:var(--accent);border-color:var(--on-accent)}
 button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;color:var(--disabled-ink)}
@@ -2794,7 +2798,7 @@ async function carregarHistorico(){
   let r = null;
   try{
     // Demonstração: as execuções fictícias, numa página só.
-    r = hs.demo ? { status:200, data:{ itens:CD2Demo.execucoes(hs.id, new Date()), mais:false } }
+    r = hs.demo ? { status:200, data:{ itens:CD2Demo.execucoes(hs.id, new Date(), dm.vistos), mais:false } }
       : await ctlRequest('GET', rotaHistorico(hs.chave, hs.id) + (hs.antes ? '&antes=' + hs.antes : '') + '&n=20', null, 10000);
   }catch(e){}
   if(tk !== hs.token) return;
@@ -2949,7 +2953,7 @@ async function rodarNoHistorico(perda, alvo){
 // Demonstração: como o aviso chega na versão instalada (notificação do sistema e o ícone na bandeja),
 // montado aqui, estático. Nada aparece ao vivo.
 function avisoDemo(c){
-  const a = CD2Demo.aviso(c.id, new Date());
+  const a = CD2Demo.aviso(c.id, new Date(), dm.vistos);
   const d = document.createElement('div'); d.className = 'hist__aviso';
   if(!a) return d;
   d.innerHTML = '<h3></h3><p class="hist__m"></p><div class="hist__cena">'
@@ -2959,7 +2963,8 @@ function avisoDemo(c){
   d.querySelector('.hist__m').textContent = a.nota;
   d.querySelector('.hist__notif b').textContent = a.titulo;
   d.querySelector('.hist__notif span:not(.hist__ic)').textContent = a.texto;
-  d.querySelector('.hist__icb i').textContent = String(parseInt(a.novos, 10));
+  const marca = d.querySelector('.hist__icb i');
+  if(a.n) marca.textContent = String(a.n); else marca.remove();
   d.querySelector('.hist__barra > span:last-child').textContent = a.hora;
   const menu = d.querySelector('.hist__menu');
   menu.querySelector('b').textContent = a.novos;

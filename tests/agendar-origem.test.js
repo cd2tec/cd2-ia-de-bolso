@@ -50,12 +50,21 @@ test('sem cd2-ctl ou /instalacao falhou: indisponível, sem convite', () => {
   }
 });
 test('Demonstração: a janela Agendar abre com os exemplos, nunca o convite, mesmo no pen drive', () => {
+  const A = require('../web/agenda.js');
   for(const status of [null, { origem:'pendrive' }, { origem:'instalada' }]){
     const c = montar({ status, demo:true });
+    const els = {};
+    Object.assign(c, { CD2Agenda:A, ag:{}, hojeIso: () => '2026-10-24', mostrarErro: () => {}, pintarAgendar: () => {},
+      $: sel => sel.startsWith('#agendar ') ? null : (els[sel] = els[sel] || { showModal: () => c.abertos.push('janela') }) });
+    c.st.catalogGen = 1;
     assert.equal(c.estadoAgendar(), 'demo');
-    try{ c.abrirAgendar({}); }catch(e){} // segue para montar a janela (sem dublês de DOM aqui)
-    assert.ok(!c.abertos.includes('convite'));
-    assert.ok(!c.abertos.includes('agendar'), 'na Demonstração não depende de podeSalvar');
+    const ex = { id:'ex-departamentos', nome:'Vendas do mês por departamento' };
+    c.abrirAgendar(ex);
+    assert.deepEqual(c.abertos, ['janela'], 'abre a janela, sem convite e sem depender de podeSalvar');
+    assert.equal(c.ag.consulta, ex);
+    assert.equal(els['#agDemo'].hidden, true);
+    assert.equal(els['#agTirar'].hidden, true);
+    assert.equal(c.ag.t.freq, 'horas');
   }
 });
 test('o item do menu usa o estado: desligado com "Carregando…" enquanto não sabe', () => {
