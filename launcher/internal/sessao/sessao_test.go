@@ -761,3 +761,43 @@ func TestAbrirInstalar(t *testing.T) {
 		t.Fatalf("abriu %q, quer %q", u, quer)
 	}
 }
+
+func TestCtlSoEmPronta(t *testing.T) {
+	c := novoCenario()
+	entrou, solta := make(chan struct{}), make(chan struct{})
+	c.deps.Ler = func(ctx context.Context, _ string, prog func(int64, int64)) error {
+		close(entrou)
+		<-solta
+		return nil
+	}
+	esp := novoEspiao(c.ordem)
+	s := Nova(c.deps, "0.14.0", esp.aoMudar)
+	rodar(t, s)
+	<-entrou
+	if s.PortaCtl() != 0 || s.ChaveCtl() != "" {
+		t.Fatalf("em Lendo: porta %d chave %q", s.PortaCtl(), s.ChaveCtl())
+	}
+	close(solta)
+	esp.esperar(t, "Pronta", fase(Pronta))
+	if s.PortaCtl() != 11080 || s.ChaveCtl() != chaveTeste {
+		t.Fatalf("em Pronta: porta %d chave %q", s.PortaCtl(), s.ChaveCtl())
+	}
+	s.Dormir()
+	if s.PortaCtl() != 0 || s.ChaveCtl() != "" {
+		t.Fatalf("dormindo: porta %d chave %q", s.PortaCtl(), s.ChaveCtl())
+	}
+}
+
+func TestCtlQueNaoSubiuNaoTemPorta(t *testing.T) {
+	c := novoCenario()
+	c.deps.SubirCtl = func(context.Context, string, []string, string, int) (Processo, error) {
+		return nil, errors.New("não subiu")
+	}
+	esp := novoEspiao(c.ordem)
+	s := Nova(c.deps, "0.14.0", esp.aoMudar)
+	rodar(t, s)
+	esp.esperar(t, "Pronta", fase(Pronta))
+	if s.PortaCtl() != 0 || s.ChaveCtl() != "" {
+		t.Fatalf("porta %d chave %q", s.PortaCtl(), s.ChaveCtl())
+	}
+}

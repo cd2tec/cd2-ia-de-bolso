@@ -44,6 +44,13 @@ func trazerParaFrente() {}
 // O systray some no Quit; sem isso o ícone fica "fantasma" até passar o mouse.
 func fecharBandeja() { systray.Quit() }
 
+// A bandeja do Windows não mostra texto ao lado do ícone: a marca é o
+// círculo vermelho no desenho.
+const marcaNoIcone = true
+
+// notificar mostra o aviso de um agendamento. Fica para a Tarefa 11.
+func notificar(titulo, texto, consulta string) {}
+
 var (
 	shell32         = windows.NewLazySystemDLL("shell32.dll")
 	user32          = windows.NewLazySystemDLL("user32.dll")

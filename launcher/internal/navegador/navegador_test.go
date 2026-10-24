@@ -114,3 +114,15 @@ func TestComInstalar(t *testing.T) {
 		}
 	}
 }
+
+func TestComAgenda(t *testing.T) {
+	if got := ComAgenda("http://127.0.0.1:8080/?v=1#k=abc", "c17"); got != "http://127.0.0.1:8080/?v=1&agenda=c17#k=abc" {
+		t.Fatalf("ComAgenda = %q", got)
+	}
+	if got := ComAgenda("http://127.0.0.1:8080/?v=1#k=abc", "a b"); got != "http://127.0.0.1:8080/?v=1&agenda=a+b#k=abc" {
+		t.Fatalf("ComAgenda com espaço = %q", got)
+	}
+	if got := ComAgenda("http://127.0.0.1:8080/", "c1"); got != "http://127.0.0.1:8080/?agenda=c1" {
+		t.Fatalf("ComAgenda sem ? = %q", got)
+	}
+}

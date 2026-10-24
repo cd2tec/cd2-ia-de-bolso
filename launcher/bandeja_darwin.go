@@ -66,3 +66,9 @@ func trazerParaFrente() { C.trazerParaFrente() }
 func avisarPrimeiroFechar() bool { return false }
 
 func fecharBandeja() {}
+
+// No Mac a marca é o número ao lado do ícone (SetTitle), não um desenho.
+const marcaNoIcone = false
+
+// notificar mostra o aviso de um agendamento. Fica para a Tarefa 11.
+func notificar(titulo, texto, consulta string) {}

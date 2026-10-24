@@ -12,6 +12,7 @@ import (
 
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/origem"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/cache"
+	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/navegador"
 	"github.com/cd2tec/cd2-ia-de-bolso/launcher/internal/sessao"
 )
 
@@ -198,6 +199,8 @@ func (a *App) iniciar(ctx context.Context) {
 	a.mu.Unlock()
 	a.guardarOrigem(o, tranca)
 	iniciarBandeja(a)
+	// Sempre: a trancada pode ser liberada e acordar depois.
+	go a.vigiarNovidades()
 	// Trancada ou com a pergunta do --desinstalar, a IA não acorda.
 	if t, ok := a.telaEspecial(); ok {
 		wruntime.EventsEmit(ctx, "estado", t)
@@ -286,6 +289,16 @@ func (a *App) chamar() {
 
 // AbrirConversa abre outra janela da conversa no navegador.
 func (a *App) AbrirConversa() error { return a.s.AbrirConversa() }
+
+// abrirAgenda abre a conversa já no histórico do agendamento (a linha do
+// menu e, na Tarefa 11, o clique na notificação). Só com a IA acordada.
+func (a *App) abrirAgenda(consulta string) {
+	e := a.s.Atual()
+	if e.Fase != sessao.Pronta {
+		return
+	}
+	_ = navegador.Abrir(navegador.ComAgenda(e.URL, consulta))
+}
 
 // Dormir põe a IA para dormir e volta na hora. O app sai 3 s depois do Dormiu.
 func (a *App) Dormir() { go a.s.Dormir() }

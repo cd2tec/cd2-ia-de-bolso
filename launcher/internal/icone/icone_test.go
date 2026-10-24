@@ -116,3 +116,22 @@ func TestICO(t *testing.T) {
 		t.Errorf(">=256 deve gravar 0, veio %d x %d", g[6], g[7])
 	}
 }
+
+func TestComMarca(t *testing.T) {
+	p := Cerebro("acordada", 4) // 40x32
+	l, a, px := decodificar(t, ComMarca(p))
+	if l != 40 || a != 32 {
+		t.Fatalf("tamanho %dx%d, esperado 40x32", l, a)
+	}
+	r := a / 5
+	if px(l-1-r, r) != corMarca {
+		t.Errorf("centro da marca = %v, esperado %v", px(l-1-r, r), corMarca)
+	}
+	_, _, orig := decodificar(t, p)
+	// Longe do canto superior direito nada muda.
+	for _, pt := range [][2]int{{0, 0}, {4 * 4, 4 * 4}, {0, a - 1}, {l - 1, a - 1}} {
+		if px(pt[0], pt[1]) != orig(pt[0], pt[1]) {
+			t.Errorf("(%d,%d) mudou: %v, era %v", pt[0], pt[1], px(pt[0], pt[1]), orig(pt[0], pt[1]))
+		}
+	}
+}
