@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -117,7 +115,7 @@ func novoAgendador(t *testing.T, f *ambiente) *Agendador {
 			return p == nil || p()
 		},
 		Motor: motorComum(t),
-		Hist:  NovoHistorico(t.TempDir()),
+		Hist:  novoHist(t, t.TempDir()),
 		Tick:  30 * time.Second,
 	})
 }
@@ -542,10 +540,7 @@ func TestPerdaQueFalhaNaoAvancaAberta(t *testing.T) {
 	ligarExecutor(t, a)
 	chave := notas.Chave(bancoT)
 	_ = a.o.Hist.MarcarAberta(chave, dia(25, 20, 0))
-	trava := filepath.Join(a.o.Hist.dir, chave, "c1.estado.json")
-	if err := os.MkdirAll(trava, 0o700); err != nil { // estado ilegível: Anexar falha
-		t.Fatal(err)
-	}
+	destravar := travarAnexar(t, a.o.Hist, "c1")
 	a.Passo(dia(26, 8, 0))
 	a.esperarFila()
 	if b, _, _ := a.o.Hist.Aberta(chave); !b.Equal(dia(25, 20, 0)) {
@@ -554,9 +549,7 @@ func TestPerdaQueFalhaNaoAvancaAberta(t *testing.T) {
 	if av, _ := a.Avisos(0); len(av) != 0 {
 		t.Errorf("avisos = %+v", av)
 	}
-	if err := os.Remove(trava); err != nil {
-		t.Fatal(err)
-	}
+	destravar()
 	a.Passo(dia(26, 8, 0).Add(30 * time.Second))
 	a.esperarFila()
 	for _, id := range []string{"c1", "c2"} {

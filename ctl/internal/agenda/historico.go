@@ -1,27 +1,30 @@
 package agenda
 
 import (
-	"bufio"
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"sync"
 	"time"
+
+	"modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 )
 
 // ErrId é o erro de consultaId ou chave fora do formato aceito (nada de caminho com "..").
 var ErrId = errors.New("agenda: id inválido")
 
-// maxPagina é o maior n aceito em Pagina; bloco é o tamanho da leitura de trás para a frente.
 const (
-	maxPagina = 50
-	bloco     = 64 << 10
+	maxPagina     = 50 // maior n aceito em Pagina
+	versaoEsquema = 1  // PRAGMA user_version do historico.sqlite
+	arqHistorico  = "historico.sqlite"
 )
 
 var (
@@ -30,7 +33,7 @@ var (
 )
 
 // Execucao é uma linha do histórico. Tipo: "agendada" | "manual" | "perda". Rodada e Novo não
-// vão para o disco: saem da leitura.
+// vão para o banco: saem da leitura.
 type Execucao struct {
 	Seq       int64      `json:"seq"`
 	Tipo      string     `json:"tipo"`
@@ -46,115 +49,199 @@ type Execucao struct {
 	Novo      bool       `json:"novo"`             // preenchido na leitura: agendada/perda com Seq > visto
 }
 
-// estado é o <consultaId>.estado.json: último seq, último visto, quantas linhas o .jsonl tem e
-// quando cada perda foi rodada. Total nil: estado de antes do total, que é contado uma vez.
-type estado struct {
-	Seq     int64             `json:"seq"`
-	Visto   int64             `json:"visto"`
-	Total   *int64            `json:"total,omitempty"`
-	Rodadas map[string]string `json:"rodadas"`
-}
+// esquema v1. execucoes.json é a Execucao sem Rodada e Novo (e sem Linhas quando igual a Todas);
+// estado.seq é o último seq dado (não volta quando a última execução some); aberta com chave
+// vazia é "qualquer banco".
+const esquema = `
+CREATE TABLE IF NOT EXISTS execucoes (
+	chave TEXT NOT NULL, consulta TEXT NOT NULL, seq INTEGER NOT NULL, tipo TEXT NOT NULL, json TEXT NOT NULL,
+	PRIMARY KEY (chave, consulta, seq)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS estado (
+	chave TEXT NOT NULL, consulta TEXT NOT NULL, seq INTEGER NOT NULL, visto INTEGER NOT NULL,
+	PRIMARY KEY (chave, consulta)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS rodadas (
+	chave TEXT NOT NULL, consulta TEXT NOT NULL, seq INTEGER NOT NULL, em TEXT NOT NULL,
+	PRIMARY KEY (chave, consulta, seq)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS aberta (chave TEXT NOT NULL PRIMARY KEY, ate TEXT NOT NULL) WITHOUT ROWID;
+`
 
-// Historico guarda, em <cache>/agenda/<chave>/, uma execução por linha de <consultaId>.jsonl
-// (só acrescenta) mais o estado de cada consulta.
+// Historico guarda as execuções de todos os bancos em <dados>/historico.sqlite. O banco abre na
+// primeira chamada; pen drive e instalada podem ter o mesmo arquivo aberto (WAL + busy_timeout).
 type Historico struct {
-	dir string
-	mu  sync.Mutex
+	dir    string
+	avisos io.Writer // aviso de banco corrompido; nil: os.Stderr
+	mu     sync.Mutex
+	db     *sql.DB
 }
 
-// NovoHistorico cria o histórico em <cache>/agenda; as pastas só nascem na primeira gravação.
-func NovoHistorico(cache string) *Historico {
-	return &Historico{dir: filepath.Join(cache, "agenda")}
+// NovoHistorico cria o histórico em <dados>/historico.sqlite; pasta e arquivo só nascem no primeiro uso.
+func NovoHistorico(dados string) *Historico {
+	return &Historico{dir: dados}
 }
 
-func (h *Historico) pasta(chave string) (string, error) {
-	if !reChave.MatchString(chave) {
-		return "", ErrId
+// Fechar fecha o banco; a próxima chamada abre de novo.
+func (h *Historico) Fechar() error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.db == nil {
+		return nil
 	}
-	return filepath.Join(h.dir, chave), nil
+	err := h.db.Close()
+	h.db = nil
+	return err
 }
 
-// caminhos valida chave e id e devolve o .jsonl e o .estado.json.
-func (h *Historico) caminhos(chave, id string) (jsonl, est string, err error) {
-	pasta, err := h.pasta(chave)
+// banco devolve o banco aberto, abrindo na primeira vez (com h.mu travado). Banco corrompido é
+// guardado de lado e outro começa; outro erro volta e a próxima chamada tenta de novo.
+func (h *Historico) banco() (*sql.DB, error) {
+	if h.db != nil {
+		return h.db, nil
+	}
+	arq := filepath.Join(h.dir, arqHistorico)
+	db, err := abrir(arq)
+	if err != nil && corrompido(err) {
+		db, err = h.recriar(arq, err)
+	}
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	if !reId.MatchString(id) {
-		return "", "", ErrId
-	}
-	return filepath.Join(pasta, id+".jsonl"), filepath.Join(pasta, id+".estado.json"), nil
+	h.db = db
+	return db, nil
 }
 
-func lerEstado(arq string) (estado, error) {
-	var e estado
-	raw, err := os.ReadFile(arq)
-	if errors.Is(err, fs.ErrNotExist) {
-		return e, nil
-	}
-	if err != nil {
-		return e, err
-	}
-	err = json.Unmarshal(raw, &e)
-	return e, err
-}
-
-func gravarEstado(arq string, e estado) error {
-	raw, err := json.Marshal(e)
-	if err != nil {
-		return err
-	}
-	return gravarAtomico(arq, raw)
-}
-
-// gravarAtomico troca o arquivo inteiro: temporário na mesma pasta, Sync e rename, como o
-// notas.Store.Gravar.
-func gravarAtomico(arq string, dados []byte) error {
+func abrir(arq string) (*sql.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(arq), 0o700); err != nil {
+		return nil, err
+	}
+	// O SQLite criaria com 0644: o arquivo nasce antes, vazio (já é um banco válido), com 0600.
+	f, err := os.OpenFile(arq, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	f.Close()
+	// immediate: o BEGIN já pega a escrita, e o outro cd2-ctl espera no busy_timeout em vez de
+	// falhar no meio da transação.
+	db, err := sql.Open("sqlite", arq+"?_pragma=busy_timeout(5000)&_txlock=immediate")
+	if err != nil {
+		return nil, err
+	}
+	db.SetMaxOpenConns(1) // h.mu já serializa; uma conexão só, sempre com os pragmas acima
+	if err := preparar(db); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
+// corrupcao é o quick_check que não deu "ok".
+type corrupcao string
+
+func (c corrupcao) Error() string { return "quick_check: " + string(c) }
+
+func preparar(db *sql.DB) error {
+	var r string
+	if err := db.QueryRow(`PRAGMA quick_check`).Scan(&r); err != nil {
 		return err
 	}
-	f, err := os.CreateTemp(filepath.Dir(arq), "tmp-*.tmp")
+	if r != "ok" {
+		return corrupcao(r)
+	}
+	if err := modoWAL(db); err != nil {
+		return err
+	}
+	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
-	tmp := f.Name()
-	_, err = f.Write(dados)
-	if err == nil {
-		err = f.Sync()
-	}
-	if errFechar := f.Close(); err == nil {
-		err = errFechar
-	}
-	if err == nil {
-		err = os.Chmod(tmp, 0o600)
-	}
-	if err == nil {
-		err = os.Rename(tmp, arq)
-	}
-	if err != nil {
-		os.Remove(tmp)
+	defer tx.Rollback()
+	var v int
+	if err := tx.QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
 		return err
+	}
+	if v >= versaoEsquema {
+		return nil
+	}
+	if _, err := tx.Exec(esquema); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, versaoEsquema)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// modoWAL liga o WAL. O busy_timeout não vale para a troca do journal_mode (o outro cd2-ctl
+// abrindo junto dá SQLITE_BUSY na hora): tenta de novo por até 5 s.
+func modoWAL(db *sql.DB) error {
+	fim := time.Now().Add(5 * time.Second)
+	for {
+		var modo string
+		err := db.QueryRow(`PRAGMA journal_mode=WAL`).Scan(&modo)
+		if err == nil && modo != "wal" {
+			err = fmt.Errorf("journal_mode %s", modo)
+		}
+		var e *sqlite.Error
+		if err == nil || !errors.As(err, &e) || e.Code()&0xff != sqlite3.SQLITE_BUSY || time.Now().After(fim) {
+			return err
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// corrompido diz se o erro é de arquivo estragado (e não de trava, disco cheio ou permissão,
+// que não justificam jogar o histórico de lado).
+func corrompido(err error) bool {
+	var c corrupcao
+	if errors.As(err, &c) {
+		return true
+	}
+	var e *sqlite.Error
+	if errors.As(err, &e) {
+		switch e.Code() & 0xff {
+		case sqlite3.SQLITE_CORRUPT, sqlite3.SQLITE_NOTADB:
+			return true
+		}
+	}
+	return false
+}
+
+// recriar guarda o banco corrompido (e o -wal/-shm) como .corrompido-<quando> e abre um novo.
+func (h *Historico) recriar(arq string, causa error) (*sql.DB, error) {
+	sufixo := ".corrompido-" + time.Now().Format("20060102-150405")
+	for _, s := range []string{"", "-wal", "-shm"} {
+		if err := os.Rename(arq+s, arq+s+sufixo); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
+		}
+	}
+	w := h.avisos
+	if w == nil {
+		w = os.Stderr
+	}
+	fmt.Fprintf(w, "cd2-ctl: historico dos agendamentos corrompido (%v); guardado em %s, comecando outro\n", causa, arq+sufixo)
+	return abrir(arq)
+}
+
+func validar(chave, id string) error {
+	if !reChave.MatchString(chave) || !reId.MatchString(id) {
+		return ErrId
 	}
 	return nil
 }
 
-// total devolve quantas linhas válidas o .jsonl tem: do estado ou, num estado antigo, contando
-// uma vez (e deixando no est para quem for gravar).
-func (h *Historico) total(arq string, est *estado) (int64, error) {
-	if est.Total != nil {
-		return *est.Total, nil
+// usar valida chave e id, trava e devolve o banco aberto; quem chama destrava.
+func (h *Historico) usar(chave, id string) (*sql.DB, error) {
+	if err := validar(chave, id); err != nil {
+		return nil, err
 	}
-	var n int64
-	err := h.varrer(arq, func(b []byte) {
-		if json.Valid(b) {
-			n++
-		}
-	})
+	h.mu.Lock()
+	db, err := h.banco()
 	if err != nil {
-		return 0, err
+		h.mu.Unlock()
 	}
-	est.Total = &n
-	return n, nil
+	return db, err
 }
 
 // paraDisco tira Linhas quando é igual a Todas (o comum: as mesmas até 200 linhas duas vezes);
@@ -182,357 +269,228 @@ func refazer(e *Execucao) {
 	}
 }
 
-// Anexar atribui Seq = estado.seq+1 e acrescenta a linha. O estado é gravado antes: se o
-// acréscimo falhar sobra um buraco no Seq, nunca um Seq repetido.
+// Anexar atribui Seq = estado.seq+1 e grava a execução, tudo numa transação.
 func (h *Historico) Anexar(chave, id string, e Execucao) (Execucao, error) {
-	arq, arqEst, err := h.caminhos(chave, id)
+	db, err := h.usar(chave, id)
 	if err != nil {
 		return e, err
 	}
-	h.mu.Lock()
 	defer h.mu.Unlock()
-	est, err := lerEstado(arqEst)
-	if err != nil {
-		return e, err
-	}
-	tot, err := h.total(arq, &est)
-	if err != nil {
-		return e, err
-	}
-	est.Seq++
-	e.Seq = est.Seq
 	e.Rodada, e.Novo = nil, false
+	tx, err := db.Begin()
+	if err != nil {
+		return e, err
+	}
+	defer tx.Rollback()
+	var seq int64
+	err = tx.QueryRow(`SELECT seq FROM estado WHERE chave = ? AND consulta = ?`, chave, id).Scan(&seq)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return e, err
+	}
+	e.Seq = seq + 1
 	linha, err := json.Marshal(paraDisco(e))
 	if err != nil {
 		return e, err
 	}
-	// O total já conta a linha nova; se o acréscimo falhar, volta (melhor esforço).
-	novoTot := tot + 1
-	est.Total = &novoTot
-	if err := os.MkdirAll(filepath.Dir(arq), 0o700); err != nil {
+	if _, err := tx.Exec(`INSERT INTO estado (chave, consulta, seq, visto) VALUES (?, ?, ?, 0)
+		ON CONFLICT (chave, consulta) DO UPDATE SET seq = excluded.seq`, chave, id, e.Seq); err != nil {
 		return e, err
 	}
-	if err := gravarEstado(arqEst, est); err != nil {
+	if _, err := tx.Exec(`INSERT INTO execucoes (chave, consulta, seq, tipo, json) VALUES (?, ?, ?, ?, ?)`,
+		chave, id, e.Seq, e.Tipo, string(linha)); err != nil {
 		return e, err
 	}
-	f, err := os.OpenFile(arq, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0o600)
-	if err != nil {
-		return e, err
-	}
-	// Linha cortada por uma queda: fecha com \n para a próxima não colar nela.
-	var pre []byte
-	if fi, err := f.Stat(); err == nil && fi.Size() > 0 {
-		if u := make([]byte, 1); readAtFull(f, u, fi.Size()-1) == nil && u[0] != '\n' {
-			pre = []byte{'\n'}
-		}
-	}
-	_, err = f.Write(append(append(pre, linha...), '\n'))
-	if err == nil {
-		err = f.Sync()
-	}
-	if errFechar := f.Close(); err == nil {
-		err = errFechar
-	}
-	if err != nil {
-		est.Total = &tot
-		gravarEstado(arqEst, est)
-	}
-	return e, err
-}
-
-func readAtFull(f *os.File, b []byte, off int64) error {
-	_, err := f.ReadAt(b, off)
-	return err
-}
-
-// preencher põe Novo e Rodada, que não ficam no disco.
-func (est estado) preencher(e *Execucao) {
-	e.Novo = e.Tipo != "manual" && e.Seq > est.Visto
-	if e.Tipo == "perda" {
-		if s, ok := est.Rodadas[strconv.FormatInt(e.Seq, 10)]; ok {
-			if t, err := time.Parse(time.RFC3339, s); err == nil {
-				e.Rodada = &t
-			}
-		}
-	}
+	return e, tx.Commit()
 }
 
 // Pagina devolve até n execuções (no máximo 50), da mais nova para a mais velha, começando
-// abaixo de antes (antes<=0: do fim). mais diz se sobrou histórico. O arquivo é lido de trás
-// para a frente em blocos de 64 KB; linha que não é JSON válido é pulada.
+// abaixo de antes (antes<=0: do fim). mais diz se sobrou histórico. Novo e Rodada saem do estado.
 func (h *Historico) Pagina(chave, id string, antes int64, n int) (itens []Execucao, mais bool, err error) {
-	arq, arqEst, err := h.caminhos(chave, id)
-	if err != nil {
-		return nil, false, err
-	}
 	if n <= 0 || n > maxPagina {
 		n = maxPagina
 	}
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	est, err := lerEstado(arqEst)
+	db, err := h.usar(chave, id)
 	if err != nil {
 		return nil, false, err
 	}
-	err = voltar(arq, func(b []byte) bool {
-		var e Execucao
-		if json.Unmarshal(b, &e) != nil {
-			return false
-		}
-		if antes > 0 && e.Seq >= antes {
-			return false
+	defer h.mu.Unlock()
+	rows, err := db.Query(`SELECT x.seq, x.json, r.em,
+			COALESCE((SELECT visto FROM estado s WHERE s.chave = x.chave AND s.consulta = x.consulta), 0)
+		FROM execucoes x
+		LEFT JOIN rodadas r ON r.chave = x.chave AND r.consulta = x.consulta AND r.seq = x.seq
+		WHERE x.chave = ? AND x.consulta = ? AND (? <= 0 OR x.seq < ?)
+		ORDER BY x.seq DESC LIMIT ?`, chave, id, antes, antes, n+1)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			seq, visto int64
+			raw        string
+			em         sql.NullString
+		)
+		if err := rows.Scan(&seq, &raw, &em, &visto); err != nil {
+			return nil, false, err
 		}
 		if len(itens) == n {
 			mais = true
-			return true
+			break
 		}
-		est.preencher(&e)
+		var e Execucao
+		if json.Unmarshal([]byte(raw), &e) != nil {
+			continue
+		}
+		e.Seq = seq
+		e.Novo = e.Tipo != "manual" && e.Seq > visto
+		if e.Tipo == "perda" && em.Valid {
+			if t, err := time.Parse(time.RFC3339, em.String); err == nil {
+				e.Rodada = &t
+			}
+		}
 		refazer(&e)
 		itens = append(itens, e)
-		return false
-	})
-	if err != nil {
+	}
+	if err := rows.Err(); err != nil {
 		return nil, false, err
 	}
 	return itens, mais, nil
 }
 
-// voltar lê o .jsonl de trás para a frente em blocos de 64 KB e chama fn em cada linha não vazia,
-// da mais nova para a mais velha, até fn devolver true. Arquivo que não existe: nada.
-func voltar(arq string, fn func(linha []byte) bool) error {
-	f, err := os.Open(arq)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil {
-		return err
-	}
-	pos := fi.Size()
-	var resto []byte // começo de linha ainda sem o início
-	for pos > 0 {
-		tam := int64(bloco)
-		if pos < tam {
-			tam = pos
-		}
-		pos -= tam
-		buf := make([]byte, tam+int64(len(resto)))
-		if err := readAtFull(f, buf[:tam], pos); err != nil && !errors.Is(err, io.EOF) {
-			return err
-		}
-		copy(buf[tam:], resto)
-		partes := bytes.Split(buf, []byte{'\n'})
-		resto = partes[0]
-		ate := 1 // partes[0] pode ser o fim de uma linha que começa no bloco anterior
-		if pos == 0 {
-			resto, ate = nil, 0
-		}
-		for i := len(partes) - 1; i >= ate; i-- {
-			if len(bytes.TrimSpace(partes[i])) > 0 && fn(partes[i]) {
-				return nil
-			}
-		}
-	}
-	return nil
-}
-
-// varrer lê o .jsonl de frente para trás, linha a linha, sem guardar o arquivo.
-func (h *Historico) varrer(arq string, fn func(linha []byte)) error {
-	f, err := os.Open(arq)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	r := bufio.NewReaderSize(f, bloco)
-	for {
-		b, err := r.ReadBytes('\n')
-		if len(bytes.TrimSpace(b)) > 0 {
-			fn(b)
-		}
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-	}
-}
-
-// Contar devolve quantas execuções válidas o histórico tem. Vem do estado; num estado antigo,
-// sem o total, conta uma vez lendo o arquivo e grava.
+// Contar devolve quantas execuções o histórico da consulta tem.
 func (h *Historico) Contar(chave, id string) (int, error) {
-	arq, arqEst, err := h.caminhos(chave, id)
+	db, err := h.usar(chave, id)
 	if err != nil {
 		return 0, err
 	}
-	h.mu.Lock()
 	defer h.mu.Unlock()
-	est, err := lerEstado(arqEst)
-	if err != nil {
-		return 0, err
-	}
-	if est.Total != nil {
-		return int(*est.Total), nil
-	}
-	n, err := h.total(arq, &est)
-	if err != nil {
-		return 0, err
-	}
-	if _, err := os.Stat(arq); err == nil { // sem histórico não cria estado
-		gravarEstado(arqEst, est)
-	}
-	return int(n), nil
+	var n int
+	err = db.QueryRow(`SELECT COUNT(*) FROM execucoes WHERE chave = ? AND consulta = ?`, chave, id).Scan(&n)
+	return n, err
 }
 
-// NaoVistas conta as agendadas e perdas com Seq > visto, lendo de trás para a frente até o
-// primeiro seq já visto (o Seq só cresce no arquivo).
+// NaoVistas conta as agendadas e perdas com Seq > visto (as mesmas que Pagina marca Novo).
 func (h *Historico) NaoVistas(chave, id string) (int, error) {
-	arq, arqEst, err := h.caminhos(chave, id)
+	db, err := h.usar(chave, id)
 	if err != nil {
 		return 0, err
 	}
-	h.mu.Lock()
 	defer h.mu.Unlock()
-	est, err := lerEstado(arqEst)
-	if err != nil {
-		return 0, err
-	}
-	if est.Seq <= est.Visto {
-		return 0, nil
-	}
-	n := 0
-	err = voltar(arq, func(b []byte) bool {
-		var e struct {
-			Seq  int64  `json:"seq"`
-			Tipo string `json:"tipo"`
-		}
-		if json.Unmarshal(b, &e) != nil {
-			return false
-		}
-		if e.Seq <= est.Visto {
-			return true
-		}
-		if e.Tipo != "manual" {
-			n++
-		}
-		return false
-	})
+	var n int
+	err = db.QueryRow(`SELECT COUNT(*) FROM execucoes
+		WHERE chave = ? AND consulta = ? AND tipo <> 'manual'
+		AND seq > COALESCE((SELECT visto FROM estado WHERE chave = ? AND consulta = ?), 0)`,
+		chave, id, chave, id).Scan(&n)
 	return n, err
 }
 
 // MarcarVisto leva o visto até o último seq.
 func (h *Historico) MarcarVisto(chave, id string) error {
-	return h.alterar(chave, id, func(e *estado) { e.Visto = e.Seq })
+	db, err := h.usar(chave, id)
+	if err != nil {
+		return err
+	}
+	defer h.mu.Unlock()
+	_, err = db.Exec(`UPDATE estado SET visto = seq WHERE chave = ? AND consulta = ?`, chave, id)
+	return err
 }
 
 // MarcarRodada anota quando a perda de número seq foi rodada.
 func (h *Historico) MarcarRodada(chave, id string, seq int64, em time.Time) error {
-	return h.alterar(chave, id, func(e *estado) {
-		if e.Rodadas == nil {
-			e.Rodadas = map[string]string{}
-		}
-		e.Rodadas[strconv.FormatInt(seq, 10)] = em.Format(time.RFC3339)
-	})
-}
-
-func (h *Historico) alterar(chave, id string, fn func(*estado)) error {
-	_, arqEst, err := h.caminhos(chave, id)
+	db, err := h.usar(chave, id)
 	if err != nil {
 		return err
 	}
-	h.mu.Lock()
 	defer h.mu.Unlock()
-	est, err := lerEstado(arqEst)
-	if err != nil {
-		return err
-	}
-	fn(&est)
-	return gravarEstado(arqEst, est)
+	_, err = db.Exec(`INSERT INTO rodadas (chave, consulta, seq, em) VALUES (?, ?, ?, ?)
+		ON CONFLICT (chave, consulta, seq) DO UPDATE SET em = excluded.em`, chave, id, seq, em.Format(time.RFC3339))
+	return err
 }
 
-// Apagar remove o histórico e o estado da consulta.
+// Apagar remove o histórico e o estado da consulta; o seq recomeça.
 func (h *Historico) Apagar(chave, id string) error {
-	arq, arqEst, err := h.caminhos(chave, id)
+	db, err := h.usar(chave, id)
 	if err != nil {
 		return err
 	}
-	h.mu.Lock()
 	defer h.mu.Unlock()
-	for _, a := range []string{arq, arqEst} {
-		if err := os.Remove(a); err != nil && !errors.Is(err, fs.ErrNotExist) {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, tab := range []string{"execucoes", "estado", "rodadas"} {
+		if _, err := tx.Exec(`DELETE FROM `+tab+` WHERE chave = ? AND consulta = ?`, chave, id); err != nil {
 			return err
 		}
 	}
-	return nil
-}
-
-type marca struct {
-	Ate time.Time `json:"ate"`
-}
-
-func lerMarca(arq string) (time.Time, error) {
-	raw, err := os.ReadFile(arq)
-	if errors.Is(err, fs.ErrNotExist) {
-		return time.Time{}, nil
-	}
-	if err != nil {
-		return time.Time{}, err
-	}
-	var m marca
-	if err := json.Unmarshal(raw, &m); err != nil {
-		return time.Time{}, err
-	}
-	return m.Ate, nil
+	return tx.Commit()
 }
 
 // Aberta devolve a última vez que a IA esteve aberta com este banco e com qualquer banco;
 // zero se nunca.
 func (h *Historico) Aberta(chave string) (banco, qualquer time.Time, err error) {
-	pasta, err := h.pasta(chave)
+	db, err := h.usar(chave, "x")
 	if err != nil {
 		return
 	}
-	h.mu.Lock()
 	defer h.mu.Unlock()
-	if banco, err = lerMarca(filepath.Join(pasta, "aberta.json")); err != nil {
+	rows, err := db.Query(`SELECT chave, ate FROM aberta WHERE chave IN (?, '')`, chave)
+	if err != nil {
 		return
 	}
-	qualquer, err = lerMarca(filepath.Join(h.dir, "aberta.json"))
+	defer rows.Close()
+	for rows.Next() {
+		var c, ate string
+		if err = rows.Scan(&c, &ate); err != nil {
+			return
+		}
+		t, errT := time.Parse(time.RFC3339Nano, ate)
+		if errT != nil {
+			continue
+		}
+		if c == "" {
+			qualquer = t
+		} else {
+			banco = t
+		}
+	}
+	err = rows.Err()
 	return
 }
 
 // MarcarAberta grava t nas duas marcas.
 func (h *Historico) MarcarAberta(chave string, t time.Time) error {
-	pasta, err := h.pasta(chave)
+	db, err := h.usar(chave, "x")
 	if err != nil {
 		return err
 	}
-	raw, err := json.Marshal(marca{Ate: t})
-	if err != nil {
-		return err
-	}
-	h.mu.Lock()
 	defer h.mu.Unlock()
-	if err := gravarAtomico(filepath.Join(pasta, "aberta.json"), raw); err != nil {
-		return err
-	}
-	return gravarAtomico(filepath.Join(h.dir, "aberta.json"), raw)
+	return marcar(db, t, chave, "")
 }
 
 // MarcarAbertaSemBanco grava t só na marca de qualquer banco: a IA aberta sem banco conectado.
 func (h *Historico) MarcarAbertaSemBanco(t time.Time) error {
-	raw, err := json.Marshal(marca{Ate: t})
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	db, err := h.banco()
 	if err != nil {
 		return err
 	}
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return gravarAtomico(filepath.Join(h.dir, "aberta.json"), raw)
+	return marcar(db, t, "")
+}
+
+func marcar(db *sql.DB, t time.Time, chaves ...string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, c := range chaves {
+		if _, err := tx.Exec(`INSERT INTO aberta (chave, ate) VALUES (?, ?)
+			ON CONFLICT (chave) DO UPDATE SET ate = excluded.ate`, c, t.Format(time.RFC3339Nano)); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
