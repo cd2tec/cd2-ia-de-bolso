@@ -12,7 +12,8 @@ Thumbs.db
 *.log
 
 # Ferramentas locais do Claude Code
-.claude/
+.claude/*
+!.claude/settings.json
 .superpowers/
 
 # Gerados pelo wails build/dev (a tela chama window.go direto)
