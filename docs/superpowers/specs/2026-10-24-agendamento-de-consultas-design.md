@@ -126,6 +126,7 @@ Na janela "Agendar consulta":
 - **Onde fica o relógio dos agendamentos.** Precisa estar vivo com a janela fechada e rodar o SQL sem a página. O caminho natural é o cd2-ctl, que já guarda as consultas salvas e fala com o banco. Nesse caso a lógica de montar o SQL com os parâmetros ([web/consultas.js](../../../web/consultas.js)) precisa existir também lá, ou o construtor acha outro jeito de ter uma regra só.
 - **Como o lançador recebe "rodou"** para disparar a notificação e atualizar a marca da bandeja. A notificação do Windows já tem base em [launcher/notificacao.go](../../../launcher/notificacao.go). A do Mac é nova.
 - Formato do arquivo do histórico e das rotas. Guardar na mesma pasta de cache das consultas salvas, por banco. Pensar no tamanho: guardado para sempre, a cada 5 minutos.
+  - Decidido: o histórico fica num SQLite só (`historico.sqlite`, separado por banco dentro dele) em `~/Library/Application Support/cd2-harness` no Mac (o `Caches` pode ser limpo) e na pasta do cache no Windows; `--dados` no cd2-ctl troca a pasta.
 - Como saber "desde quando a IA estava fechada" para achar as perdidas.
 - Sinal de pen drive x instalada: o mesmo que já esconde o Importar.
 - Testes no padrão de [tests/](../../../tests/) e dos `_test.go`.
