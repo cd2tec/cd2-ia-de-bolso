@@ -9,7 +9,7 @@
 
 **A IA da CD2 rodando 100% no seu computador, direto do pen drive.**
 
-Plugou, clicou, conversou. A IA de Bolso abre uma janela com a identidade da CD2 e conversa com um modelo de IA rodando no próprio computador, sem instalar nada e sem mandar dados para a nuvem. Conecta no banco do seu sistema, numa pasta de planilhas do Excel (para quem ainda controla a loja em planilha) ou, quando houver rede, num MCP do Archeo, para consultar dados reais.
+Plugou, clicou, conversou. A IA de Bolso abre uma janela com a identidade da CD2 e conversa com um modelo de IA rodando no próprio computador, sem instalar nada e sem mandar dados para a nuvem. Conecta no banco do seu sistema, numa pasta de planilhas do Excel (para quem ainda controla a loja em planilha) ou, quando houver rede, num MCP do Archeo, para consultar dados reais. Na cópia instalada no computador, as consultas salvas também rodam sozinhas no horário que você escolher e avisam com uma notificação (veja [Agendamentos](#3d-agendamentos)).
 
 [Site do projeto](https://cd2tec.github.io/cd2-ia-de-bolso/) · [Passo a passo do pen drive](docs/criar-pendrive.md) · [Baixar cd2tech-iadebolso.zip](https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/cd2tech-iadebolso.zip) · [Dar uma estrela](https://github.com/cd2tec/cd2-ia-de-bolso)
 
@@ -120,7 +120,7 @@ Quer usar a IA sem o pen drive? Há dois caminhos, e os dois levam à mesma cóp
 As condições são as mesmas nos dois:
 
 - **Quanto custa:** R$ 25 por computador, em pagamento único, pelo Stripe. É uma cópia avulsa para este computador, não é assinatura nem licença.
-- **O que você leva:** a IA instalada no computador (copiada do pen drive ou baixada pelo instalador), que abre sem o pen drive, com ícone nos programas e atalho na área de trabalho se você quiser. Se quiser, ela acorda junto com o computador (ocupa de 4 a 5 GB de memória desde que ele liga, e dá para desligar). E dá para desinstalar quando quiser.
+- **O que você leva:** a IA instalada no computador (copiada do pen drive ou baixada pelo instalador), que abre sem o pen drive e roda as consultas agendadas (veja [Agendamentos](#3d-agendamentos)), com ícone nos programas e atalho na área de trabalho se você quiser. Se quiser, ela acorda junto com o computador (ocupa de 4 a 5 GB de memória desde que ele liga, e dá para desligar). E dá para desinstalar quando quiser.
 - **A chave:** chega por e-mail e na tela, depois do pagamento. Guarde. Ela reinstala no mesmo computador, sem pagar de novo. Se a chave já está guardada neste computador, o instalador e a conversa oferecem **Reinstalar com a minha chave**, sem passar pelo pagamento.
 - **As regras:** vale para um computador (todas as contas de usuário dele). Trocou de computador ou perdeu a chave, é uma nova instalação, com novo pagamento.
 
@@ -193,6 +193,22 @@ No modo Banco de dados, cada pergunta vira uma consulta, um gráfico e um relat�
 - **Contato no relatório:** preencha `report.contact` em `web/config.json` (site, e-mail, telefone).
 
 Para medir a qualidade num banco de teste com cara de ERP: `sh tests/eval/rodar.sh` (precisa de Docker). O portão para levar a cliente é 70% de acerto com o llamafile só em CPU. Na avaliação atual o modelo padrão acerta 90% das perguntas (18 de 20) e passa no portão. Em 2 de 20 ele mostrou um resultado errado, sem aviso; a avaliação marca esses casos como `[ERRADO]`. Veja `tests/eval/`.
+
+## 3d. Agendamentos
+
+Na cópia instalada no computador, uma consulta salva (👍) pode rodar sozinha. É o flash de vendas no horário de pico, a ruptura de estoque toda manhã.
+
+<p>
+  <img src="docs/assets/telas/agenda-historico-claro.webp" alt="Histórico do agendamento Flash de vendas de hoje: a barra de consultas salvas com o relógio das agendadas, o exemplo de como o aviso chega e o card da última execução com o gráfico de venda por hora." width="640">
+</p>
+
+- **Agendar:** no menu **⋯** da consulta, **⏰ Agendar…**. Escolha a cada X minutos (a partir de 5), de hora em hora, todo dia, toda semana ou todo mês, com horário e dias. A janela mostra em português quando vai rodar e a próxima vez.
+- **Períodos:** a data da consulta vira um período calculado em cada execução: hoje, ontem, hora atual, últimas X horas, últimos X dias, esta semana, semana passada, este mês, mês passado. O dia da semana também.
+- **Histórico:** cada execução vira um card guardado junto da consulta, separado por dia, com gráfico, CSV e PDF. Clique numa consulta com ⏰ para ver. O histórico fica no computador para sempre, num `historico.sqlite` (no Mac em `~/Library/Application Support/cd2-harness`, no Windows em `%LOCALAPPDATA%\cd2-harness`). Ele não vai na exportação.
+- **Avisos:** cada execução agendada gera uma notificação do Windows ou do Mac e uma marca no ícone da IA de Bolso, perto do relógio. Um clique abre o histórico daquela consulta.
+- **Só com a IA aberta:** o agendamento roda enquanto a IA de Bolso está aberta, mesmo com a janela fechada. Fechar ou pôr a IA para dormir para os agendamentos. Se ela estava fechada, ou o computador dormindo, no horário, nada roda atrasado: o que não rodou aparece numa linha só, com **Rodar agora**. Para não perder horário, ligue **Acordar quando o computador ligar**.
+- **Cuidado com o banco:** a consulta continua só de leitura, roda uma por vez e tem o mesmo limite de tempo da conversa.
+- **No pen drive:** os botões aparecem e levam para [instalar no computador](#instalar-no-computador). No modo Demonstração dá para ver tudo isso com dados fictícios.
 
 ## 4. Personalizar
 
