@@ -22,11 +22,11 @@ test('acharLiterais ignora número em identificador, aspas duplas, colchetes e c
   assert.deepEqual(C.acharLiterais(s).map(l => [l.valor, l.tipo]), [['42','numero'], ["A'B",'texto']]);
 });
 
-test('acharLiterais: data com hora fica marcada e só a parte da data vira parâmetro', () => {
+test('acharLiterais: data com hora fica marcada e vira datahora do literal inteiro', () => {
   const s = "SELECT a FROM t WHERE d < '2026-11-01 00:00:00'";
   const [l] = C.acharLiterais(s);
-  assert.equal(l.tipo, 'data'); assert.equal(l.valor, '2026-11-01'); assert.equal(l.marcado, true);
-  assert.equal(s.slice(l.inicio, l.fim), '2026-11-01');
+  assert.equal(l.tipo, 'datahora'); assert.equal(l.valor, '2026-11-01 00:00:00'); assert.equal(l.marcado, true);
+  assert.equal(s.slice(l.inicio, l.fim), '2026-11-01 00:00:00');
 });
 
 test('acharLiterais para no primeiro literal com barra invertida (motor ambíguo)', () => {
@@ -159,4 +159,31 @@ test('montarSql aceita o valor salvo mesmo quando ele tem o formato de milhar', 
   assert.deepEqual(C.montarSql(c, []), { ok:true, sql:s, valores:['0.125'] });
   assert.deepEqual(C.montarSql(c, ['0,125']), { ok:true, sql:s, valores:['0.125'] });
   assert.equal(C.montarSql(c, ['1,125']).ok, false);
+});
+
+test('literal com hora vira datahora inteiro', () => {
+  const l = C.acharLiterais("SELECT a FROM v WHERE dt >= '2026-10-24 14:00:00'");
+  assert.deepEqual(l.map(x => [x.tipo, x.valor]), [['datahora', '2026-10-24 14:00:00']]);
+});
+test('montarSql troca datahora e normaliza o datetime-local', () => {
+  const sql = "SELECT a FROM v WHERE dt >= '2026-10-24 14:00:00'";
+  const p = C.acharLiterais(sql)[0];
+  const c = { sql, params:[{ nome:'Desde', tipo:'datahora', inicio:p.inicio, fim:p.fim, valor:p.valor }] };
+  assert.equal(C.montarSql(c, ['2026-10-25T08:30']).sql, "SELECT a FROM v WHERE dt >= '2026-10-25 08:30:00'");
+  assert.equal(C.montarSql(c, ['2026-10-25 24:00:00']).erro, 'Desde: data e hora inválida.');
+  assert.equal(C.montarSql(c, ['2026-02-30 10:00:00']).erro, 'Desde: data e hora inválida.');
+});
+test('parâmetro data antigo sobre literal com hora continua valendo', () => {
+  const sql = "SELECT 1 FROM v WHERE dt >= '2026-10-24 14:00:00'", i = sql.indexOf('2026');
+  const c = { sql, params:[{ nome:'Dia', tipo:'data', inicio:i, fim:i + 10, valor:'2026-10-24' }] };
+  assert.equal(C.montarSql(c, ['2026-10-01']).sql, "SELECT 1 FROM v WHERE dt >= '2026-10-01 14:00:00'");
+});
+test('paramDeTrecho de um literal com hora inteiro dá datahora', () => {
+  const sql = "SELECT a FROM v WHERE dt >= '2026-10-24 14:00:00'", i = sql.indexOf('2026');
+  const r = C.paramDeTrecho(sql, i - 1, i + 20);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.param, { valor:'2026-10-24 14:00:00', tipo:'datahora', inicio:i, fim:i + 19 });
+  // só a data do literal continua sendo data
+  const d = C.paramDeTrecho(sql, i, i + 10);
+  assert.equal(d.param.tipo, 'data');
 });

@@ -1515,7 +1515,7 @@ function renderAnswer(body, pergunta, r, o){
   if(ps.length && Array.isArray(r.valores)){
     const v = document.createElement('p'); v.className = 'valores';
     // r.valores já vem normalizado do montarSql; número aparece como a janela Rodar mostra (1,5).
-    const mostra = (p, x) => p.tipo === 'data' ? dataBr(x) : p.tipo === 'numero' ? String(x == null ? '' : x).replace('.', ',') : String(x == null ? '' : x);
+    const mostra = (p, x) => p.tipo === 'data' ? dataBr(x) : p.tipo === 'datahora' ? dataHoraBr(x) : p.tipo === 'numero' ? String(x == null ? '' : x).replace('.', ',') : String(x == null ? '' : x);
     v.textContent = ps.map((p, i) => nomeParam(p, i) + ': ' + mostra(p, r.valores[i])).join(' · ');
     card.appendChild(v);
   }
@@ -2175,7 +2175,7 @@ async function confirmarImportar(){
 /* ---------- consultas salvas (web/consultas.js): 👍, barra lateral e rodar de novo sem o modelo ---------- */
 // Ficam em st.notas.consultas, gravadas pelo cd2-ctl junto com as notas do banco conectado.
 const VISUAL_ROTULO = { barra:'barra', linha:'linha', pizza:'pizza', tabela:'tabela', numero:'número' };
-const TIPO_ROTULO = { data:'data', numero:'número', texto:'texto' };
+const TIPO_ROTULO = { data:'data', datahora:'data e hora', numero:'número', texto:'texto' };
 const MAX_NOME_CONSULTA = 120, MAX_NOME_PARAM = 60;
 const sb = { menu:null, modo:'', erro:'', focar:false, voltar:null };  // barra: item com o menu aberto, 'menu' | 'renomear' | 'apagar'
 const sv = { r:null, botao:null, linhas:[], sel:null };  // janela Salvar consulta
@@ -2184,6 +2184,7 @@ const consultasSalvas = () => (st.notas && Array.isArray(st.notas.consultas)) ? 
 const nomeParam = (p, i) => (p && typeof p.nome === 'string' && p.nome.trim()) || ('Parâmetro ' + (i + 1));
 const mesmoNome = (a, b) => String(a == null ? '' : a).trim().toLowerCase() === String(b == null ? '' : b).trim().toLowerCase();
 function hojeIso(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function dataHoraBr(v){ const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2})/.exec(String(v == null ? '' : v)); return m ? m[3] + '/' + m[2] + '/' + m[1] + ' ' + m[4] : String(v == null ? '' : v); }
 function dataBr(v){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v == null ? '' : v)); return m ? m[3] + '/' + m[2] + '/' + m[1] : String(v == null ? '' : v); }
 function mostrarErro(el, texto){
   el.textContent = ''; if(!texto) return;
@@ -2330,11 +2331,12 @@ function abrirRodar(c){
     const d = document.createElement('div');
     const lb = document.createElement('label'); lb.htmlFor = 'rP' + i; lb.textContent = nomeParam(p, i);
     const inp = document.createElement('input'); inp.id = 'rP' + i; inp.autocomplete = 'off'; inp.spellcheck = false;
-    inp.type = p && p.tipo === 'data' ? 'date' : 'text';
+    inp.type = p && p.tipo === 'data' ? 'date' : p && p.tipo === 'datahora' ? 'datetime-local' : 'text';
+    if(p && p.tipo === 'datahora') inp.step = '1';
     if(p && p.tipo === 'numero') inp.inputMode = 'decimal';
     // Número da última vez em formato brasileiro (1.5 → 1,5): nunca no padrão ambíguo do milhar.
     const ultimo = String(p && p.valor != null ? p.valor : '');
-    inp.value = p && p.tipo === 'numero' ? ultimo.replace('.', ',') : ultimo;
+    inp.value = p && p.tipo === 'numero' ? ultimo.replace('.', ',') : p && p.tipo === 'datahora' ? ultimo.replace(' ', 'T') : ultimo;
     inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); confirmarRodar(); } });
     d.appendChild(lb); d.appendChild(inp); box.appendChild(d);
   });
