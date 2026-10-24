@@ -1918,6 +1918,7 @@ function renderListaNotas(){
   if(mais.textContent) box.appendChild(mais);
 }
 function linhasTexto(t){
+  if(t.semContagem && t.type !== 'VIEW') return '';
   const n = Number(t.rows) || 0, l = 'cerca de ' + n.toLocaleString('pt-BR') + (n === 1 ? ' linha' : ' linhas');
   return t.type === 'VIEW' ? (n ? 'view, ' + l : 'view') : l;
 }

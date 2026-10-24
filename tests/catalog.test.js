@@ -62,7 +62,7 @@ test('rankTables: faturamento por mês escolhe a tabela de vendas com data', () 
   assert.equal(r[0].name, 'mov_venda');
   assert.ok(r.findIndex(t => t.name === 'log_integracao') !== 0);
   assert.ok(r.length <= 5);
-  assert.deepEqual(Object.keys(r[0]).sort(), ['columns', 'name', 'nota', 'perfil', 'rows', 'score', 'type']);
+  assert.deepEqual(Object.keys(r[0]).sort(), ['columns', 'name', 'nota', 'perfil', 'rows', 'score', 'semContagem', 'type']);
 });
 
 test('rankTables: produtos mais vendidos traz produto e itens de venda', () => {

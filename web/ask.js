@@ -183,7 +183,8 @@ const limpo = v => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\s]+/
 function buildMessages(o){
   const d = DIALETO[o.motor] || DIALETO.postgres, pre = limpo(schemaPrefix(o.motor, o.schema, o.usuario));
   // View não tem contagem de linhas: "cerca de 0 linhas" faria o modelo achar que está vazia.
-  const tam = t => t.type === 'VIEW' ? (t.rows ? 'view, cerca de ' + t.rows + ' linhas' : 'view') : 'cerca de ' + t.rows + ' linhas';
+  // Planilha e DBF não informam linhas: sem o tamanho, para o modelo não achar que a tabela está vazia.
+  const tam = t => t.type === 'VIEW' ? (t.rows ? 'view, cerca de ' + t.rows + ' linhas' : 'view') : t.semContagem ? '' : 'cerca de ' + t.rows + ' linhas';
   // Papel e colunas úteis do perfil das tabelas; indefinida não acrescenta nada.
   const papel = t => {
     const p = t.perfil;
@@ -200,7 +201,7 @@ function buildMessages(o){
     + (t.nota || (t.perfil && t.perfil.descricao) ? 'colunas: ' : '');
   const col = c => limpo(c.name) + ' ' + limpo(c.type) + (c.nota ? ' (nota da TI: ' + sane(c.nota, Notas.LIMITE.campo) + ')' : '');
   // As notas da TI têm teto no prompt; passando dele, Notas.cortar tira as menos relevantes.
-  const tabs = Notas.cortar(o.tabelas, Notas.LIMITE.prompt).map(t => '- ' + pre + limpo(t.name) + ' (' + tam(t) + papel(t) + '): ' + desc(t)
+  const tabs = Notas.cortar(o.tabelas, Notas.LIMITE.prompt).map(t => '- ' + pre + limpo(t.name) + ' (' + (tam(t) + papel(t)).replace(/^; /, '') + '): ' + desc(t)
     + t.columns.map(col).join(', ')).join('\n');
   const lig = Cat.links(o.tabelas);
   const sys = [
