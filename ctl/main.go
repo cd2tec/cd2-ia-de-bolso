@@ -10,6 +10,7 @@ package main
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/agenda"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/api"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/control"
 	"github.com/cd2tec/cd2-ia-de-bolso/ctl/internal/inst"
@@ -108,9 +110,40 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	ctl := control.New(filepath.Join(*cache, "db.env"), sup)
 	ctl.BootAsync()
 	instalacao := inst.New(*root, *cache)
+	notasStore := notas.New(*cache)
+	instalada := instalacao.Info().Origem == "instalada"
+	agCtx, agStop := context.WithCancel(context.Background())
+	defer agStop()
+	agFim := make(chan struct{})
+	var ag api.Agenda
+	if motor, err := agenda.NovoMotor(filepath.Join(*root, "web")); err != nil {
+		fmt.Fprintf(stderr, "cd2-ctl: agendamento desligado (motor de consultas: %v)\n", err)
+		close(agFim)
+	} else {
+		hist := agenda.NovoHistorico(*cache)
+		agendador := agenda.NovoAgendador(agenda.Opcoes{
+			Agora: time.Now,
+			Banco: func() (notas.Banco, bool) {
+				st := ctl.Status()
+				return notas.Banco{Motor: st.Motor, Host: st.Host, Porta: st.Porta, Base: st.Base, Usuario: st.Usuario, Schema: st.Schema}, st.Motor != ""
+			},
+			Consultas: func(b notas.Banco) (json.RawMessage, error) { return notasStore.Ler(b) },
+			Consultar: agenda.NovoCliente(fmt.Sprintf("http://127.0.0.1:%d/mcp", tbPort)).Consultar,
+			Motor:     motor,
+			Hist:      hist,
+			Tick:      30 * time.Second,
+		})
+		ag = &agendaAPI{Agendador: agendador, Historico: hist, ligado: instalada}
+		if instalada {
+			go func() { defer close(agFim); agendador.Rodar(agCtx) }()
+		} else {
+			close(agFim)
+		}
+	}
 	srv := &http.Server{
 		Handler: api.Handler(api.Options{Key: key, HarnessPort: *hport, CtlPort: ctlPort, Instalacao: instalacao,
-			Notas:         notas.New(*cache),
+			Notas:         notasStore,
+			Agenda:        ag,
 			Entendimento:  notas.NewEntendimento(*cache),
 			PodeImportar:  func() bool { return instalacao.Info().Origem == "instalada" },
 			EscolherPasta: pasta.Escolher,
@@ -133,6 +166,8 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)
+	agStop() // o agendador para antes do toolbox
+	<-agFim
 	instalacao.Shutdown()
 	ctl.Shutdown()
 	fmt.Fprintln(stdout, "cd2-ctl encerrado")
@@ -155,3 +190,12 @@ func watchParent(pid int, gone, quit chan struct{}) {
 		}
 	}
 }
+
+// agendaAPI junta o agendador e o histórico na interface api.Agenda.
+type agendaAPI struct {
+	*agenda.Agendador
+	*agenda.Historico
+	ligado bool
+}
+
+func (a *agendaAPI) Ligado() bool { return a.ligado }
