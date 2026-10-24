@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +21,22 @@ func TestVersao(t *testing.T) {
 	var out bytes.Buffer
 	if code := run([]string{"--version"}, "", nil, &out, io.Discard); code != 0 || out.String() != "cd2-ctl dev\n" {
 		t.Errorf("code %d, saída %q", code, out.String())
+	}
+}
+
+func TestPastaDados(t *testing.T) {
+	mac := filepath.Join("/Users/a", "Library", "Application Support", "cd2-harness")
+	for _, c := range []struct{ dados, goos, home, quer string }{
+		{"/x/d", "darwin", "/Users/a", "/x/d"},
+		{"/x/d", "windows", `C:\u`, "/x/d"},
+		{"", "darwin", "/Users/a", mac},
+		{"", "windows", `C:\u`, "/c"},
+		{"", "linux", "/home/a", "/c"},
+		{"", "darwin", "", "/c"}, // sem HOME: fica no cache
+	} {
+		if got := pastaDados(c.dados, "/c", c.goos, c.home); got != c.quer {
+			t.Errorf("pastaDados(%q, %s, %q) = %q; quer %q", c.dados, c.goos, c.home, got, c.quer)
+		}
 	}
 }
 

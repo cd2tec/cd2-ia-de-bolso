@@ -1,7 +1,10 @@
 // cd2-ctl: controle do banco de dados da IA de Bolso da CD2. Escuta só em 127.0.0.1:P+3000,
 // é o único dono do MCP Toolbox (127.0.0.1:P+1000) e grava a conexão no db.env do cache.
 //
-// Uso: CD2_CTL_KEY=<64 hex> cd2-ctl --root <pen drive> --cache <pasta> --harness-port P [--parent-pid N]
+// Uso: CD2_CTL_KEY=<64 hex> cd2-ctl --root <pen drive> --cache <pasta> --harness-port P [--parent-pid N] [--dados <pasta>]
+//
+// --dados é onde fica o histórico dos agendamentos (historico.sqlite). Vazio: no Mac,
+// ~/Library/Application Support/cd2-harness (o ~/Library/Caches pode ser limpo); nos outros, o --cache.
 //
 // Com --parent-pid, o cd2-ctl confere a cada 2 s se o launcher ainda existe e, se ele sumiu sem
 // limpar (console do Windows fechado no X, kill -9 no Unix), encerra como se tivesse recebido TERM.
@@ -63,6 +66,7 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	root := fs.String("root", "", "raiz do pen drive")
 	cache := fs.String("cache", "", "pasta de cache deste computador (db.env e toolbox.log)")
 	hport := fs.Int("harness-port", 0, "porta do harness (P); toolbox em P+1000, controle em P+3000")
+	dados := fs.String("dados", "", "pasta do historico dos agendamentos (vazio: Application Support no Mac, o --cache nos outros)")
 	parentPID := fs.Int("parent-pid", 0, "PID do launcher: quando ele some, o cd2-ctl encerra sozinho")
 	showVersion := fs.Bool("version", false, "mostra a versao e sai")
 	if err := fs.Parse(args); err != nil {
@@ -77,7 +81,7 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 		return 2
 	}
 	if *root == "" || *cache == "" || *hport < 1 || *hport+3000 > 65535 || *parentPID < 0 {
-		fmt.Fprintln(stderr, "uso: CD2_CTL_KEY=<chave> cd2-ctl --root <pen drive> --cache <pasta> --harness-port P [--parent-pid N]")
+		fmt.Fprintln(stderr, "uso: CD2_CTL_KEY=<chave> cd2-ctl --root <pen drive> --cache <pasta> --harness-port P [--parent-pid N] [--dados <pasta>]")
 		return 2
 	}
 	if err := os.MkdirAll(*cache, 0o700); err != nil {
@@ -116,11 +120,13 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	defer agStop()
 	agFim := make(chan struct{})
 	var ag api.Agenda
+	var hist *agenda.Historico
 	if motor, err := agenda.NovoMotor(filepath.Join(*root, "web")); err != nil {
 		fmt.Fprintf(stderr, "cd2-ctl: agendamento desligado (motor de consultas: %v)\n", err)
 		close(agFim)
 	} else {
-		hist := agenda.NovoHistorico(*cache)
+		home, _ := os.UserHomeDir()
+		hist = agenda.NovoHistorico(pastaDados(*dados, *cache, runtime.GOOS, home))
 		agendador := agenda.NovoAgendador(agenda.Opcoes{
 			Agora: time.Now,
 			Banco: func() (notas.Banco, bool) {
@@ -170,10 +176,25 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 	_ = srv.Shutdown(ctx)
 	agStop() // o agendador para antes do toolbox
 	<-agFim
+	if hist != nil {
+		_ = hist.Fechar()
+	}
 	instalacao.Shutdown()
 	ctl.Shutdown()
 	fmt.Fprintln(stdout, "cd2-ctl encerrado")
 	return 0
+}
+
+// pastaDados é a pasta do histórico: --dados; senão, no Mac, Application Support (o Caches pode
+// ser limpo pelo sistema); nos outros (e sem HOME), o cache.
+func pastaDados(dados, cache, goos, home string) string {
+	switch {
+	case dados != "":
+		return dados
+	case goos == "darwin" && home != "":
+		return filepath.Join(home, "Library", "Application Support", "cd2-harness")
+	}
+	return cache
 }
 
 // watchParent fecha gone quando o processo pid deixa de existir (ou para quando quit fecha).
