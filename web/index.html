@@ -25,61 +25,64 @@ window.CD2_COR_TOPO = { claro:'#ffffff', escuro:'#2b2e35' };
 @font-face{font-family:"Manrope";font-weight:700;font-style:normal;font-display:swap;src:url(fonts/manrope-bold.woff2) format("woff2")}
 @font-face{font-family:"Manrope";font-weight:800;font-style:normal;font-display:swap;src:url(fonts/manrope-extrabold.woff2) format("woff2")}
 :root{
+  /* paleta na linha do archeo.cd2.com.br: marinho (#192898 → #1640c0) no lugar do azul elétrico */
   /* superfícies e texto (tema claro) */
-  --surface-100:#f2f2f2; --surface-raised:#ffffff; --surface-brand:#0000ff;
-  --ink:#0d1233; --ink-muted:#464a53; --ink-brand:#0000ff; --on-brand:#ffffff;
+  --surface-100:#f6f7fb; --surface-raised:#ffffff; --surface-brand:#192898;
+  --ink:#0f1430; --ink-muted:#4a5070; --ink-brand:#1640c0; --on-brand:#ffffff;
   /* ação */
-  --brand:#0000ff; --brand-hover:#0333f7; --on-primary:#ffffff;
-  --accent:#dbff2a; --on-accent:#011e80; --focus:#0000ff;
+  --brand:#1640c0; --brand-hover:#192898; --on-primary:#ffffff;
+  --brand-grad:linear-gradient(135deg,#192898,#1640c0); --brand-grad-hover:linear-gradient(135deg,#131f7a,#1838a8);
+  --accent:#e6edff; --on-accent:#192898; --focus:#1640c0;
   /* bordas */
-  --border:#a1a6ae; --border-strong:#0d1233; --border-field:#6a717f;
+  --border:#c5cbe0; --border-strong:#0f1430; --border-field:#7a82a3;
   /* paleta complementar usada aqui */
-  --blue-experience:#011e80; --blue-qwerty:#0333f7; --gray-solution:#a1a6ae;
+  --blue-experience:#192898; --blue-qwerty:#2563eb; --gray-solution:#a1a6ae;
   /* status (sempre com a palavra junto) */
-  --status-concluido:#019eff; --status-melhoria:#dbff2a; --status-desenvolvendo:#0333f7;
+  --status-concluido:#7da2ff; --status-melhoria:#a9c1ff; --status-desenvolvendo:#2563eb;
   --status-backlog:#a1a6ae; --status-atencao:#ff9900; --status-ink-escuro:#0d1233;
   /* logo */
-  --logo-ink:#0000ff; --logo-ink-tech:#210e9e;
+  --logo-ink:#1640c0; --logo-ink-tech:#192898;
   /* camadas, linhas e estados que o escuro redefine */
-  --surface-top:#ffffff; --surface-guias:#f2f2f2;
-  --line:rgba(13,18,51,.12); --line-soft:rgba(13,18,51,.08); --line-strong:rgba(13,18,51,.2);
-  --tint:rgba(13,18,51,.06); --tint-2:rgba(13,18,51,.1); --backdrop:rgba(13,18,51,.55);
-  --atencao-bg:#fff4e0; --tip-bg:#0d1233; --tip-ink:#ffffff; --ink-papel:#011e80;
+  --surface-top:#ffffff; --surface-guias:#f6f7fb;
+  --line:rgba(15,20,48,.10); --line-soft:rgba(15,20,48,.06); --line-strong:rgba(15,20,48,.18);
+  --tint:rgba(22,64,192,.06); --tint-2:rgba(22,64,192,.10); --backdrop:rgba(10,12,22,.55);
+  --atencao-bg:#fff4e0; --tip-bg:#0f1430; --tip-ink:#ffffff; --ink-papel:#192898;
   --ink-disabled:#a1a6ae; --disabled-bg:#a1a6ae; --disabled-ink:#464a53;
   --contorno-primario:transparent; /* no escuro, 1px claro em volta do botão azul para a forma aparecer no grafite */
   /* gráficos: série, eixo e as fatias da pizza */
-  --grafico-1:#0000ff; --grafico-eixo:#a1a6ae;
-  --pizza-1:#0000ff; --pizza-2:#011e80; --pizza-3:#019eff; --pizza-4:#0333f7; --pizza-5:#a1a6ae; --pizza-6:#dbff2a;
+  --grafico-1:#1640c0; --grafico-eixo:#a1a6ae;
+  --pizza-1:#1640c0; --pizza-2:#192898; --pizza-3:#7da2ff; --pizza-4:#2563eb; --pizza-5:#a1a6ae; --pizza-6:#a9c1ff;
   /* espaço, cantos, tipo */
   --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px; --space-12:48px;
   --radius-sm:6px; --radius-md:12px; --radius-lg:24px; --radius-pill:999px;
   --font-sans:"Manrope","Segoe UI",Arial,sans-serif;
   --font-mono:ui-monospace,Menlo,Consolas,monospace;
-  --shadow-card:0 4px 16px rgba(13,18,51,.08);
+  --shadow-card:0 8px 24px rgba(24,24,27,.08);
   /* bandeja do sistema no aviso de exemplo da Demonstração */
-  --bandeja-bg:#1f2126; --bandeja-menu:#2b2e35; --bandeja-ink:#f2f2f2; --bandeja-destaque:#dbff2a;
+  --bandeja-bg:#1f2126; --bandeja-menu:#2b2e35; --bandeja-ink:#f2f2f2; --bandeja-destaque:#a9c1ff;
   --bandeja-borda:transparent; --bandeja-marca:#ff3b30; --bandeja-marca-ink:#ffffff;
 }
-/* Escuro Gray Tech: os mesmos tokens, grafite derivado de #464a53/#6a717f. O JS do <head> resolve
+/* Escuro na linha do Archeo: os mesmos tokens, marinho quase preto (#0a0c16) com brilho azul no alto. O JS do <head> resolve
    "sistema" e põe data-tema no <html>. Só na tela: o impresso (PDF) fica sempre claro. */
 @media screen{
 :root[data-tema="escuro"]{
   color-scheme:dark;
-  --surface-100:#1f2126; --surface-raised:#2b2e35; --surface-brand:#0333f7;
-  --surface-top:#2b2e35; --surface-guias:#25282e;
-  --ink:#f2f2f2; --ink-muted:#a1a6ae; --ink-brand:#019eff; --on-brand:#ffffff;
-  --focus:#019eff;
-  --border:#464a53; --border-strong:#a1a6ae; --border-field:#80868f;
+  --surface-100:#0a0c16; --surface-raised:#0f1220; --surface-brand:#1640c0;
+  --surface-top:#0f1220; --surface-guias:#0c0f1b;
+  --ink:#e8ecff; --ink-muted:#b2bee4; --ink-brand:#7da2ff; --on-brand:#ffffff;
+  --focus:#7da2ff;
+  --border:#26325a; --border-strong:#b2bee4; --border-field:#444e76;
   --logo-ink:#ffffff; --logo-ink-tech:#ffffff;
-  --line:rgba(242,242,242,.14); --line-soft:rgba(242,242,242,.08); --line-strong:rgba(242,242,242,.24);
-  --tint:rgba(242,242,242,.08); --tint-2:rgba(242,242,242,.12); --backdrop:rgba(0,0,0,.65);
-  --atencao-bg:#3d3222; --tip-bg:#464a53; --tip-ink:#f2f2f2; --ink-papel:#dbff2a;
-  --ink-disabled:#7d8492; --disabled-bg:#464a53; --disabled-ink:#a1a6ae;
-  --grafico-1:#019eff; --grafico-eixo:#a1a6ae;
-  --pizza-1:#019eff; --pizza-2:#dbff2a; --pizza-3:#a1a6ae; --pizza-4:#553fe6; --pizza-5:#f2f2f2; --pizza-6:#0333f7;
-  --shadow-card:0 4px 16px rgba(0,0,0,.4); --contorno-primario:rgba(242,242,242,.24);
-  --bandeja-bg:#464a53; --bandeja-menu:#3a3e46; --bandeja-borda:rgba(242,242,242,.24);
+  --line:rgba(232,236,255,.12); --line-soft:rgba(232,236,255,.07); --line-strong:rgba(232,236,255,.22);
+  --tint:rgba(66,130,255,.10); --tint-2:rgba(66,130,255,.16); --backdrop:rgba(0,0,0,.65);
+  --atencao-bg:#3d3222; --tip-bg:#26325a; --tip-ink:#e8ecff; --ink-papel:#a9c1ff;
+  --ink-disabled:#6c76a2; --disabled-bg:#26325a; --disabled-ink:#6c76a2;
+  --grafico-1:#7da2ff; --grafico-eixo:#6c76a2;
+  --pizza-1:#7da2ff; --pizza-2:#a9c1ff; --pizza-3:#6c76a2; --pizza-4:#2563eb; --pizza-5:#e8ecff; --pizza-6:#1640c0;
+  --shadow-card:0 8px 24px rgba(0,0,0,.45); --contorno-primario:rgba(232,236,255,.22);
+  --bandeja-bg:#161c34; --bandeja-menu:#0f1220; --bandeja-borda:rgba(232,236,255,.2);
 }
+:root[data-tema="escuro"] body{background-image:radial-gradient(130% 55% at 50% -5%,rgba(37,80,215,.22) 0%,rgba(0,0,0,0) 65%);background-attachment:fixed}
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
@@ -190,8 +193,8 @@ body{background:var(--surface-100);color:var(--ink);font:400 15px/24px var(--fon
 /* ---------- botões (Button) ---------- */
 button{font:700 13px/16px var(--font-sans);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);height:44px;padding:0 var(--space-6);border-radius:var(--radius-pill);border:2px solid var(--border-strong);background:transparent;color:var(--ink);cursor:pointer;transition:background-color .15s,color .15s,border-color .15s}
 button:hover{background:var(--surface-raised)}
-button.primary{background:var(--brand);border-color:var(--brand);color:var(--on-primary);box-shadow:0 0 0 1px var(--contorno-primario)}
-button.primary:hover{background:var(--brand-hover);border-color:var(--brand-hover)}
+button.primary{background:var(--brand-grad);border-color:transparent;color:var(--on-primary);box-shadow:0 0 0 1px var(--contorno-primario)}
+button.primary:hover{background:var(--brand-grad-hover);border-color:transparent}
 button.sm{height:32px;padding:0 var(--space-4);font-size:12px}
 button:disabled{background:var(--disabled-bg);border-color:transparent;color:var(--disabled-ink);cursor:not-allowed}
 
@@ -488,9 +491,9 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 .salvas__filtro{display:flex;flex-wrap:wrap;gap:var(--space-1)}
 .salvas__filtro[hidden]{display:none}
 .salvas__filtro button{height:24px;padding:0 var(--space-3);border:0;border-radius:var(--radius-pill);background:var(--tint);color:var(--ink);font:500 11px/16px var(--font-sans)}
-.salvas__filtro button[aria-pressed=true]{background:var(--ink-brand);color:var(--on-brand);font-weight:700}
+.salvas__filtro button[aria-pressed=true]{background:var(--surface-brand);color:var(--on-brand);font-weight:700}
 .salvas__filtro button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-.salvas__bolinha{float:right;margin-left:var(--space-1);padding:1px 7px;border-radius:var(--radius-pill);background:var(--ink-brand);color:var(--on-brand);font:700 10px/14px var(--font-sans)}
+.salvas__bolinha{float:right;margin-left:var(--space-1);padding:1px 7px;border-radius:var(--radius-pill);background:var(--surface-brand);color:var(--on-brand);font:700 10px/14px var(--font-sans)}
 .salvas__relogio{display:block;margin-top:var(--space-1);font:600 11px/16px var(--font-sans);color:var(--ink-brand)}
 #agendar{width:min(660px,94vw)}
 #agendar h2,#convAgenda h2{margin-top:0;overflow-wrap:anywhere}
