@@ -81,7 +81,9 @@ const PROMPT = ' Você está no modo Demonstração: as ferramentas devolvem dad
 // (lista, numerada ou não) ou um gráfico de exemplo (grafico, com a pergunta que o geraria).
 const ROTEIRO = [
   // Primeiro: "como funciona o agendamento", "configurar", "apagar um agendamento" casariam em outras.
-  { id:'agendamento', casa:/agend|automatic|sozinh|todo dia|toda hora|de hora em hora|(no|num|em) horario|horario (certo|fixo|marcado)|notific|me avis|avis(a|e|ar) (quando|se)|monitor/,
+  // As palavras largas (sozinha, automático, todo dia) só contam junto de rodar/executar/atualizar:
+  // "aprende sozinha", "conexão automática" e "vendemos todo dia" são de outras entradas ou do modelo.
+  { id:'agendamento', casa:/agend|notific|me avis|avisar|(roda|rode|executa|atualiza)\w*\s+(\w+\s+){0,3}(sozinh|automatic|todo dia|toda hora|de hora em hora)|(todo dia|toda hora|de hora em hora)\s.*\b(rod|execut|atualiz)/,
     fecho:'o agendamento é da versão instalada no computador', blocos:[
     { p:'Na versão instalada, uma consulta salva roda **sozinha**: a cada X minutos (mínimo 5), de hora em hora, todo dia, semanal ou mensal.' },
     { lista:[
@@ -143,7 +145,7 @@ const ROTEIRO = [
     ], numerada:true },
     { p:'Cada aba vira uma tabela. Eu acho o cabeçalho sozinha, mesmo com título em cima, e deixo de fora linhas de total e abas ocultas. As planilhas não são alteradas: eu leio uma cópia. Mudou a planilha? Clique em **↻ Atualizar com o banco**, na guia Conhecimento.' }
   ] },
-  { id:'conectar', casa:/conect|configur|ligar|banco de dados|meu banco|meu erp|dados reais|de verdade/,
+  { id:'conectar', casa:/conect|conex|configur|ligar|banco de dados|meu banco|meu erp|dados reais|de verdade/,
     fecho:'o ideal é usar um usuário do banco só de leitura', blocos:[
     { p:'Para eu trabalhar com os números da sua loja, é rápido:' },
     { lista:[
@@ -252,25 +254,34 @@ function execucao(e, tipo, ref, em, extra){
   return Object.assign({ tipo, ref:ref.toISOString(), em:em.toISOString(), valores:e.params ? [dataIso(ref)] : [],
     resultado:resultadoDe(e, ref) }, extra);
 }
-function execucoes(id, agora){
+// Toda agendada, perda e erro cai num horário da agenda (no flash, de hora em hora das 08h às 20h, de
+// segunda a sábado); a manual, dentro da janela. vistos: ids cujo histórico já foi aberto (sem NOVO).
+function execucoes(id, agora, vistos){
   const e = EXEMPLOS.find(x => x.id === id);
   if(!e || !e.agenda) return [];
-  const b = ultimo(id, agora), ontem = ultimo(id, antes(inicioDoDia(b))), anteontem = ultimo(id, antes(inicioDoDia(ontem)));
   const ag = (ref, extra) => execucao(e, 'agendada', ref, new Date(Math.min(ref.getTime() + 4000, agora.getTime())), extra);
+  const s = [ultimo(id, agora)];
+  if(id === 'ex-flash') while(s.length < 5) s.push(ultimo(id, antes(s[s.length - 1])));
+  const ontem = ultimo(id, antes(inicioDoDia(s[s.length - 1]))), anteontem = ultimo(id, antes(inicioDoDia(ontem)));
   let l;
   if(id === 'ex-flash'){
-    l = [ag(b, { novo:true }),
-      execucao(e, 'manual', somaMin(b, -48), somaMin(b, -48)),
-      { tipo:'perda', ref:somaMin(b, -120).toISOString(), em:somaMin(b, -50).toISOString(), valores:[], motivo:'fechada', n:3,
-        de:somaMin(b, -240).toISOString(), ate:somaMin(b, -120).toISOString(), novo:true },
-      ag(somaMin(b, -300), { resultado:{ ok:false, erro:'Não consegui falar com o banco.' } }),
-      ag(ontem), ag(somaMin(ontem, -60)), ag(anteontem)];
+    // A manual: 12 min depois da hora cheia anterior à última agendada, ou depois do erro se a última foi às 08h.
+    const manual = s[0].getHours() > 8 ? somaMin(s[0], -48) : somaMin(s[4], 12);
+    l = [ag(s[0], { novo:true }),
+      execucao(e, 'manual', manual, manual),
+      { tipo:'perda', ref:s[1].toISOString(), em:new Date(Math.min(somaMin(s[1], 50).getTime(), agora.getTime())).toISOString(), valores:[],
+        motivo:'fechada', n:3, de:s[3].toISOString(), ate:s[1].toISOString(), novo:true },
+      ag(s[4], { resultado:{ ok:false, erro:'Não consegui falar com o banco.' } }),
+      ag(ontem), ag(ultimo(id, antes(ontem))), ag(anteontem)];
   } else {
     const manual = somaMin(inicioDoDia(ontem), 15 * 60 + 4);
-    l = [ag(b, { novo:true }), execucao(e, 'manual', manual, manual), ag(ontem), ag(anteontem)];
+    l = [ag(s[0], { novo:true }), execucao(e, 'manual', manual, manual), ag(ontem), ag(anteontem)];
   }
-  const base = id === 'ex-flash' ? 140 : 90;
-  return l.map((x, i) => Object.assign({ seq:base + l.length - i }, x));
+  // Da mais nova para a mais velha, pelo horário em que cada uma aparece (a perda no último perdido).
+  const quando = x => new Date(x.tipo === 'perda' ? x.ate : x.tipo === 'manual' ? x.em : x.ref).getTime();
+  l.sort((a, b) => quando(b) - quando(a));
+  const visto = !!(vistos && vistos.has(id)), base = id === 'ex-flash' ? 140 : 90;
+  return l.map((x, i) => { const y = Object.assign({ seq:base + l.length - i }, x); if(visto) delete y.novo; return y; });
 }
 // ▶ Rodar agora na Demonstração: execução manual na hora; da perda, referente ao último horário perdido.
 function rodar(id, agora, seq, perda){
@@ -280,13 +291,14 @@ function rodar(id, agora, seq, perda){
   return Object.assign({ seq }, execucao(e, 'manual', ref, agora));
 }
 // O aviso de exemplo do topo do histórico: a notificação do sistema e o menu do ícone na bandeja.
-function aviso(id, agora){
+// vistos: os históricos já abertos saem da contagem (a marca e o menu contam só o que falta ver).
+function aviso(id, agora, vistos){
   const e = EXEMPLOS.find(x => x.id === id);
   if(!e || !e.agenda) return null;
   const ult = execucoes(id, agora).find(x => x.tipo === 'agendada' && x.resultado.ok);
-  const ags = EXEMPLOS.filter(x => x.agenda && x.novas), total = ags.reduce((s, x) => s + x.novas, 0);
+  const ags = EXEMPLOS.filter(x => x.agenda && x.novas && !(vistos && vistos.has(x.id))), total = ags.reduce((s, x) => s + x.novas, 0);
   return { cabecalho:'Como o aviso chega', titulo:'IA de Bolso · ' + e.nome, texto:'Rodou às ' + hm(new Date(ult.ref)) + ' · ' + ult.resultado.frase,
-    hora:hm(agora), novos:total + (total === 1 ? ' resultado novo' : ' resultados novos'),
+    hora:hm(agora), n:total, novos:!total ? 'Nenhum resultado novo' : total + (total === 1 ? ' resultado novo' : ' resultados novos'),
     itens:ags.map(x => '⏰ ' + x.nome + ' (' + x.novas + ')'), nota:AVISO_NOTA };
 }
 

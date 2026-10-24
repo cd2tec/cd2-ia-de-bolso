@@ -249,12 +249,47 @@ test('rodar agora na Demonstração: execução manual na hora, depois da últim
   assert.equal(D.rodar('nao-existe', AGORA, 1), null);
 });
 
+test('execuções fictícias caem em horários da agenda, também segunda cedo e domingo', () => {
+  const ehHorario = (ag, s) => { const d = A.dataDe(s); return A.horarios(ag, new Date(d.getTime() - 60000), d).some(h => h.getTime() === d.getTime()); };
+  for(const agora of [new Date(2026, 9, 26, 9, 10), new Date(2026, 9, 25, 10, 0), new Date(2026, 9, 26, 8, 5), AGORA]){
+    for(const ex of D.exemplos(agora).filter(e => e.agenda)){
+      const l = D.execucoes(ex.id, agora), q = ex.id + ' @ ' + agora;
+      for(const e of l){
+        assert.ok(A.diaDaExecucao(e) <= agora, q);
+        if(e.tipo === 'agendada') assert.ok(ehHorario(ex.agenda, e.ref), q + ' agendada ' + e.ref);
+        if(e.tipo === 'perda'){
+          assert.ok(ehHorario(ex.agenda, e.de) && ehHorario(ex.agenda, e.ate), q + ' perda');
+          assert.equal(A.horarios(ex.agenda, new Date(A.dataDe(e.de).getTime() - 1), A.dataDe(e.ate)).length, e.n, q + ' n da perda');
+        }
+        if(e.tipo === 'manual' && ex.agenda.janela){
+          const d = A.dataDe(e.em), m = d.getHours() * 60 + d.getMinutes();
+          assert.ok(m >= 8 * 60 && m <= 20 * 60 && d.getDay() !== 0, q + ' manual ' + d);
+        }
+      }
+      // Da mais nova para a mais velha.
+      for(let i = 1; i < l.length; i++) assert.ok(A.diaDaExecucao(l[i]) <= A.diaDaExecucao(l[i - 1]) && l[i].seq < l[i - 1].seq, q);
+      assert.ok(A.agruparPorDia(l, agora).length >= 2, q);
+    }
+  }
+});
+
+test('o que já foi visto: NOVO some e o aviso conta menos', () => {
+  const vistos = new Set(['ex-flash']);
+  assert.equal(D.execucoes('ex-flash', AGORA, vistos).filter(e => e.novo).length, 0);
+  assert.equal(D.execucoes('ex-ruptura', AGORA, vistos).filter(e => e.novo).length, 1);
+  const a = D.aviso('ex-ruptura', AGORA, vistos);
+  assert.equal(a.n, 1); assert.equal(a.novos, '1 resultado novo');
+  assert.deepEqual(a.itens, ['⏰ Curva A em ruptura nas lojas (1)']);
+  const z = D.aviso('ex-flash', AGORA, new Set(['ex-flash', 'ex-ruptura']));
+  assert.equal(z.n, 0); assert.equal(z.novos, 'Nenhum resultado novo'); assert.deepEqual(z.itens, []);
+});
+
 test('aviso de exemplo: notificação e bandeja, sem nada ao vivo', () => {
   const flash = D.exemplos(AGORA).find(e => e.nome === 'Flash de vendas de hoje');
   const a = D.aviso(flash.id, AGORA);
   assert.equal(a.titulo, 'IA de Bolso · Flash de vendas de hoje');
   assert.equal(a.texto, 'Rodou às 14:00 · ' + D.execucoes(flash.id, AGORA)[0].resultado.frase);
-  assert.equal(a.novos, '3 resultados novos');
+  assert.equal(a.novos, '3 resultados novos'); assert.equal(a.n, 3);
   assert.deepEqual(a.itens, ['⏰ Flash de vendas de hoje (2)', '⏰ Curva A em ruptura nas lojas (1)']);
   assert.equal(a.cabecalho, 'Como o aviso chega');
   assert.equal(a.nota, 'Na versão instalada, cada execução avisa assim, mesmo com a janela fechada.');
@@ -268,9 +303,16 @@ test('convite do agendamento na Demonstração: texto exato', () => {
 test('roteiro: agendamento cai na resposta certa, sem roubar as outras', () => {
   for(const q of ['dá pra rodar sozinho todo dia?', 'Como funciona o agendamento?', 'Como configuro um agendamento?',
     'Dá pra rodar automático de hora em hora?', 'Você me avisa quando a ruptura aparecer?', 'Manda notificação?',
-    'Consigo monitorar as vendas toda hora?', 'Dá pra apagar um agendamento?'])
+    'Consigo atualizar as vendas toda hora?', 'Dá pra apagar um agendamento?', 'me avisa quando zerar o estoque?'])
     assert.equal((D.roteiro(q) || {}).id, 'agendamento', q);
-  for(const q of ['Qual a venda por horário hoje?', 'Mostre as vendas por hora', 'Quanto vendemos ontem?'])
+  const outras = {
+    'Ela aprende sozinha?':'aprendizado', 'Você entende o banco sozinha?':'aprendizado',
+    'A IA consegue apagar dados sozinha?':'seguranca', 'Você pode estragar meu banco sozinha?':'seguranca',
+    'A conexão com o banco é automática?':'conectar'
+  };
+  for(const [q, id] of Object.entries(outras)) assert.equal((D.roteiro(q) || {}).id, id, q);
+  for(const q of ['Qual a venda por horário hoje?', 'Mostre as vendas por hora', 'Quanto vendemos ontem?', 'Quanto vendemos todo dia?',
+    'Vendas no horário comercial', 'Quanto vendemos no horario de almoço?', 'Monitor de vendas'])
     assert.equal(D.roteiro(q), null, q);
 });
 
