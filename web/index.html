@@ -491,6 +491,25 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 #agendar{width:min(660px,94vw)}
 #agendar h2,#convAgenda h2{margin-top:0;overflow-wrap:anywhere}
 #convAgenda p{margin:0 0 var(--space-3);font:400 14px/22px var(--font-sans)}
+/* histórico do agendamento, na área da conversa */
+.hist__cab{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2);padding-bottom:var(--space-3);margin-bottom:var(--space-3);border-bottom:1px solid var(--line)}
+.hist__cab h2{margin:0;font:700 17px/24px var(--font-sans);overflow-wrap:anywhere}
+.hist__pilula{padding:3px 10px;border-radius:var(--radius-pill);background:var(--tint);color:var(--ink-brand);font:700 11px/16px var(--font-sans)}
+.hist__pilula[hidden]{display:none}
+.hist__sp{flex:1}
+.hist__dia{margin:var(--space-4) 0 var(--space-2);font:600 11px/16px var(--font-sans);letter-spacing:.5px;text-transform:uppercase;color:var(--ink-muted)}
+.hist__it{margin:0 0 var(--space-3)}
+.hist__it .answer h3:focus{outline:none}
+.hist__novo{display:inline-block;margin-left:var(--space-2);padding:1px 7px;border-radius:var(--radius-pill);background:var(--accent);color:var(--on-accent);font:700 10px/14px var(--font-sans);vertical-align:middle}
+.answer .hist__m{margin:0 0 var(--space-2);font:500 12px/18px var(--font-sans);color:var(--ink-muted)}
+.answer .hist__msg{margin:0;font:400 14px/22px var(--font-sans);white-space:normal}
+.answer.hist__perda{border:1px dashed var(--status-atencao);background:var(--atencao-bg);box-shadow:none}
+.hist__estado,.hist__rodando{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);margin:var(--space-2) 0;font:400 13px/20px var(--font-sans);color:var(--ink-muted)}
+.hist__estado:empty{display:none}
+.hist__fim{height:1px}
+button.destaque{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+button.destaque:hover{background:var(--accent);border-color:var(--on-accent)}
+button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;color:var(--disabled-ink)}
 .agd fieldset{border:0;margin:var(--space-6) 0 0;padding:0;min-width:0}
 .agd [hidden]{display:none}
 .agd legend{padding:0;margin:0 0 var(--space-2);font:600 13px/16px var(--font-sans)}
@@ -1038,6 +1057,11 @@ const st = { cfg:{}, messages:[], provider:null, tools:[], busy:false, ctl:null,
   ctlKey:null, ctlUp:false, ctlStale:false, ctlStatus:null, ctlBusy:false, dbSenhaSalva:false,
   notas:null, notasBanco:null, notasChave:null, notasErro:'',
   entendimento:null, entendimentoChave:null, entendimentoPronto:false, entendimentoDesconhecidas:[] };
+// Histórico de um agendamento aberto na área da conversa (id da consulta); a conversa fica guardada
+// em `guardados` e continua recebendo o que chegar enquanto isso (chatAtual).
+const hs = { id:null, gen:0, chave:'', token:0, guardados:null, rolagem:0, antes:0, acabou:false, carregando:false,
+  abriu:false, rodando:false, total:0, obs:null, el:null, lista:null, estado:null, primeiro:null, ultimo:null };
+const chatAtual = () => hs.id ? hs.guardados : $('#chat');
 
 /* ---------- storage (best effort) ---------- */
 const store = {
@@ -1091,7 +1115,7 @@ function splitThink(raw, reasoning){
   if(i >= 0){ think += content.slice(0, i).replace('<think>', ''); content = content.slice(i + 8); }
   return { content: content.replace(/^\s+/, ''), think: think.trim() };
 }
-function scrollDown(){ const m = $('#main'); m.scrollTop = m.scrollHeight; }
+function scrollDown(){ if(hs.id) return; const m = $('#main'); m.scrollTop = m.scrollHeight; }
 const TAG = { ok:'concluido', err:'atencao', gold:'melhoria', '':'backlog' };
 function setPill(id, cls, text){ const p = $(id); p.className = 'tag tag--' + (TAG[cls || ''] || 'backlog'); p.lastElementChild.textContent = text; p.title = text; }
 
@@ -1288,7 +1312,7 @@ function addMsg(role){
   const el = document.createElement('div'); el.className = 'msg ' + role;
   el.innerHTML = '<div class="who">' + (role === 'user' ? 'Você' : avatarSvg() + 'CD2') + '</div>';
   if(role !== 'user') el.classList.add('falando');
-  $('#chat').appendChild(el); scrollDown(); return el;
+  chatAtual().appendChild(el); scrollDown(); return el;
 }
 function addUser(text){ const el = addMsg('user'); const b = document.createElement('div'); b.className = 'body'; b.textContent = text; el.appendChild(b); }
 function newAssistant(){
@@ -1309,7 +1333,7 @@ function addToolCard(name, args){
   const el = document.createElement('details'); el.className = 'tool';
   const s = document.createElement('summary'); s.innerHTML = '<span class="spin"></span>Ferramenta <b></b>'; s.querySelector('b').textContent = name;
   const inner = document.createElement('div'); inner.className = 'inner'; inner.textContent = 'args: ' + JSON.stringify(args);
-  el.appendChild(s); el.appendChild(inner); $('#chat').appendChild(el); scrollDown();
+  el.appendChild(s); el.appendChild(inner); chatAtual().appendChild(el); scrollDown();
   return { setArgs(a){ inner.textContent = 'args: ' + JSON.stringify(a); },
     finish(result, failed){
     s.innerHTML = (failed ? '<span class="tag tag--atencao">Falhou</span> ' : '') + 'Ferramenta <b></b>'; s.querySelector('b').textContent = name;
@@ -1357,13 +1381,13 @@ async function runTurn(opts){
         }
         if(out.length > MAX_TOOL_CHARS) out = out.slice(0, MAX_TOOL_CHARS) + '\n[…resultado truncado]';
         card.finish(out, failed);
-        if(!failed && st.provider === demo){ const g = CD2Demo.grafico(c.function.name, args); if(g) $('#chat').appendChild(demoCard(g)); scrollDown(); }
+        if(!failed && st.provider === demo){ const g = CD2Demo.grafico(c.function.name, args); if(g) chatAtual().appendChild(demoCard(g)); scrollDown(); }
         st.messages.push({ role:'tool', tool_call_id:c.id, content:out });
       }
       if(step === MAX_STEPS - 1) addNote('Limite de passos de ferramentas atingido.');
     }
-    if(rot) blocosRoteiro($('#chat'), rot, true);
-    if(emDemo) $('#chat').appendChild(convite());
+    if(rot) blocosRoteiro(chatAtual(), rot, true);
+    if(emDemo) chatAtual().appendChild(convite());
   }catch(e){
     if(rot && e.name !== 'AbortError'){
       // Sem modelo, a Demonstração continua: a resposta pronta no lugar da prosa.
@@ -1601,7 +1625,14 @@ function suggestionChips(){
   for(const s of st.suggestions || []){ const b = document.createElement('button'); b.className = 'chip'; b.textContent = s; b.onclick = () => send(s); c.appendChild(b); }
   return c;
 }
+// Valores usados numa consulta salva, como a janela Rodar mostra: 'Data: 24/10/2026 · Loja: 01'.
+// Os valores já vêm normalizados do montarSql; número aparece como 1,5.
+function textoValores(ps, valores){
+  const mostra = (p, x) => p.tipo === 'data' ? dataBr(x) : p.tipo === 'datahora' ? dataHoraBr(x) : p.tipo === 'numero' ? String(x == null ? '' : x).replace('.', ',') : String(x == null ? '' : x);
+  return ps.map((p, i) => nomeParam(p, i) + ': ' + mostra(p, valores[i])).join(' · ');
+}
 // o.consulta: resultado de uma consulta salva (valores usados abaixo do título e o 👍 já como "Salva").
+// o.rolar === false: não rola a conversa (o card vai para o histórico).
 function renderAnswer(body, pergunta, r, o){
   o = o || {};
   body.innerHTML = '';
@@ -1613,16 +1644,15 @@ function renderAnswer(body, pergunta, r, o){
       : (CD2Ask.MENSAGENS[r.motivo] || CD2Ask.MENSAGENS.modelo); body.appendChild(p);
     if(r.sql) body.appendChild(sqlBox(r.sql));
     if(st.suggestions && st.suggestions.length) body.appendChild(suggestionChips());
-    scrollDown(); return;
+    if(o.rolar !== false) scrollDown();
+    return;
   }
   const card = document.createElement('div'); card.className = 'answer';
   const h = document.createElement('h3'); h.textContent = r.titulo; card.appendChild(h);
   const ps = (o.consulta && Array.isArray(o.consulta.params)) ? o.consulta.params : [];
   if(ps.length && Array.isArray(r.valores)){
     const v = document.createElement('p'); v.className = 'valores';
-    // r.valores já vem normalizado do montarSql; número aparece como a janela Rodar mostra (1,5).
-    const mostra = (p, x) => p.tipo === 'data' ? dataBr(x) : p.tipo === 'datahora' ? dataHoraBr(x) : p.tipo === 'numero' ? String(x == null ? '' : x).replace('.', ',') : String(x == null ? '' : x);
-    v.textContent = ps.map((p, i) => nomeParam(p, i) + ': ' + mostra(p, r.valores[i])).join(' · ');
+    v.textContent = textoValores(ps, r.valores);
     card.appendChild(v);
   }
   const f = document.createElement('p'); f.className = 'frase'; f.textContent = r.frase; card.appendChild(f);
@@ -1640,7 +1670,7 @@ function renderAnswer(body, pergunta, r, o){
   const bCsv = document.createElement('button'); bCsv.className = 'sm'; bCsv.textContent = 'CSV'; bCsv.onclick = () => downloadCsv(r);
   const bPdf = document.createElement('button'); bPdf.className = 'sm primary'; bPdf.textContent = 'Imprimir/PDF'; bPdf.onclick = () => printAnswer(pergunta, r);
   acts.appendChild(bCsv); acts.appendChild(bPdf); card.appendChild(acts);
-  body.appendChild(card); scrollDown();
+  body.appendChild(card); if(o.rolar !== false) scrollDown();
 }
 function downloadCsv(r){ baixarArquivo(CD2Report.fileName(new Date()), CD2Report.toCsv(r.colunas, r.todas), 'text/csv;charset=utf-8'); }
 function baixarArquivo(nome, conteudo, tipo){
@@ -2307,8 +2337,11 @@ function syncSalvas(){
   a.hidden = !on;
   $('#sAviso').hidden = !emDemo();
   if(!on || emDemo()){ sb.menu = null; sb.modo = ''; sb.erro = ''; fecharRodar(); fecharAgendar(); ag.novidades = {}; }
+  // Banco trocado ou desconectado: o histórico aberto era do banco anterior.
+  if(hs.id && (!on || emDemo() || hs.gen !== st.catalogGen || !podeSalvar())) fecharHistorico();
   if(on) renderSalvas();
   if(on && !emDemo()) pedirNovidades();
+  if(on && !emDemo() && podeSalvar()) abrirHistoricoPedido();
 }
 function renderSalvas(){
   const a = $('#salvas'); if(a.hidden) return;
@@ -2334,6 +2367,7 @@ function renderSalvas(){
   }
   if(foco && sb.focar) foco.focus();
   sb.focar = false; sb.voltar = null;
+  if(hs.id) pintarCabHistorico();
 }
 function renderExemplos(){
   $('#sFiltro').hidden = true;
@@ -2387,9 +2421,9 @@ function itemSalva(c){
     run.innerHTML = '<b></b><span></span>';
     run.querySelector('b').textContent = String(c.nome || '');
     run.querySelector('span').textContent = (VISUAL_ROTULO[c.visual] || 'tabela') + (c.criada ? ' · salva ' + dataBr(c.criada).slice(0, 5) : '');
-    run.title = 'Rodar de novo, direto no banco';
     marcasSalva(run, c);
-    run.onclick = () => clicarSalva(c);
+    // Na instalada, a consulta agendada abre o histórico; o Rodar agora fica no menu "⋯".
+    run.onclick = () => abreHistorico(c) ? abrirHistorico(c.id) : clicarSalva(c);
     const mais = document.createElement('button'); mais.type = 'button'; mais.className = 'salvas__mais'; mais.textContent = '⋯';
     mais.setAttribute('aria-label', 'Opções da consulta ' + String(c.nome || '')); mais.setAttribute('aria-expanded', String(aberto));
     mais.onclick = () => { if(aberto) fecharMenuSalva(); else abrirMenuSalva(c, 'menu'); };
@@ -2398,15 +2432,16 @@ function itemSalva(c){
     if(aberto){
       const menu = document.createElement('div'); menu.className = 'salvas__menu';
       if(sb.modo === 'apagar'){
-        const t = document.createElement('span'); t.textContent = 'Apagar esta consulta?';
+        const n = sb.contagem && sb.contagem.id === c.id ? sb.contagem.n : 0;
+        const t = document.createElement('span'); t.textContent = 'Apagar esta consulta?' + (n ? ' ' + CD2Agenda.textoApagar(n) : '');
         const sim = botaoSm('Apagar', 'primary'), nao = botaoSm('Cancelar');
         sim.onclick = () => apagarSalva(c); nao.onclick = fecharMenuSalva;
         menu.appendChild(t); menu.appendChild(sim); menu.appendChild(nao); foco = nao;
       }else{
         const rodar = botaoSm('▶ Rodar agora'), agendar = botaoSm('⏰ Agendar…'), ren = botaoSm('✎ Renomear'), ap = botaoSm('🗑 Apagar');
         rodar.disabled = st.busy;
-        rodar.onclick = () => clicarSalva(c); agendar.onclick = () => abrirAgendar(c);
-        ren.onclick = () => abrirMenuSalva(c, 'renomear'); ap.onclick = () => abrirMenuSalva(c, 'apagar');
+        rodar.onclick = () => rodarAgora(c); agendar.onclick = () => abrirAgendar(c);
+        ren.onclick = () => abrirMenuSalva(c, 'renomear'); ap.onclick = () => { abrirMenuSalva(c, 'apagar'); contarHistorico(c); };
         menu.appendChild(rodar); menu.appendChild(agendar);
         if(c.agenda || novidadesDe(c.id)){ const hist = botaoSm('🗂 Ver histórico'); hist.onclick = () => abrirHistorico(c.id); menu.appendChild(hist); }
         menu.appendChild(ren); menu.appendChild(ap); foco = rodar.disabled ? agendar : rodar;
@@ -2428,8 +2463,9 @@ async function renomearSalva(c, valor){
   renderSalvas();
 }
 async function apagarSalva(c){
+  const chave = st.notasChave || '';
   const ok = await gravarConsultas(l => l.filter(x => x.id !== c.id));
-  if(ok){ sb.menu = null; sb.modo = ''; sb.erro = ''; } else sb.erro = 'Não deu para apagar: ' + st.notasErro;
+  if(ok){ sb.menu = null; sb.modo = ''; sb.erro = ''; sb.contagem = null; apagarHistorico(chave, c.id); } else sb.erro = 'Não deu para apagar: ' + st.notasErro;
   renderSalvas();
 }
 // Clique na barra: sem parâmetros roda direto; com parâmetros, a janela com os valores da última vez.
@@ -2614,12 +2650,16 @@ async function confirmarSalvar(){
 /* agendamento das consultas salvas (web/agenda.js): marcas na barra e a janela Agendar */
 // Agendar só na versão instalada; no pen drive o "⏰ Agendar…" abre o convite. As marcas (⏰) aparecem
 // nos dois, porque a agenda vai nas notas; a bolinha das execuções não vistas, só na instalada.
-const ag = { consulta:null, gen:0, tinha:false, t:null, salvando:false, novidades:{}, genNov:-1, ultimo:0, pedindo:false };
+// pedido: o ?agenda=<id> do endereço, aberto quando o banco conectar (abrirHistoricoPedido).
+const ag = { consulta:null, gen:0, tinha:false, t:null, salvando:false, novidades:{}, genNov:-1, ultimo:0, pedindo:false,
+  pedido:(() => { try{ return new URLSearchParams(location.search).get('agenda') || null; }catch(e){ return null; } })() };
 const instalada = () => !!(inst.status && inst.status.origem === 'instalada');
 const ehParamData = p => !!p && (p.tipo === 'data' || p.tipo === 'datahora');
 const novidadesDe = id => (ag.genNov === st.catalogGen && ag.novidades[id]) || 0;
 // Relógio e bolinha de um item da barra (também usado para atualizar no lugar, sem redesenhar a lista).
+const abreHistorico = c => !!c.agenda && instalada();
 function marcasSalva(run, c){
+  run.title = abreHistorico(c) ? 'Ver o histórico do agendamento' : 'Rodar de novo, direto no banco';
   const n = novidadesDe(c.id);
   let bo = run.querySelector('.salvas__bolinha');
   if(n && !bo){ bo = document.createElement('span'); bo.className = 'salvas__bolinha'; run.insertBefore(bo, run.firstChild); }
@@ -2659,8 +2699,289 @@ async function pedirNovidades(){
   atualizarMarcas();
 }
 function tiqueAgenda(){ atualizarMarcas(); pedirNovidades(); }
-// O histórico ainda não tem tela: por enquanto o botão só fecha o menu.
-function abrirHistorico(id){ if(sb.menu === id) fecharMenuSalva(); }
+/* histórico de um agendamento, na área da conversa */
+// Abre de "🗂 Ver histórico", do clique numa consulta agendada (instalada) ou do ?agenda=<id>.
+// A conversa sai do #chat para hs.guardados e volta igual no "← Voltar para a conversa".
+const consultaDoHistorico = () => hs.id ? consultasSalvas().find(c => c.id === hs.id) || null : null;
+const MSG_SEM_CTL = 'O controle do banco não respondeu. Feche e abra a IA de Bolso pelo atalho INICIAR.';
+function abrirHistorico(id){
+  if(sb.menu === id) fecharMenuSalva();
+  const c = consultasSalvas().find(x => x.id === id);
+  if(!c || !st.ctlKey || !podeSalvar()) return;
+  irParaGuia('conversa');
+  const chat = $('#chat');
+  if(hs.id){ if(hs.obs) hs.obs.disconnect(); chat.innerHTML = ''; } // já aberto: troca de consulta, a conversa continua guardada
+  else{
+    hs.guardados = document.createDocumentFragment();
+    while(chat.firstChild) hs.guardados.appendChild(chat.firstChild);
+    hs.rolagem = $('#main').scrollTop;
+  }
+  Object.assign(hs, { id, gen:st.catalogGen, chave:st.notasChave || '', token:hs.token + 1, antes:0, acabou:false, carregando:false,
+    abriu:false, rodando:false, total:0, obs:null, primeiro:null, ultimo:null });
+  const el = document.createElement('section'); el.className = 'hist'; el.setAttribute('aria-label', 'Histórico do agendamento');
+  el.innerHTML = '<div class="hist__cab"><button type="button" class="sm hist__voltar">← Voltar para a conversa</button><h2></h2>'
+    + '<span class="hist__pilula"></span><span class="hist__sp"></span>'
+    + '<button type="button" class="sm hist__editar">✎ Editar agendamento</button><button type="button" class="sm primary hist__rodar">▶ Rodar agora</button></div>'
+    + '<div class="hist__lista"></div><p class="hist__estado" role="status"></p><div class="hist__fim"></div>';
+  el.querySelector('.hist__voltar').onclick = () => { fecharHistorico(); $('#input').focus(); };
+  el.querySelector('.hist__editar').onclick = () => { const x = consultaDoHistorico(); if(x) abrirAgendar(x); };
+  el.querySelector('.hist__rodar').onclick = () => rodarNoHistorico(0, null);
+  hs.el = el; hs.lista = el.querySelector('.hist__lista'); hs.estado = el.querySelector('.hist__estado');
+  chat.appendChild(el);
+  pintarCabHistorico();
+  $('#main').scrollTop = 0;
+  el.querySelector('.hist__voltar').focus();
+  // Mais 20 ao chegar perto do fim.
+  if(typeof IntersectionObserver !== 'undefined'){
+    hs.obs = new IntersectionObserver(es => { if(es.some(e => e.isIntersecting)) carregarHistorico(); }, { root:$('#main'), rootMargin:'0px 0px 400px 0px' });
+  }
+  carregarHistorico();
+}
+function fecharHistorico(){
+  if(!hs.id) return;
+  if(hs.obs) hs.obs.disconnect();
+  const chat = $('#chat'); chat.innerHTML = '';
+  if(hs.guardados) chat.appendChild(hs.guardados);
+  Object.assign(hs, { id:null, token:hs.token + 1, guardados:null, obs:null, el:null, lista:null, estado:null, primeiro:null, ultimo:null });
+  $('#main').scrollTop = hs.rolagem;
+}
+// Nome, frequência e botões; chamado também quando a lista da barra muda (renomeou, agendou, apagou).
+function pintarCabHistorico(){
+  const c = consultaDoHistorico();
+  if(!c) return fecharHistorico();
+  hs.el.querySelector('h2').textContent = '🗂 ' + String(c.nome || '');
+  const pl = hs.el.querySelector('.hist__pilula');
+  pl.hidden = !c.agenda;
+  pl.textContent = c.agenda ? '⏰ ' + CD2Agenda.rotuloCurto(c.agenda) + (c.agenda.ligado === false ? ' · desligado' : '') : '';
+  hs.el.querySelector('.hist__rodar').disabled = hs.rodando;
+}
+function estadoHistorico(texto, erro){
+  if(!hs.estado) return;
+  hs.estado.textContent = '';
+  if(erro) mostrarErro(hs.estado, texto); else hs.estado.textContent = texto || '';
+}
+// O cd2-ctl está noutro banco (409 em qualquer rota /agenda): fecha o histórico e avisa na conversa.
+function bancoMudouAgenda(r){
+  fecharHistorico();
+  addNote((r && r.data && r.data.erro) || 'O banco conectado mudou. Abra a tela de novo.', true);
+}
+const rotaHistorico = (chave, id) => '/agenda/historico?chave=' + encodeURIComponent(chave) + '&consulta=' + encodeURIComponent(id);
+async function carregarHistorico(){
+  if(!hs.id || hs.carregando || hs.acabou) return;
+  const tk = hs.token, primeira = !hs.antes;
+  hs.carregando = true;
+  if(primeira) estadoHistorico('Carregando o histórico…');
+  let r = null;
+  try{ r = await ctlRequest('GET', rotaHistorico(hs.chave, hs.id) + (hs.antes ? '&antes=' + hs.antes : '') + '&n=20', null, 10000); }catch(e){}
+  if(tk !== hs.token) return;
+  hs.carregando = false;
+  if(r && r.status === 409) return bancoMudouAgenda(r);
+  if(!r || r.status !== 200 || !Array.isArray(r.data.itens)){
+    return estadoHistorico('Não consegui ler o histórico: ' + ((r && r.data && r.data.erro) || MSG_SEM_CTL), true);
+  }
+  const itens = r.data.itens;
+  hs.total = Number.isInteger(r.data.total) ? r.data.total : hs.total;
+  hs.acabou = !r.data.mais || !itens.length;
+  if(itens.length) hs.antes = itens[itens.length - 1].seq;
+  desenharExecucoes(itens);
+  estadoHistorico(!hs.lista.firstChild ? 'Nenhuma execução ainda.' : '');
+  if(primeira) marcarVisto(tk);
+  // Observa de novo: se o fim ainda estiver à vista, o observador chama a próxima página.
+  if(hs.obs){ const fim = hs.el.querySelector('.hist__fim'); hs.obs.unobserve(fim); if(!hs.acabou) hs.obs.observe(fim); }
+}
+// Depois da primeira página (que já trouxe as marcas NOVO): as execuções ficam vistas e a bolinha some.
+async function marcarVisto(tk){
+  const id = hs.id;
+  let r = null;
+  try{ r = await ctlRequest('POST', '/agenda/visto', { chave:hs.chave, consulta:id }, 5000); }catch(e){}
+  if(tk !== hs.token) return;
+  if(r && r.status === 409) return bancoMudouAgenda(r);
+  if(r && r.status === 200){ delete ag.novidades[id]; atualizarMarcas(); }
+}
+// Grupo do dia: um título e uma caixa. noTopo: antes de tudo (execução que acabou de rodar).
+function grupoHistorico(rotulo, noTopo){
+  const h = document.createElement('h3'); h.className = 'hist__dia'; h.textContent = rotulo;
+  const box = document.createElement('div'); box.className = 'hist__grupo';
+  if(noTopo){ hs.lista.insertBefore(box, hs.lista.firstChild); hs.lista.insertBefore(h, box); }
+  else{ hs.lista.appendChild(h); hs.lista.appendChild(box); }
+  return { rotulo, box };
+}
+function desenharExecucoes(itens){
+  for(const g of CD2Agenda.agruparPorDia(itens, new Date())){
+    if(!hs.ultimo || hs.ultimo.rotulo !== g.rotulo){ hs.ultimo = grupoHistorico(g.rotulo, false); if(!hs.primeiro) hs.primeiro = hs.ultimo; }
+    for(const e of g.itens){
+      // Só a execução mais nova abre com o resultado à mostra.
+      const aberta = !hs.abriu && e.tipo !== 'perda';
+      if(aberta) hs.abriu = true;
+      hs.ultimo.box.appendChild(cardExecucao(e, aberta));
+    }
+  }
+}
+// Execução que acabou de rodar pelo Rodar agora do histórico: no topo, aberta.
+function execucaoNoTopo(e){
+  const rotulo = CD2Agenda.rotuloDia(CD2Agenda.diaDaExecucao(e) || new Date(), new Date());
+  if(!hs.primeiro || hs.primeiro.rotulo !== rotulo){ hs.primeiro = grupoHistorico(rotulo, true); if(!hs.ultimo) hs.ultimo = hs.primeiro; }
+  hs.abriu = true;
+  hs.primeiro.box.insertBefore(cardExecucao(e, true), hs.primeiro.box.firstChild);
+  estadoHistorico('');
+}
+// O Resultado gravado pelo cd2-ctl no formato do rodarSalva, para o renderAnswer. O SQL não é
+// gravado: sai de novo da consulta com os mesmos valores (o SQL de uma consulta salva não muda).
+function resultadoDaExecucao(e, c){
+  const r = Object.assign({}, e.resultado, { valores:Array.isArray(e.valores) ? e.valores : [] });
+  const p = CD2Ask.prepararSalva(c, r.valores, (st.dbStatus || {}).engine || 'postgres');
+  if(p.ok) r.sql = p.sql;
+  return r;
+}
+function marcaNovo(h3, e){
+  if(!e.novo) return;
+  const n = document.createElement('span'); n.className = 'hist__novo'; n.textContent = 'NOVO'; h3.appendChild(n);
+}
+function linhaHistorico(texto){ const p = document.createElement('p'); p.className = 'hist__m'; p.textContent = texto; return p; }
+function cardExecucao(e, aberta){
+  const it = document.createElement('div'); it.className = 'hist__it'; it.dataset.seq = String(e.seq);
+  const c = consultaDoHistorico() || {};
+  const ps = Array.isArray(c.params) ? c.params : [];
+  if(e.tipo === 'perda'){ it.appendChild(cardPerda(e, it)); return it; }
+  const erro = CD2Agenda.textoErroExecucao(e.resultado, CD2Ask.MENSAGENS);
+  const nome = (e.resultado && e.resultado.titulo) || String(c.nome || '');
+  const valores = ps.length && Array.isArray(e.valores) ? textoValores(ps, e.valores) : '';
+  if(!erro && aberta){ abrirResultado(it, e); return it; }
+  const card = document.createElement('div'); card.className = 'answer';
+  const h3 = document.createElement('h3'); h3.textContent = nome; marcaNovo(h3, e); card.appendChild(h3);
+  card.appendChild(linhaHistorico(CD2Agenda.textoExecucao(e) + (valores ? ' · ' + valores : '')));
+  const acts = document.createElement('div'); acts.className = 'acts';
+  if(erro){
+    const p = document.createElement('p'); p.className = 'hist__msg'; mostrarErro(p, erro); card.appendChild(p);
+    const b = botaoSm('▶ Rodar agora', 'destaque'); b.onclick = () => rodarNoHistorico(0, null); acts.appendChild(b);
+  }else{
+    const b = botaoSm('▾ Mostrar resultado'); b.setAttribute('aria-label', 'Mostrar resultado: ' + CD2Agenda.textoExecucao(e));
+    b.onclick = () => { abrirResultado(it, e); const h = it.querySelector('h3'); if(h){ h.tabIndex = -1; h.focus(); } };
+    acts.appendChild(b);
+  }
+  card.appendChild(acts); it.appendChild(card);
+  return it;
+}
+// O card normal (visual, CSV, Imprimir/PDF), com o NOVO e a linha "Rodou às…" logo abaixo do título.
+function abrirResultado(it, e){
+  const c = consultaDoHistorico(); if(!c) return;
+  it.innerHTML = '';
+  const body = document.createElement('div');
+  renderAnswer(body, String(c.nome || ''), resultadoDaExecucao(e, c), { consulta:c, rolar:false });
+  const h3 = body.querySelector('.answer h3');
+  if(h3){ marcaNovo(h3, e); h3.after(linhaHistorico(CD2Agenda.textoExecucao(e))); }
+  it.appendChild(body);
+}
+function cardPerda(e, it){
+  const card = document.createElement('div'); card.className = 'answer hist__perda';
+  const h3 = document.createElement('h3'); h3.textContent = '⚠ ' + CD2Agenda.tituloPerda(e); marcaNovo(h3, e); card.appendChild(h3);
+  const motivo = CD2Agenda.textoMotivo(e), rodada = CD2Agenda.textoRodada(e);
+  if(motivo || rodada) card.appendChild(linhaHistorico([motivo, rodada].filter(Boolean).join(' · ')));
+  if(!rodada){
+    const acts = document.createElement('div'); acts.className = 'acts';
+    const b = botaoSm('▶ Rodar agora', 'destaque'); b.setAttribute('aria-label', 'Rodar agora: ' + CD2Agenda.tituloPerda(e));
+    b.onclick = () => rodarNoHistorico(e.seq, { e, it });
+    acts.appendChild(b); card.appendChild(acts);
+  }
+  return card;
+}
+// POST /agenda/rodar: roda já, pela fila do cd2-ctl, e grava como manual. perda: o seq da perda
+// (usa o horário dela como referência dos períodos e marca a perda como rodada).
+async function pedirRodar(chave, id, perda){
+  let r;
+  try{ r = await ctlRequest('POST', '/agenda/rodar', { chave, consulta:id, perda:perda || 0 }, 25000); }
+  catch(e){ return { erro:MSG_SEM_CTL }; }
+  if(r.status === 200 && r.data && Number.isInteger(r.data.seq)) return { e:r.data };
+  return { r, status:r.status, erro:(r.data && r.data.erro) || ('O controle do banco respondeu HTTP ' + r.status + '.') };
+}
+// Rodar agora dentro do histórico: o card novo aparece no topo. No pen drive não há agendador:
+// volta para a conversa e roda como sempre.
+async function rodarNoHistorico(perda, alvo){
+  const c = consultaDoHistorico();
+  if(!c || hs.rodando) return;
+  if(!instalada()){ fecharHistorico(); return clicarSalva(c); }
+  const tk = hs.token;
+  hs.rodando = true; pintarCabHistorico();
+  hs.el.querySelectorAll('.hist__it button.destaque').forEach(b => { b.disabled = true; });
+  const aviso = document.createElement('p'); aviso.className = 'hist__rodando'; aviso.setAttribute('role', 'status');
+  aviso.innerHTML = '<span class="spin"></span> ';
+  aviso.appendChild(document.createTextNode('Rodando a consulta…'));
+  hs.lista.parentNode.insertBefore(aviso, hs.lista);
+  $('#main').scrollTop = 0;
+  const x = await pedirRodar(hs.chave, c.id, perda);
+  if(tk !== hs.token) return;
+  aviso.remove();
+  hs.rodando = false; pintarCabHistorico();
+  hs.el.querySelectorAll('.hist__it button.destaque').forEach(b => { b.disabled = false; });
+  if(x.status === 409) return bancoMudouAgenda(x.r);
+  if(!x.e) return estadoNoTopo(x.erro);
+  hs.total++;
+  execucaoNoTopo(x.e);
+  if(alvo){ alvo.e.rodada = x.e.em; alvo.it.innerHTML = ''; alvo.it.appendChild(cardPerda(alvo.e, alvo.it)); }
+  const h = hs.lista.querySelector('.hist__it h3'); if(h){ h.tabIndex = -1; h.focus(); }
+}
+function estadoNoTopo(texto){
+  const p = document.createElement('p'); p.className = 'hist__rodando'; p.setAttribute('role', 'alert'); mostrarErro(p, texto);
+  hs.lista.parentNode.insertBefore(p, hs.lista);
+  setTimeout(() => p.remove(), 15000);
+}
+// ▶ Rodar agora da barra: a agendada, na instalada, roda pelo cd2-ctl (entra no histórico como
+// manual) e o card aparece na conversa; as outras, e no pen drive, seguem o rodarSalva de sempre.
+function rodarAgora(c){
+  if(!abreHistorico(c)) return clicarSalva(c);
+  if(st.busy || !st.provider) return;
+  if(sb.menu) fecharMenuSalva();
+  rodarPeloCtl(c);
+}
+async function rodarPeloCtl(c){
+  fecharHistorico();
+  st.busy = true; st.ctl = new AbortController(); toggleBusy();
+  const sinal = st.ctl.signal;
+  const hero = $('#hero'); if(hero) hero.remove();
+  addUser('Consulta salva: ' + String(c.nome || ''));
+  const el = addMsg('assistant'), body = document.createElement('div'); body.className = 'body';
+  body.innerHTML = '<span class="spin"></span> Rodando a consulta salva…'; el.appendChild(body); scrollDown();
+  try{
+    // Parar só deixa de esperar: o cd2-ctl termina e grava no histórico do mesmo jeito.
+    const parou = new Promise(res => sinal.addEventListener('abort', () => res(null), { once:true }));
+    const x = await Promise.race([pedirRodar(st.notasChave || '', c.id, 0), parou]);
+    if(!x){ el.remove(); addNote('Interrompido. A consulta continua no cd2-ctl e entra no histórico.'); return; }
+    if(x.status === 409){ el.remove(); return bancoMudouAgenda(x.r); }
+    const erro = x.e ? CD2Agenda.textoErroExecucao(x.e.resultado, CD2Ask.MENSAGENS) : x.erro;
+    if(erro){ body.innerHTML = ''; const p = document.createElement('p'); p.textContent = erro; body.appendChild(p); scrollDown(); }
+    else renderAnswer(body, String(c.nome || ''), resultadoDaExecucao(x.e, c), { consulta:c });
+  }finally{
+    st.busy = false; st.ctl = null; toggleBusy();
+  }
+}
+// Quantas execuções o histórico tem, para a confirmação do Apagar.
+async function contarHistorico(c){
+  sb.contagem = null;
+  if(!st.ctlKey || !podeSalvar()) return;
+  let r = null;
+  try{ r = await ctlRequest('GET', rotaHistorico(st.notasChave || '', c.id) + '&n=1', null, 5000); }catch(e){}
+  if(r && r.status === 409 && hs.id) return bancoMudouAgenda(r);
+  if(!r || r.status !== 200 || !Number.isInteger(r.data.total) || sb.menu !== c.id || sb.modo !== 'apagar') return;
+  sb.contagem = { id:c.id, n:r.data.total };
+  renderSalvas();
+}
+// Depois que a consulta saiu das notas, o histórico dela vai junto (melhor esforço).
+async function apagarHistorico(chave, id){
+  if(!st.ctlKey || !chave) return;
+  try{ await ctlRequest('DELETE', rotaHistorico(chave, id), null, 5000); }catch(e){}
+}
+// ?agenda=<id> (a notificação ou a bandeja abriram a janela): com o banco conectado, abre o
+// histórico daquela consulta e tira o parâmetro do endereço (o resto fica).
+function abrirHistoricoPedido(){
+  const id = ag.pedido; if(!id) return;
+  ag.pedido = null;
+  try{
+    const p = new URLSearchParams(location.search); p.delete('agenda');
+    const q = p.toString();
+    history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
+  }catch(e){}
+  if(consultasSalvas().some(c => c.id === id)) abrirHistorico(id);
+}
 function abrirConviteAgenda(){ $('#convAgenda').showModal(); }
 
 /* janela Agendar */
@@ -2903,7 +3224,7 @@ function addNote(t, err){
   const d = document.createElement('div'); d.className = 'notice' + (err ? ' err' : '');
   if(err){ const tg = document.createElement('span'); tg.className = 'tag tag--atencao'; tg.textContent = 'Atenção'; d.appendChild(tg); }
   d.appendChild(document.createTextNode(t));
-  $('#chat').appendChild(d); scrollDown();
+  chatAtual().appendChild(d); scrollDown();
 }
 function calarAvatares(){ document.querySelectorAll('.msg.falando').forEach(m => m.classList.remove('falando')); }
 function toggleBusy(){
@@ -2913,6 +3234,7 @@ function toggleBusy(){
 }
 function send(text){
   text = (text || $('#input').value).trim(); if(!text || st.busy) return;
+  fecharHistorico();
   $('#input').value = ''; $('#input').style.height = 'auto';
   const hero = $('#hero'); if(hero) hero.remove();
   addUser(text);
@@ -2924,6 +3246,7 @@ function send(text){
 }
 // noLugar: troca só o bloco de boas-vindas (o modo mudou ao conectar) e mantém os avisos já na conversa.
 function renderHero(noLugar){
+  fecharHistorico();
   const c = $('#chat'), velho = $('#hero');
   const h = document.createElement('div'); h.className = 'hero'; h.id = 'hero';
   h.innerHTML = '<span class="eyebrow">IA local · IA de Bolso</span><h1><span class="sauda"></span> Eu sou a IA da <em>CD2</em>.</h1><p></p><span class="eyebrow sub">Experimente perguntar</span><div class="chips"></div>';

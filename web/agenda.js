@@ -326,7 +326,87 @@ function agendaDaTela(t){
   return v.ok ? { ok:true, agenda:a } : v;
 }
 
+// ---- o histórico: dias, horários e os textos de cada card ----
+const MOTIVOS = { fechada:'a IA de Bolso estava fechada', dormindo:'o computador estava dormindo',
+  outro_banco:'outro banco estava conectado', anterior:'a anterior ainda estava rodando' };
+// Horário do cd2-ctl (RFC3339 do time.Time do Go, com até 9 casas de fração) -> Date, ou null.
+function dataDe(s){
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/i.exec(String(s == null ? '' : s));
+  if(!m) return null;
+  const ms = m[7] ? +(m[7] + '00').slice(0, 3) : 0;
+  let off = 0;
+  if(m[8].toUpperCase() !== 'Z') off = (m[8][0] === '-' ? -1 : 1) * (+m[8].slice(1, 3) * 60 + +m[8].slice(4, 6));
+  const t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], ms) - off * 60000;
+  return isFinite(t) ? new Date(t) : null;
+}
+const diaNum = d => numDia(d.getFullYear(), d.getMonth(), d.getDate());
+const hm = d => pad(d.getHours()) + ':' + pad(d.getMinutes());
+const semanaHm = d => CURTOS[d.getDay()] + ' ' + hm(d);
+// 'HH:MM' no mesmo dia de base; 'sex 20:00' em outro dia.
+const momento = (d, base) => base && diaNum(d) === diaNum(base) ? hm(d) : semanaHm(d);
+
+// 'Hoje, 24/10', 'Ontem, 23/10' ou 'sex, 16/10' (com o ano quando não é o de agora).
+function rotuloDia(d, agora){
+  const dif = diaNum(agora) - diaNum(d), dm = pad(d.getDate()) + '/' + pad(d.getMonth() + 1);
+  if(dif === 0) return 'Hoje, ' + dm;
+  if(dif === 1) return 'Ontem, ' + dm;
+  return CURTOS[d.getDay()] + ', ' + dm + (d.getFullYear() !== agora.getFullYear() ? '/' + d.getFullYear() : '');
+}
+// O dia em que a execução aparece: a perda no último horário perdido, a agendada no horário dela,
+// a manual quando rodou.
+function diaDaExecucao(e){
+  if(!e) return null;
+  if(e.tipo === 'perda') return dataDe(e.ate) || dataDe(e.ref) || dataDe(e.em);
+  if(e.tipo === 'agendada') return dataDe(e.ref) || dataDe(e.em);
+  return dataDe(e.em) || dataDe(e.ref);
+}
+// Seguidas do mesmo dia num grupo, na ordem em que vieram (da mais nova para a mais velha).
+function agruparPorDia(itens, agora){
+  const out = [];
+  (itens || []).forEach(e => {
+    const d = diaDaExecucao(e), rotulo = d ? rotuloDia(d, agora) : '';
+    const ult = out[out.length - 1];
+    if(ult && ult.rotulo === rotulo) ult.itens.push(e); else out.push({ rotulo, itens:[e] });
+  });
+  return out;
+}
+// 'Rodou às 14:00 (agendada)', 'Rodou às 13:12 (manual)' ou, na manual de uma perda (a referência
+// ficou para trás), 'Rodou às 15:04 (referente a 12:00)'.
+function textoExecucao(e){
+  const ref = dataDe(e.ref), em = dataDe(e.em) || ref;
+  if(!em) return '';
+  if(e.tipo === 'agendada') return 'Rodou às ' + hm(ref || em) + ' (agendada)';
+  if(ref && em.getTime() - ref.getTime() >= 60000) return 'Rodou às ' + hm(em) + ' (referente a ' + momento(ref, em) + ')';
+  return 'Rodou às ' + hm(em) + ' (manual)';
+}
+// 'Não rodou às 12:00' ou 'Não rodou 812 vezes entre sex 20:00 e seg 07:55'.
+function tituloPerda(e){
+  const ate = dataDe(e.ate) || dataDe(e.ref), de = dataDe(e.de) || ate;
+  if(!ate) return 'Não rodou';
+  if(!(e.n > 1)) return 'Não rodou às ' + hm(ate);
+  return 'Não rodou ' + e.n + ' vezes entre ' + semanaHm(de) + ' e ' + semanaHm(ate);
+}
+function textoMotivo(e){
+  const m = e && MOTIVOS[e.motivo];
+  return m ? m.charAt(0).toUpperCase() + m.slice(1) + (e.n > 1 ? ' nesses horários.' : ' nesse horário.') : '';
+}
+// 'rodada às 15:04' quando o Rodar agora da perda já foi usado; senão null.
+function textoRodada(e){
+  const r = e && dataDe(e.rodada);
+  return r ? 'rodada às ' + momento(r, dataDe(e.ate) || dataDe(e.ref)) : null;
+}
+// Mensagem de uma execução que não deu certo (null se deu): o erro do banco, ou o texto do motivo.
+function textoErroExecucao(r, mensagens){
+  if(r && r.ok) return null;
+  return (r && r.erro) || (r && mensagens[r.motivo]) || mensagens.sql;
+}
+function textoApagar(n){
+  if(!(n > 0)) return '';
+  return 'O histórico de ' + n + (n === 1 ? ' execução' : ' execuções') + ' também será apagado.';
+}
+
 const api = { MAX_HORARIOS, validar, horarios, proximo, resumo, rotuloCurto, PERIODOS, periodosPara, valorDoParam, valoresDaExecucao, parSugerido,
-  pontaDe, agendaPadrao, textoProxima, marcaBarra, telaDaAgenda, agendaDaTela };
+  pontaDe, agendaPadrao, textoProxima, marcaBarra, telaDaAgenda, agendaDaTela,
+  dataDe, rotuloDia, diaDaExecucao, agruparPorDia, textoExecucao, tituloPerda, textoMotivo, textoRodada, textoErroExecucao, textoApagar };
 if(isNode) module.exports = api; else root.CD2Agenda = api;
 })(typeof window !== 'undefined' ? window : globalThis);

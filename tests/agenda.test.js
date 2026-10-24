@@ -199,3 +199,77 @@ test('tela de agenda semanal sem dias abre com segunda a sexta', () => {
   assert.deepEqual(t.dias, [false, true, true, true, true, true, false]);
   assert.equal(t.inicio, '2026-10-24');
 });
+
+// ---- histórico: dias, horários e textos dos cards ----
+// RFC3339 em hora local, como o cd2-ctl manda (time.Time no JSON), com ou sem nanossegundos.
+function iso(y, m, d, h, mi, frac){
+  const dt = new Date(y, m, d, h, mi), off = -dt.getTimezoneOffset(), p = n => String(n).padStart(2, '0');
+  const z = off === 0 ? 'Z' : (off > 0 ? '+' : '-') + p(Math.floor(Math.abs(off) / 60)) + ':' + p(Math.abs(off) % 60);
+  return y + '-' + p(m + 1) + '-' + p(d) + 'T' + p(h) + ':' + p(mi) + ':00' + (frac || '') + z;
+}
+test('dataDe lê o RFC3339 do cd2-ctl, com nanossegundos, Z e fuso', () => {
+  assert.deepEqual(A.dataDe(iso(2026,9,24,14,0,'.123456789')), new Date(2026,9,24,14,0,0,123));
+  assert.equal(A.dataDe('2026-10-24T17:00:00Z').getTime(), Date.UTC(2026,9,24,17,0));
+  assert.equal(A.dataDe('2026-10-24T14:00:00-03:00').getTime(), Date.UTC(2026,9,24,17,0));
+  assert.equal(A.dataDe('ontem'), null);
+  assert.equal(A.dataDe(null), null);
+});
+test('rotuloDia: Hoje, Ontem e o dia da semana', () => {
+  const agora = new Date(2026,9,24,15,0); // sábado
+  assert.equal(A.rotuloDia(new Date(2026,9,24,0,5), agora), 'Hoje, 24/10');
+  assert.equal(A.rotuloDia(new Date(2026,9,23,23,59), agora), 'Ontem, 23/10');
+  assert.equal(A.rotuloDia(new Date(2026,9,16,8,0), agora), 'sex, 16/10');
+  assert.equal(A.rotuloDia(new Date(2025,11,31,8,0), new Date(2026,0,2,8,0)), 'qua, 31/12/2025');
+});
+test('agruparPorDia junta as seguidas do mesmo dia, na ordem que vieram', () => {
+  const agora = new Date(2026,9,24,15,0);
+  const itens = [
+    { seq:5, tipo:'manual', ref:iso(2026,9,24,15,4), em:iso(2026,9,24,15,4) },
+    { seq:4, tipo:'agendada', ref:iso(2026,9,24,14,0), em:iso(2026,9,24,14,0) },
+    { seq:3, tipo:'perda', ref:iso(2026,9,23,20,0), em:iso(2026,9,24,8,0), de:iso(2026,9,23,20,0), ate:iso(2026,9,23,20,0), n:1 },
+    { seq:2, tipo:'agendada', ref:iso(2026,9,23,19,0), em:iso(2026,9,23,19,0) },
+    { seq:1, tipo:'agendada', ref:iso(2026,9,16,19,0), em:iso(2026,9,16,19,0) }
+  ];
+  const g = A.agruparPorDia(itens, agora);
+  assert.deepEqual(g.map(x => [x.rotulo, x.itens.map(e => e.seq)]), [['Hoje, 24/10', [5,4]], ['Ontem, 23/10', [3,2]], ['sex, 16/10', [1]]]);
+  assert.deepEqual(A.agruparPorDia([], agora), []);
+});
+test('textoExecucao: agendada, manual e manual de uma perda', () => {
+  assert.equal(A.textoExecucao({ tipo:'agendada', ref:iso(2026,9,24,14,0), em:iso(2026,9,24,14,0,'.5') }), 'Rodou às 14:00 (agendada)');
+  assert.equal(A.textoExecucao({ tipo:'manual', ref:iso(2026,9,24,13,12), em:iso(2026,9,24,13,12) }), 'Rodou às 13:12 (manual)');
+  assert.equal(A.textoExecucao({ tipo:'manual', ref:iso(2026,9,24,12,0), em:iso(2026,9,24,15,4) }), 'Rodou às 15:04 (referente a 12:00)');
+  assert.equal(A.textoExecucao({ tipo:'manual', ref:iso(2026,9,23,20,0), em:iso(2026,9,24,8,1) }), 'Rodou às 08:01 (referente a sex 20:00)');
+});
+test('perda: título de um horário e de vários, motivo e rodada', () => {
+  const uma = { tipo:'perda', motivo:'fechada', de:iso(2026,9,24,12,0), ate:iso(2026,9,24,12,0), ref:iso(2026,9,24,12,0), em:iso(2026,9,24,15,0), n:1 };
+  assert.equal(A.tituloPerda(uma), 'Não rodou às 12:00');
+  assert.equal(A.textoMotivo(uma), 'A IA de Bolso estava fechada nesse horário.');
+  assert.equal(A.textoRodada(uma), null);
+  assert.equal(A.textoRodada({ ...uma, rodada:iso(2026,9,24,15,4) }), 'rodada às 15:04');
+  assert.equal(A.textoRodada({ ...uma, rodada:iso(2026,9,26,9,30) }), 'rodada às seg 09:30');
+  const varias = { tipo:'perda', motivo:'dormindo', de:iso(2026,9,23,20,0), ate:iso(2026,9,26,7,55), ref:iso(2026,9,26,7,55), em:iso(2026,9,26,8,0), n:812 };
+  assert.equal(A.tituloPerda(varias), 'Não rodou 812 vezes entre sex 20:00 e seg 07:55');
+  assert.equal(A.textoMotivo(varias), 'O computador estava dormindo nesses horários.');
+  assert.equal(A.textoMotivo({ motivo:'outro_banco', n:1 }), 'Outro banco estava conectado nesse horário.');
+  assert.equal(A.textoMotivo({ motivo:'anterior', n:1 }), 'A anterior ainda estava rodando nesse horário.');
+  assert.equal(A.textoMotivo({ motivo:'xyz', n:1 }), '');
+});
+test('a perda fica no dia do horário perdido', () => {
+  const p = { tipo:'perda', de:iso(2026,9,23,20,0), ate:iso(2026,9,23,21,0), ref:iso(2026,9,23,21,0), em:iso(2026,9,24,8,0), n:2 };
+  assert.deepEqual(A.diaDaExecucao(p), new Date(2026,9,23,21,0));
+});
+test('textoErroExecucao: erro do banco, motivo conhecido ou null quando deu certo', () => {
+  const M = { sql:'Não consegui montar essa consulta.', vazio:'A consulta não trouxe nenhuma linha.', timeout_front:'Passou de 15 s.' };
+  assert.equal(A.textoErroExecucao({ ok:true }, M), null);
+  assert.equal(A.textoErroExecucao({ ok:false, motivo:'sql', erro:'relation "x" does not exist' }, M), 'relation "x" does not exist');
+  assert.equal(A.textoErroExecucao({ ok:false, erro:'dial tcp: connection refused' }, M), 'dial tcp: connection refused');
+  assert.equal(A.textoErroExecucao({ ok:false, motivo:'vazio' }, M), 'A consulta não trouxe nenhuma linha.');
+  assert.equal(A.textoErroExecucao({ ok:false, motivo:'timeout_front' }, M), 'Passou de 15 s.');
+  assert.equal(A.textoErroExecucao({ ok:false }, M), 'Não consegui montar essa consulta.');
+  assert.equal(A.textoErroExecucao(null, M), 'Não consegui montar essa consulta.');
+});
+test('textoApagar: aviso do histórico só quando há execuções', () => {
+  assert.equal(A.textoApagar(0), '');
+  assert.equal(A.textoApagar(1), 'O histórico de 1 execução também será apagado.');
+  assert.equal(A.textoApagar(812), 'O histórico de 812 execuções também será apagado.');
+});
