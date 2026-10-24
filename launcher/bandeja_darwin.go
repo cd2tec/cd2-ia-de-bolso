@@ -2,13 +2,19 @@ package main
 
 /*
 #cgo CFLAGS: -x objective-c -fobjc-arc
-#cgo LDFLAGS: -framework Cocoa
+#cgo LDFLAGS: -framework Cocoa -framework UserNotifications
+#include <stdlib.h>
 void agendarNaThreadPrincipal(void);
 void trazerParaFrente(void);
+void notificar(const char *titulo, const char *texto, const char *consulta);
 */
 import "C"
 
-import "fyne.io/systray"
+import (
+	"unsafe"
+
+	"fyne.io/systray"
+)
 
 // No Mac o X da janela só esconde (HideWindowOnClose); o OnBeforeClose é o
 // app saindo de verdade (Cmd+Q, logout).
@@ -70,5 +76,23 @@ func fecharBandeja() {}
 // No Mac a marca é o número ao lado do ícone (SetTitle), não um desenho.
 const marcaNoIcone = false
 
-// notificar mostra o aviso de um agendamento. Fica para a Tarefa 11.
-func notificar(titulo, texto, consulta string) {}
+// notificar mostra o aviso de um agendamento na Central de Notificações. O
+// clique volta por notificacaoClicada.
+func notificar(titulo, texto, consulta string) {
+	ct, cx, cc := C.CString(titulo), C.CString(texto), C.CString(consulta)
+	defer C.free(unsafe.Pointer(ct))
+	defer C.free(unsafe.Pointer(cx))
+	defer C.free(unsafe.Pointer(cc))
+	C.notificar(ct, cx, cc)
+}
+
+// notificacaoClicada é o clique numa notificação: abre o histórico do
+// agendamento.
+//
+//export notificacaoClicada
+func notificacaoClicada(consulta *C.char) {
+	c := C.GoString(consulta)
+	if appBandeja != nil && c != "" {
+		go appBandeja.abrirAgenda(c) // fora da thread principal: pode falar com o Wails
+	}
+}

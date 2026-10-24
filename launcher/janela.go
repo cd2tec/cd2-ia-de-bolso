@@ -291,7 +291,7 @@ func (a *App) chamar() {
 func (a *App) AbrirConversa() error { return a.s.AbrirConversa() }
 
 // abrirAgenda abre a conversa já no histórico do agendamento (a linha do
-// menu e, na Tarefa 11, o clique na notificação). Só com a IA acordada.
+// menu e o clique na notificação). Só com a IA acordada.
 func (a *App) abrirAgenda(consulta string) {
 	e := a.s.Atual()
 	if e.Fase != sessao.Pronta {
