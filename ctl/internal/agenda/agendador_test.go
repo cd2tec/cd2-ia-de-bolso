@@ -720,7 +720,7 @@ func TestBancoNaoFicouPronto(t *testing.T) {
 	f := novoAmbiente()
 	f.por("c1", "Vendas", as14)
 	f.pronto = func() bool {
-		f.agora = func() time.Time { return dia(26, 14, 2) } // passou a folga esperando (f.mu já está preso)
+		f.relogio(func() time.Time { return dia(26, 14, 2) }) // passou a folga esperando
 		return false
 	}
 	a := novoAgendador(t, f)
