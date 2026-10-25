@@ -499,7 +499,8 @@ button.aviso:hover{background:#e68a00;border-color:#e68a00}
 #agendar h2,#convAgenda h2{margin-top:0;overflow-wrap:anywhere}
 #convAgenda p{margin:0 0 var(--space-3);font:400 14px/22px var(--font-sans)}
 /* histórico do agendamento, na área da conversa */
-.hist__cab{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2);padding-bottom:var(--space-3);margin-bottom:var(--space-3);border-bottom:1px solid var(--line)}
+/* o cabeçalho fica à vista ao rolar, colado no topo (acima do padding do main): o "← Voltar para a conversa" não some */
+.hist__cab{position:sticky;top:calc(-1 * var(--space-8));z-index:2;display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2);padding:var(--space-3) 0;margin:calc(-1 * var(--space-3)) 0 var(--space-3);border-bottom:1px solid var(--line);background:var(--surface-100)}
 .hist__cab h2{margin:0;font:700 17px/24px var(--font-sans);overflow-wrap:anywhere}
 .hist__pilula{padding:3px 10px;border-radius:var(--radius-pill);background:var(--tint);color:var(--ink-brand);font:700 11px/16px var(--font-sans)}
 .hist__pilula[hidden]{display:none}
@@ -3827,6 +3828,8 @@ $('#bSend').onclick = () => send();
 $('#bStop').onclick = () => st.ctl && st.ctl.abort();
 $('#bNew').onclick = newChat;
 for(const k in GUIAS) $(GUIAS[k][0]).onclick = () => irParaGuia(k);
+// Com o histórico de um agendamento aberto, a guia Conversa também volta para a conversa.
+$('#gConversa').onclick = () => { if(guiaAtual === 'conversa' && hs.id){ fecharHistorico(); $('#input').focus(); } else irParaGuia('conversa'); };
 $('#guias').addEventListener('keydown', teclaGuias);
 $('#nBusca').addEventListener('input', renderListaNotas);
 $('#nExportar').onclick = exportarNotas;
