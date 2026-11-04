@@ -48,10 +48,25 @@ func abrirRegistro(args []string) {
 	if err != nil {
 		return
 	}
-	log.SetOutput(io.MultiWriter(os.Stderr, f))
+	log.SetOutput(saidaRegistro(f, os.Stderr))
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 	log.Printf("==== instalador %s, %s/%s, pid %d, admin=%v, args=%q",
 		versao, goruntime.GOOS, goruntime.GOARCH, os.Getpid(), elevacao.Elevado(), args)
+}
+
+// saidaRegistro escreve no arquivo e, de brinde, no stderr. Não dá para usar
+// io.MultiWriter: ele para no primeiro erro, e no exe de janela do Windows o
+// stderr não tem console e toda escrita falha (o log saía vazio).
+func saidaRegistro(arquivo, stderr io.Writer) io.Writer {
+	return registro{arquivo: arquivo, stderr: stderr}
+}
+
+type registro struct{ arquivo, stderr io.Writer }
+
+func (r registro) Write(p []byte) (int, error) {
+	n, err := r.arquivo.Write(p)
+	_, _ = r.stderr.Write(p)
+	return n, err
 }
 
 // detalheDoErro escreve a cadeia inteira do erro: a frase que a tela mostra
