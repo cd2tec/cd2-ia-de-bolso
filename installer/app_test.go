@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -187,4 +189,13 @@ func TestGravarSemPastaDeCacheDevolveErro(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.esperarFim(t)
+}
+
+func TestDetalheDoErroMostraACausa(t *testing.T) {
+	causa := errors.New("acesso negado ao registro")
+	err := &gravar.Erro{Frase: "Não deu certo. Tente de novo.", Causa: fmt.Errorf("registrar: %w", causa)}
+	d := detalheDoErro(err)
+	if !strings.Contains(d, "acesso negado ao registro") || !strings.Contains(d, "Não deu certo") {
+		t.Fatalf("detalhe sem a causa: %s", d)
+	}
 }

@@ -26,6 +26,7 @@ function backendWails(){
     abrirIA: () => A.AbrirIA(),
     minhaChave: () => A.MinhaChave(),
     copiar: t => window.runtime.ClipboardSetText(t),
+    abrirRegistro: () => A.AbrirRegistro(),
   };
 }
 
@@ -258,7 +259,7 @@ const telas = {
     montar: e => '<div class="final"><div class="selo erro">' + ICONE_ERRO + '</div>'
       + '<h1 tabindex="-1">Não deu certo</h1>'
       + '<p class="texto">' + esc(e.frase) + '</p></div>'
-      + '<div class="acoes"><button type="button" class="btn primario" data-acao="outro">Tentar de novo</button></div>',
+      + '<div class="acoes">' + LINK_REGISTRO + '<button type="button" class="btn primario" data-acao="outro">Tentar de novo</button></div>',
     atualizar: () => {},
   },
   plugue: {
@@ -304,7 +305,7 @@ const telas = {
     montar: e => '<div class="final"><div class="selo erro">' + ICONE_ERRO + '</div>'
       + '<h1 tabindex="-1">Não deu certo</h1>'
       + '<p class="texto">' + esc(e.frase) + '</p></div>'
-      + '<div class="acoes"><button type="button" class="btn primario" data-acao="outro">Tentar de novo</button></div>',
+      + '<div class="acoes">' + LINK_REGISTRO + '<button type="button" class="btn primario" data-acao="outro">Tentar de novo</button></div>',
     atualizar: () => {},
   },
 };
@@ -424,6 +425,13 @@ function buscarMinhaChave(){
   Promise.resolve(backend.minhaChave()).then(k => despachar({ tipo: 'minhaChave', chave: k || '' })).catch(() => {});
 }
 
+// Nas telas de erro: abre a pasta com o instalador.log, para mandar ao suporte.
+const LINK_REGISTRO = '<button type="button" class="link" data-acao="abrirRegistro">Ver o registro do erro</button>';
+
+function abrirRegistro(){
+  Promise.resolve(backend.abrirRegistro && backend.abrirRegistro()).catch(err => alert(fraseDoErro(err)));
+}
+
 const fraseDoErro = err => String((err && err.message) || err || 'Não deu certo. Tente de novo.');
 
 // Escolher instalar: no Windows como administrador, o Go reabre o instalador sem administrador e
@@ -534,6 +542,7 @@ document.addEventListener('click', ev => {
   else if(acao === 'colarOk') colarChave(b);
   else if(acao === 'abrirIA') abrirIA(b);
   else if(acao === 'copiar') copiarChave(b);
+  else if(acao === 'abrirRegistro') abrirRegistro();
   else despachar({ tipo: acao });
 });
 

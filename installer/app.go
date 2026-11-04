@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	goruntime "runtime"
 	"sync"
@@ -134,12 +135,18 @@ func (a *App) Gravar(d discos.Disco) error {
 // "fim" no final.
 func (a *App) rodar(ctx context.Context, cancel context.CancelFunc, trabalho func(context.Context, func(gravar.Evento)) error) {
 	var ultimo gravar.Evento
+	log.Printf("começou")
 	err := trabalho(ctx, func(e gravar.Evento) {
+		// Só a troca de etapa: o andamento chega várias vezes por segundo.
+		if e.Etapa != ultimo.Etapa {
+			log.Printf("etapa %s: %s", e.Etapa, e.Frase)
+		}
 		ultimo = e
 		a.emitir(a.ctx, "progresso", e)
 	})
 	fim := Fim{Ok: err == nil}
 	if err != nil {
+		log.Printf("falhou na etapa %q: %s", ultimo.Etapa, detalheDoErro(err))
 		var ge *gravar.Erro
 		if errors.As(err, &ge) && ge.Frase != "" {
 			fim.Frase = ge.Error()
@@ -153,6 +160,7 @@ func (a *App) rodar(ctx context.Context, cancel context.CancelFunc, trabalho fun
 			fim.Aviso = ultimo.Frase
 		}
 	}
+	log.Printf("terminou: ok=%v, frase=%q", fim.Ok, fim.Frase)
 	// Libera antes de avisar a tela, para "Gravar outro" funcionar na hora.
 	a.mu.Lock()
 	a.cancelar = nil
