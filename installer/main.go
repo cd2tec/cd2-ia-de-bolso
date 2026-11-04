@@ -25,6 +25,7 @@ func main() {
 	if servirAjudante(os.Args[1:]) {
 		return
 	}
+	abrirRegistro(os.Args[1:])
 	app := NovaApp()
 	app.iniciarComArgs(os.Args[1:])
 	err := wails.Run(&options.App{
