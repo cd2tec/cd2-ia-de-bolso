@@ -30,7 +30,7 @@ jobs:
   # Go fixado em 1.23.x pelo mesmo motivo dos instaladores (o CLI do Wails 2.10.1 não compila com o Go mais novo).
   lancador-mac:
     needs: guarda-chave
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -193,7 +193,7 @@ jobs:
   # por isso o Go fica fixado em 1.23.x nestes dois jobs.
   instalador-mac:
     needs: zip
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
