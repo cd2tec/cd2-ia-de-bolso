@@ -27,6 +27,48 @@ const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'o
 const TEMPO_NOME_RE = /^(mes|month|ano|year|dia|day|data|date|periodo|semana|week|trimestre)/i;
 const TEMPO_VALOR_RE = /^\d{4}-\d{2}(-\d{2})?([ T].*)?$|^\d{1,2}\/\d{4}$|^\d{1,2}\/\d{1,2}\/\d{4}$|^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*[\/ -]?\d{2,4}$/i;
 
+// SQL Server: o go-mssqldb entrega DECIMAL, NUMERIC, MONEY e SMALLMONEY como []byte e o toolbox repassa
+// sem converter, então o json.Marshal do Go os escreve em base64 ("1234.5000" vira "MTIzNC41MDAw").
+// Desfazemos isso aqui, no ponto único por onde todo resultado do banco passa (tela, consultas salvas e
+// agenda do cd2-ctl). Base64 em JS puro: o goja do cd2-ctl não tem atob.
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const B64_RE = /^[A-Za-z0-9+/]{2,}={0,2}$/;
+const DECIMAL_RE = /^-?\d+(\.\d+)?$/;
+function base64Texto(s){
+  let out = '', bits = 0, n = 0;
+  for(let i = 0; i < s.length && s[i] !== '='; i++){
+    bits = ((bits << 6) | B64.indexOf(s[i])) & 0xFFFFFF; n += 6;
+    if(n >= 8){ n -= 8; out += String.fromCharCode((bits >> n) & 255); }
+  }
+  return out;
+}
+// Texto decimal que estava escondido num base64 válido, ou null se o valor não é isso.
+function decimalDeBase64(v){
+  if(typeof v !== 'string' || v.length % 4 !== 0 || !B64_RE.test(v)) return null;
+  const d = base64Texto(v);
+  return DECIMAL_RE.test(d) ? d : null;
+}
+// Só desfaz a coluna inteira: todo valor preenchido (não nulo, não vazio) tem de ser base64 de decimal.
+// Uma coluna de texto de verdade nunca passa nisso. Até 15 dígitos vira número (exato em Number);
+// acima disso fica o texto, para não perder dígito.
+function desfazDecimais(rows){
+  const cols = [];
+  for(const r of rows) for(const c of Object.keys(r)) if(!cols.includes(c)) cols.push(c);
+  for(const c of cols){
+    const dec = [];
+    let ok = false;
+    for(const r of rows){
+      const v = r[c];
+      if(v == null || v === ''){ dec.push(undefined); continue; }
+      const d = decimalDeBase64(v);
+      if(d == null){ ok = false; break; }
+      dec.push(d); ok = true;
+    }
+    if(!ok) continue;
+    rows.forEach((r, i) => { const d = dec[i]; if(d !== undefined) r[c] = d.replace(/\D/g, '').length <= 15 ? Number(d) : d; });
+  }
+  return rows;
+}
 function parseRows(text){
   const s = String(text == null ? '' : text);
   const t = s.trim();
@@ -36,15 +78,15 @@ function parseRows(text){
   const bad = { ok:false, error:'Resposta inesperada do banco: ' + t.slice(0, 200) };
   try{
     const j = JSON.parse(t);
-    if(Array.isArray(j)) return { ok:true, rows:j.filter(obj) };
-    return obj(j) ? { ok:true, rows:[j] } : bad;
+    if(Array.isArray(j)) return { ok:true, rows:desfazDecimais(j.filter(obj)) };
+    return obj(j) ? { ok:true, rows:desfazDecimais([j]) } : bad;
   }catch(e){}
   const rows = [];
   for(const line of t.split(/\r?\n/)){
     if(!line.trim()) continue;
     try{ const j = JSON.parse(line); if(!obj(j)) return bad; rows.push(j); }catch(e){ return bad; }
   }
-  return { ok:true, rows };
+  return { ok:true, rows:desfazDecimais(rows) };
 }
 function parseModelJson(text){
   let s = String(text == null ? '' : text);
