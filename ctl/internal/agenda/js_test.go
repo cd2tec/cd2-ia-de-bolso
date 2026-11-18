@@ -155,6 +155,22 @@ func TestResultadoFrase(t *testing.T) {
 	}
 }
 
+// SQL Server entrega DECIMAL em base64 (go-mssqldb []byte -> json). O goja não tem atob: o ask.js
+// desfaz isso em JS puro, e a agenda precisa ver o número, não "MTIzNC41MDAw".
+func TestResultadoDecimalEmBase64(t *testing.T) {
+	m := novoMotor(t)
+	r, err := m.Resultado(consultaComData(t, nil), `[{"loja":"A","total":"MTIzNC41MDAw"},{"loja":"B","total":"MTAuMDAwMA=="}]`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.Ok || len(r.Todas) != 2 || r.Todas[0]["total"] != 1234.5 || r.Todas[1]["total"] != 10.0 {
+		t.Fatalf("Resultado = %+v", r)
+	}
+	if r.Frase != "Maior: A, 1.234,5. Total: 1.244,5 em 2 categorias." {
+		t.Errorf("Frase = %q", r.Frase)
+	}
+}
+
 func TestResultadoVazio(t *testing.T) {
 	m := novoMotor(t)
 	r, err := m.Resultado(consultaComData(t, nil), "[]", nil)

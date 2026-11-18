@@ -137,6 +137,48 @@ test('parseRows: ERRO com espaços antes', () => {
   assert.deepEqual(A.parseRows('  ERRO: x'), { ok:false, error:'x' });
 });
 
+// SQL Server: o go-mssqldb entrega DECIMAL/NUMERIC/MONEY como []byte e o toolbox repassa sem converter,
+// então o json.Marshal do Go os escreve em base64 ("1234.5000" -> "MTIzNC41MDAw").
+test('parseRows: DECIMAL do SQL Server chega em base64 e volta número', () => {
+  const b64 = s => Buffer.from(s).toString('base64');
+  assert.equal(b64('1234.5000'), 'MTIzNC41MDAw');
+  const txt = JSON.stringify([
+    { produto:'Produto A', quantidade:'MTIzNC41MDAw' },
+    { produto:'Produto B', quantidade:b64('98.0000') },
+    { produto:'Produto C', quantidade:b64('385.2500') }
+  ]);
+  assert.deepEqual(A.parseRows(txt).rows, [
+    { produto:'Produto A', quantidade:1234.5 },
+    { produto:'Produto B', quantidade:98 },
+    { produto:'Produto C', quantidade:385.25 }
+  ]);
+});
+
+test('parseRows: base64 de decimal negativo, zero e MONEY; NULL não atrapalha a coluna', () => {
+  const b64 = s => Buffer.from(s).toString('base64');
+  const r = A.parseRows(JSON.stringify([{ v:b64('-1.5000') }, { v:b64('0.00') }, { v:null }, { v:b64('12') }]));
+  assert.deepEqual(r.rows, [{ v:-1.5 }, { v:0 }, { v:null }, { v:12 }]);
+});
+
+test('parseRows: texto que só parece base64 não é mexido (coluna toda precisa decodificar para número)', () => {
+  const b64 = s => Buffer.from(s).toString('base64');
+  // "MTIz" decodifica para 123, mas a coluna tem outro valor que não é número: é texto de verdade
+  const misto = [{ cod:'MTIz' }, { cod:'ABC-9' }];
+  assert.deepEqual(A.parseRows(JSON.stringify(misto)).rows, misto);
+  // texto comum, códigos numéricos e datas ficam como vieram
+  const comum = [{ ean:'7891234567895', nome:'Maçã', dia:'2026-10-24', n:5 }];
+  assert.deepEqual(A.parseRows(JSON.stringify(comum)).rows, comum);
+  // base64 que decodifica para texto não numérico
+  const txt = [{ s:b64('olá mundo') }];
+  assert.deepEqual(A.parseRows(JSON.stringify(txt)).rows, txt);
+});
+
+test('parseRows: decimal grande demais para Number fica como texto, sem perder dígito', () => {
+  const b64 = s => Buffer.from(s).toString('base64');
+  const r = A.parseRows(JSON.stringify([{ v:b64('12345678901234567890.1234') }]));
+  assert.deepEqual(r.rows, [{ v:'12345678901234567890.1234' }]);
+});
+
 const Cat = require('../web/catalog.js');
 const CAT2 = Cat.buildCatalog([
   { table_name:'venda', table_type:'TABLE', num_rows:100, column_name:'dt_venda', data_type:'date', ordinal:1 },
