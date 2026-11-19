@@ -428,11 +428,12 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 	} else if errors.Is(err, ErrSemConsulta) || errors.Is(err, ErrBancoMudou) {
 		return Execucao{}, err
 	}
+	jul := a.julgar(it, c, res) // antes do Anexar: a base é só das execuções anteriores
 	tipo := "agendada"
 	if it.manual {
 		tipo = "manual"
 	}
-	e, err := a.o.Hist.Anexar(it.chave, it.id, Execucao{Tipo: tipo, Ref: it.ref, Em: agoraDe(a.o.Agora()), Valores: valores, Resultado: &res})
+	e, err := a.o.Hist.Anexar(it.chave, it.id, Execucao{Tipo: tipo, Ref: it.ref, Em: agoraDe(a.o.Agora()), Valores: valores, Resultado: &res, Julgamento: jul})
 	if err != nil {
 		return e, err
 	}
@@ -441,10 +442,36 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 			return e, err
 		}
 	}
-	if !it.manual {
-		a.avisar(c.id, "IA de Bolso · "+c.nome, "Rodou às "+it.ref.In(time.Local).Format("15:04")+" · "+textoDoResultado(res))
+	if !it.manual && (jul == nil || jul.Aviso) {
+		a.avisar(c.id, "IA de Bolso · "+c.nome, "Rodou às "+it.ref.In(time.Local).Format("15:04")+" · "+textoDoAviso(res, jul))
 	}
 	return e, nil
+}
+
+// julgar confere a condição da consulta (web/condicao.js). Sem condição, ou se a conferência
+// falhar (histórico ou motor), nil: a execução avisa como antes, para o alerta não sumir calado.
+func (a *Agendador) julgar(it item, c consulta, res Resultado) *Julgamento {
+	if !TemCondicao(c.raw) {
+		return nil
+	}
+	ants, err := a.o.Hist.Anteriores(it.chave, it.id, MaxBase)
+	if err != nil {
+		return nil
+	}
+	j, err := a.o.Motor.Julgar(c.raw, res, ants)
+	if err != nil {
+		return nil
+	}
+	return j
+}
+
+// textoDoAviso: a frase da condição quando ela disparou ou quando a consulta deu certo mas a
+// condição não pôde ser conferida (coluna que sumiu); nos outros casos, o texto de sempre.
+func textoDoAviso(r Resultado, j *Julgamento) string {
+	if j != nil && j.Texto != "" && (j.Disparou || r.Ok) {
+		return j.Texto
+	}
+	return textoDoResultado(r)
 }
 
 // esperarPronto espera o toolbox ficar pronto (ele ainda pode estar subindo logo depois de

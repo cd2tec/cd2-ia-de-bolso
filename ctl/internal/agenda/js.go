@@ -19,14 +19,14 @@ import (
 var intlJS string
 
 // modulos são os arquivos de web/, na ordem em que um só pode exigir os anteriores.
-var modulos = []string{"chart", "catalog", "notas", "toolbox", "consultas", "ask", "agenda"}
+var modulos = []string{"chart", "catalog", "notas", "toolbox", "consultas", "ask", "agenda", "condicao"}
 
 // cola liga o Go aos mesmos prepararSalva e resultadoSalva que o rodarSalva (ask.js) usa antes e
 // depois do runSql, e aos horários da agenda. Tudo entra e sai como JSON; datas em ms Unix.
 // Sem tela, o motivo da recusa vai em erro: o texto do guardSql, ou o erro que o banco devolveu.
 const cola = `(function(g){
 "use strict";
-const Ask = g.__mod['./ask.js'], Tb = g.__mod['./toolbox.js'], Ag = g.__mod['./agenda.js'];
+const Ask = g.__mod['./ask.js'], Tb = g.__mod['./toolbox.js'], Ag = g.__mod['./agenda.js'], Cond = g.__mod['./condicao.js'];
 g.__cd2 = {
   horarios(cj, de, ate){
     const c = JSON.parse(cj), a = c && c.agenda;
@@ -50,6 +50,10 @@ g.__cd2 = {
     const out = Ask.resultadoSalva(JSON.parse(cj), r, valores, '');
     if(!r.ok && !r.timeout) out.erro = r.error;
     return JSON.stringify(out);
+  },
+  julgar(cj, rj, aj){
+    const c = JSON.parse(cj), cond = c && c.agenda ? c.agenda.condicao : null;
+    return JSON.stringify(Cond.julgar(cond == null ? null : cond, JSON.parse(rj), JSON.parse(aj)));
   }
 };
 })(globalThis);`
@@ -85,6 +89,38 @@ type Resultado struct {
 	Linhas  []map[string]any `json:"linhas,omitempty"`
 	Todas   []map[string]any `json:"todas,omitempty"`
 	Aviso   string           `json:"aviso,omitempty"`
+}
+
+// Julgamento é o que web/condicao.js (julgar) decidiu sobre uma execução de consulta com condição.
+// Aviso diz se a execução notifica e conta como novidade; Disparou, se a regra bateu. Valor, Base e
+// Variacao (em %) vêm quando a condição foi conferida; Texto é a frase do aviso e do card.
+type Julgamento struct {
+	Avaliada bool     `json:"avaliada"`
+	Disparou bool     `json:"disparou"`
+	Aviso    bool     `json:"aviso"`
+	Motivo   string   `json:"motivo,omitempty"`
+	Valor    *float64 `json:"valor,omitempty"`
+	Base     *float64 `json:"base,omitempty"`
+	Variacao *float64 `json:"variacao,omitempty"`
+	N        int      `json:"n,omitempty"`
+	Texto    string   `json:"texto"`
+}
+
+// MaxBase é quantas execuções anteriores o agendador lê para a base da condição (o MAX_N do JS).
+const MaxBase = 30
+
+// TemCondicao diz se a consulta salva tem agenda.condicao.
+func TemCondicao(consulta json.RawMessage) bool {
+	var c struct {
+		Agenda *struct {
+			Condicao json.RawMessage `json:"condicao"`
+		} `json:"agenda"`
+	}
+	if json.Unmarshal(consulta, &c) != nil || c.Agenda == nil {
+		return false
+	}
+	t := string(c.Agenda.Condicao)
+	return t != "" && t != "null"
 }
 
 // NovoMotor avalia os módulos de webDir na ordem de modulos. Cada um roda com module/exports
@@ -190,4 +226,25 @@ func (m *Motor) Resultado(consulta json.RawMessage, textoTool string, valores []
 	var r Resultado
 	err := m.chamar(&r, "resultado", string(consulta), textoTool, valores)
 	return r, err
+}
+
+// Julgar confere a condição da consulta contra o resultado e as linhas das execuções anteriores
+// (da mais nova para a mais velha). Sem condição: nil.
+func (m *Motor) Julgar(consulta json.RawMessage, r Resultado, anteriores [][]map[string]any) (*Julgamento, error) {
+	if anteriores == nil {
+		anteriores = [][]map[string]any{}
+	}
+	rj, err := json.Marshal(r)
+	if err != nil {
+		return nil, err
+	}
+	aj, err := json.Marshal(anteriores)
+	if err != nil {
+		return nil, err
+	}
+	var j *Julgamento
+	if err := m.chamar(&j, "julgar", string(consulta), string(rj), string(aj)); err != nil {
+		return nil, err
+	}
+	return j, nil
 }

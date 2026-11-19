@@ -41,12 +41,15 @@ type Execucao struct {
 	Em        time.Time  `json:"em"`  // quando rodou (ou quando a perda foi achada)
 	Valores   []string   `json:"valores,omitempty"`
 	Resultado *Resultado `json:"resultado,omitempty"`
-	Motivo    string     `json:"motivo,omitempty"` // perdas: fechada | dormindo | outro_banco | anterior
-	De        *time.Time `json:"de,omitempty"`     // perdas: primeiro horário perdido
-	Ate       *time.Time `json:"ate,omitempty"`    // perdas: último horário perdido (= Ref)
-	N         int        `json:"n,omitempty"`      // perdas: quantos horários
-	Rodada    *time.Time `json:"rodada,omitempty"` // perdas: preenchido na leitura a partir do estado
-	Novo      bool       `json:"novo"`             // preenchido na leitura: agendada/perda com Seq > visto
+	// Julgamento: só em consulta com condição (agenda.condicao). Com Aviso false a execução
+	// não notifica nem conta como novidade.
+	Julgamento *Julgamento `json:"julgamento,omitempty"`
+	Motivo     string      `json:"motivo,omitempty"` // perdas: fechada | dormindo | outro_banco | anterior
+	De         *time.Time  `json:"de,omitempty"`     // perdas: primeiro horário perdido
+	Ate        *time.Time  `json:"ate,omitempty"`    // perdas: último horário perdido (= Ref)
+	N          int         `json:"n,omitempty"`      // perdas: quantos horários
+	Rodada     *time.Time  `json:"rodada,omitempty"` // perdas: preenchido na leitura a partir do estado
+	Novo       bool        `json:"novo"`             // preenchido na leitura: agendada/perda com Seq > visto
 }
 
 // esquema v1. execucoes.json é a Execucao sem Rodada e Novo (e sem Linhas quando igual a Todas);
@@ -342,7 +345,7 @@ func (h *Historico) Pagina(chave, id string, antes int64, n int) (itens []Execuc
 			continue
 		}
 		e.Seq = seq
-		e.Novo = e.Tipo != "manual" && e.Seq > visto
+		e.Novo = e.Tipo != "manual" && e.Seq > visto && (e.Julgamento == nil || e.Julgamento.Aviso)
 		if e.Tipo == "perda" && em.Valid {
 			if t, err := time.Parse(time.RFC3339, em.String); err == nil {
 				e.Rodada = &t
@@ -369,7 +372,8 @@ func (h *Historico) Contar(chave, id string) (int, error) {
 	return n, err
 }
 
-// NaoVistas conta as agendadas e perdas com Seq > visto (as mesmas que Pagina marca Novo).
+// NaoVistas conta as agendadas e perdas com Seq > visto (as mesmas que Pagina marca Novo): a
+// execução que a condição deixou sem aviso não conta.
 func (h *Historico) NaoVistas(chave, id string) (int, error) {
 	db, err := h.usar(chave, id)
 	if err != nil {
@@ -379,9 +383,44 @@ func (h *Historico) NaoVistas(chave, id string) (int, error) {
 	var n int
 	err = db.QueryRow(`SELECT COUNT(*) FROM execucoes
 		WHERE chave = ? AND consulta = ? AND tipo <> 'manual'
+		AND COALESCE(json_extract(json, '$.julgamento.aviso'), 1) <> 0
 		AND seq > COALESCE((SELECT visto FROM estado WHERE chave = ? AND consulta = ?), 0)`,
 		chave, id, chave, id).Scan(&n)
 	return n, err
+}
+
+// Anteriores devolve as linhas (Todas) das até n últimas execuções agendadas que deram certo, da
+// mais nova para a mais velha: a base da condição. Manuais e perdas ficam de fora.
+func (h *Historico) Anteriores(chave, id string, n int) ([][]map[string]any, error) {
+	if n <= 0 {
+		return nil, nil
+	}
+	db, err := h.usar(chave, id)
+	if err != nil {
+		return nil, err
+	}
+	defer h.mu.Unlock()
+	rows, err := db.Query(`SELECT json FROM execucoes
+		WHERE chave = ? AND consulta = ? AND tipo = 'agendada' AND json_extract(json, '$.resultado.ok') = 1
+		ORDER BY seq DESC LIMIT ?`, chave, id, n)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out [][]map[string]any
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			return nil, err
+		}
+		var e Execucao
+		if json.Unmarshal([]byte(raw), &e) != nil || e.Resultado == nil {
+			continue
+		}
+		refazer(&e)
+		out = append(out, e.Resultado.Todas)
+	}
+	return out, rows.Err()
 }
 
 // MarcarVisto leva o visto até o último seq.

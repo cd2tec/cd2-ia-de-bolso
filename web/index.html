@@ -563,6 +563,11 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
 .agd__ponta{color:var(--ink-muted);font-size:12px}
 .agd__resumo{margin:var(--space-4) 0 0;padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);background:var(--tint);font:400 13px/20px var(--font-sans)}
 .agd__ligado{margin-top:var(--space-3)}
+.agd__cond input[type=text]{width:12em}
+.agd__cond input.agd__num{width:6em}
+.agd__cond[hidden],.agd__cond [hidden]{display:none}
+.answer .hist__julg{margin:0 0 var(--space-2);font:600 12px/18px var(--font-sans);color:var(--ink-muted)}
+.answer .hist__julg--disparou{color:var(--ink)}
 .answer .valores{margin:0 0 var(--space-2);font:600 13px/20px var(--font-sans);color:var(--ink-muted)}
 .answer .acts{flex-wrap:wrap}
 #salvar{width:min(660px,92vw)}
@@ -976,6 +981,43 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
       <tbody id="agParams"></tbody>
     </table>
   </fieldset>
+  <fieldset id="agFsCond">
+    <legend>Quando avisar</legend>
+    <div class="agd__seg">
+      <label><input type="radio" name="agAviso" value="sempre"><span>Toda vez que rodar</span></label>
+      <label><input type="radio" name="agAviso" value="condicao"><span>Só quando…</span></label>
+    </div>
+    <div class="agd__cond" id="agCond">
+      <div class="agd__linha">
+        <select id="agCAgreg" aria-label="Que número conferir">
+          <option value="primeira">o valor da primeira linha de</option>
+          <option value="soma">a soma de</option>
+          <option value="media">a média de</option>
+          <option value="maximo">o maior valor de</option>
+          <option value="minimo">o menor valor de</option>
+        </select>
+        <input type="text" id="agCColuna" list="agCColunas" autocomplete="off" spellcheck="false" aria-label="Coluna do resultado">
+        <datalist id="agCColunas"></datalist>
+      </div>
+      <div class="agd__linha">
+        <select id="agCOp" aria-label="Regra">
+          <option value="maior">for maior que</option>
+          <option value="menor">for menor que</option>
+          <option value="subiu">subir mais de</option>
+          <option value="caiu">cair mais de</option>
+          <option value="variou">variar mais de</option>
+        </select>
+        <input type="text" id="agCValor" class="agd__num" inputmode="decimal" autocomplete="off" aria-label="Valor da regra">
+        <span id="agCPct">%</span>
+        <select id="agCBase" aria-label="Comparar com">
+          <option value="anterior">em relação à execução anterior</option>
+          <option value="media">em relação à média das últimas</option>
+        </select>
+        <span id="agCGrupoN"><input type="number" id="agCN" class="agd__num" min="2" max="30" step="1" inputmode="numeric" aria-label="Quantas execuções na média"> execuções</span>
+      </div>
+      <p class="hint">A regra é conferida pelo código, com o número que a consulta trouxe. Sempre grava no histórico; o aviso só sai quando a regra bate.</p>
+    </div>
+  </fieldset>
   <p class="agd__resumo" id="agResumo" aria-live="polite"></p>
   <p class="hint" id="agDemo" role="status" hidden></p>
   <label class="agd__chk agd__ligado"><input type="checkbox" id="agLigado"> Agendamento ligado</label>
@@ -1066,6 +1108,7 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
 <script src="consultas.js?v=0.22.1"></script>
 <script src="entendimento.js?v=0.22.1"></script>
 <script src="agenda.js?v=0.22.1"></script>
+<script src="condicao.js?v=0.22.1"></script>
 <script src="ask.js?v=0.22.1"></script>
 <script src="report.js?v=0.22.1"></script>
 <script src="demo.js?v=0.22.1"></script>
@@ -2872,6 +2915,13 @@ function marcaNovo(h3, e){
   const n = document.createElement('span'); n.className = 'hist__novo'; n.textContent = 'NOVO'; h3.appendChild(n);
 }
 function linhaHistorico(texto){ const p = document.createElement('p'); p.className = 'hist__m'; p.textContent = texto; return p; }
+// "Avisou: …" ou "Sem aviso: …", quando a consulta tem condição; null sem julgamento.
+function linhaJulgamento(e){
+  const t = CD2Condicao.textoJulgamento(e && e.julgamento);
+  if(!t) return null;
+  const p = document.createElement('p'); p.className = 'hist__julg' + (e.julgamento.disparou ? ' hist__julg--disparou' : ''); p.textContent = t;
+  return p;
+}
 function cardExecucao(e, aberta){
   const it = document.createElement('div'); it.className = 'hist__it'; it.dataset.seq = String(e.seq);
   const c = consultaDoHistorico() || {};
@@ -2884,6 +2934,7 @@ function cardExecucao(e, aberta){
   const card = document.createElement('div'); card.className = 'answer';
   const h3 = document.createElement('h3'); h3.textContent = nome; marcaNovo(h3, e); card.appendChild(h3);
   card.appendChild(linhaHistorico(CD2Agenda.textoExecucao(e) + (valores ? ' · ' + valores : '')));
+  const lj = linhaJulgamento(e); if(lj) card.appendChild(lj);
   const acts = document.createElement('div'); acts.className = 'acts';
   if(erro){
     const p = document.createElement('p'); p.className = 'hist__msg'; mostrarErro(p, erro); card.appendChild(p);
@@ -2903,7 +2954,11 @@ function abrirResultado(it, e){
   const body = document.createElement('div');
   renderAnswer(body, String(c.nome || ''), resultadoDaExecucao(e, c), { consulta:c, rolar:false });
   const h3 = body.querySelector('.answer h3');
-  if(h3){ marcaNovo(h3, e); h3.after(linhaHistorico(CD2Agenda.textoExecucao(e))); }
+  if(h3){
+    marcaNovo(h3, e);
+    const m = linhaHistorico(CD2Agenda.textoExecucao(e)); h3.after(m);
+    const lj = linhaJulgamento(e); if(lj) m.after(lj);
+  }
   it.appendChild(body);
 }
 function cardPerda(e, it){
@@ -3067,6 +3122,9 @@ function abrirAgendar(c){
   // Um parâmetro por parâmetro da consulta: o que faltar entra com o padrão.
   const padrao = CD2Agenda.agendaPadrao(ps, hoje).params;
   ag.t.params = padrao.map((p, i) => ag.t.params[i] || p);
+  ag.t.cond = CD2Condicao.tela(c.agenda && c.agenda.condicao, c.y);
+  const dl = $('#agCColunas'); dl.innerHTML = '';
+  [c.y, c.x].filter((v, i, a) => v && a.indexOf(v) === i).forEach(v => opcao(dl, v, v));
   $('#agTitulo').textContent = '⏰ Agendar "' + String(c.nome || '') + '"';
   $('#agTirar').hidden = !ag.tinha;
   $('#agSalvar').disabled = false; $('#agTirar').disabled = false;
@@ -3092,6 +3150,10 @@ function pintarAgendar(){
   $('#agInicio').value = t.inicio || '';
   document.querySelectorAll('#agDias input').forEach(b => { b.checked = !!t.dias[+b.dataset.dia]; });
   $('#agLigado').checked = t.ligado;
+  const k = t.cond;
+  document.querySelectorAll('#agendar input[name=agAviso]').forEach(r => { r.checked = r.value === (k.ligado ? 'condicao' : 'sempre'); });
+  $('#agCAgreg').value = k.agregacao; $('#agCColuna').value = k.coluna; $('#agCOp').value = k.operador;
+  $('#agCValor').value = k.valor; $('#agCBase').value = k.base; $('#agCN').value = k.n;
   mostrarCamposAgendar(); pintarParamsAgendar(); atualizarResumoAgendar();
 }
 // Mostra só os campos da frequência escolhida.
@@ -3108,10 +3170,23 @@ function mostrarCamposAgendar(){
   // A data de início é a âncora do "a cada X dias" e do "a cada 2 semanas".
   $('#agLinhaInicio').hidden = !((f === 'diario' && String(t.n.diario).trim() !== '1') || (f === 'semanal' && String(t.semanas) === '2'));
   $('#agFsDias').hidden = !(intervalo || f === 'semanal');
+  const k = t.cond, rel = CD2Condicao.relativo(k.operador);
+  $('#agCond').hidden = !k.ligado;
+  $('#agCPct').hidden = !rel; $('#agCBase').hidden = !rel;
+  $('#agCGrupoN').hidden = !(rel && k.base === 'media');
+}
+// A agenda da janela com a condição (agenda.condicao só quando "Só quando…").
+function agendaDaJanela(){
+  const r = CD2Agenda.agendaDaTela(ag.t);
+  if(!r.ok) return r;
+  const rc = CD2Condicao.daTela(ag.t.cond);
+  if(!rc.ok) return rc;
+  if(rc.condicao) r.agenda.condicao = rc.condicao;
+  return r;
 }
 function atualizarResumoAgendar(){
-  const r = CD2Agenda.agendaDaTela(ag.t), res = $('#agResumo');
-  res.textContent = r.ok ? CD2Agenda.resumo(r.agenda, new Date()) : '';
+  const r = agendaDaJanela(), res = $('#agResumo');
+  res.textContent = r.ok ? CD2Agenda.resumo(r.agenda, new Date()) + (r.agenda.condicao ? ' ' + CD2Condicao.resumo(r.agenda.condicao) : '') : '';
   res.hidden = !r.ok;
   mostrarErro($('#agErro'), r.ok ? '' : r.erro);
   $('#agSalvar').disabled = !r.ok || ag.salvando;
@@ -3213,6 +3288,13 @@ function mudouAgendar(e){
   else if(el.id === 'agInicio') t.inicio = el.value;
   else if(el.id === 'agLigado') t.ligado = el.checked;
   else if(el.dataset && el.dataset.dia != null) t.dias[+el.dataset.dia] = el.checked;
+  else if(el.name === 'agAviso') t.cond.ligado = el.value === 'condicao';
+  else if(el.id === 'agCAgreg') t.cond.agregacao = el.value;
+  else if(el.id === 'agCColuna') t.cond.coluna = el.value;
+  else if(el.id === 'agCOp') t.cond.operador = el.value;
+  else if(el.id === 'agCValor') t.cond.valor = el.value;
+  else if(el.id === 'agCBase') t.cond.base = el.value;
+  else if(el.id === 'agCN') t.cond.n = el.value;
   else return; // parâmetros: cada campo guarda o seu valor
   mostrarCamposAgendar(); atualizarResumoAgendar();
 }

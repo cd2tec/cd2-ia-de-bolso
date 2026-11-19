@@ -54,7 +54,7 @@ test('Demonstração: a janela Agendar abre com os exemplos, nunca o convite, me
   for(const status of [null, { origem:'pendrive' }, { origem:'instalada' }]){
     const c = montar({ status, demo:true });
     const els = {};
-    Object.assign(c, { CD2Agenda:A, ag:{}, hojeIso: () => '2026-10-24', mostrarErro: () => {}, pintarAgendar: () => {},
+    Object.assign(c, { CD2Agenda:A, CD2Condicao:require('../web/condicao.js'), ag:{}, hojeIso: () => '2026-10-24', mostrarErro: () => {}, pintarAgendar: () => {},
       $: sel => sel.startsWith('#agendar ') ? null : (els[sel] = els[sel] || { showModal: () => c.abertos.push('janela') }) });
     c.st.catalogGen = 1;
     assert.equal(c.estadoAgendar(), 'demo');
