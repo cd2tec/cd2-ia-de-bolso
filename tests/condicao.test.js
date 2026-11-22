@@ -153,3 +153,45 @@ test('resumo e textoJulgamento', () => {
   assert.equal(C.textoJulgamento({ disparou:false, aviso:true, texto:'x' }), 'x');
   assert.equal(C.textoJulgamento(null), '');
 });
+
+// ---- colunas da regra (issue #6: a coluna vem em lista, não em campo livre) ----
+const R = { ok:true, colunas:['loja', 'valor_total', 'cupons', 'obs'],
+  todas:[{ loja:'Loja 01', valor_total:'34204.10', cupons:310, obs:null }, { loja:'Loja 04', valor_total:'12702.50', cupons:120, obs:'' }] };
+
+test('colunasDe: nomes e se é número, sem guardar valores', () => {
+  assert.deepEqual(C.colunasDe(R), [
+    { nome:'loja', numero:false }, { nome:'valor_total', numero:true }, { nome:'cupons', numero:true }, { nome:'obs', numero:false }]);
+  assert.deepEqual(C.colunasDe(null), []);
+  assert.deepEqual(C.colunasDe({ ok:false }), []);
+});
+
+test('opcoesColuna: só numéricas, y primeiro, a escolhida fica mesmo se sumiu', () => {
+  const salva = { y:'valor_total', colunas:C.colunasDe(R) };
+  assert.deepEqual(C.opcoesColuna(salva, null, ''), ['valor_total', 'cupons']);
+  assert.deepEqual(C.opcoesColuna({ y:'cupons', colunas:C.colunasDe(R) }, null, ''), ['cupons', 'valor_total']);
+  assert.deepEqual(C.opcoesColuna(salva, null, 'antiga'), ['valor_total', 'cupons', 'antiga']);
+  // consulta antiga, sem colunas guardadas: usa a última execução; sem nada, só o y
+  assert.deepEqual(C.opcoesColuna({ y:'valor_total' }, R, ''), ['valor_total', 'cupons']);
+  assert.deepEqual(C.opcoesColuna({ y:'total' }, null, ''), ['total']);
+  assert.deepEqual(C.opcoesColuna({}, null, ''), []);
+});
+
+test('umaLinha: o que a consulta guardou vale; senão, o último resultado', () => {
+  assert.equal(C.umaLinha({ umaLinha:true }, R), true);
+  assert.equal(C.umaLinha({}, R), false);
+  assert.equal(C.umaLinha({}, { todas:[{ total:1 }] }), true);
+  assert.equal(C.umaLinha({}, null), false);
+});
+
+test('textoUltimo: o número que a regra conferiria no último resultado', () => {
+  assert.equal(C.textoUltimo({ coluna:'valor_total', agregacao:'soma' }, R), 'Último resultado: 46.906,6.');
+  assert.equal(C.textoUltimo({ coluna:'cupons', agregacao:'primeira' }, R), 'Último resultado: 310.');
+  assert.equal(C.textoUltimo({ coluna:'nao_existe', agregacao:'soma' }, R), '');
+  assert.equal(C.textoUltimo({ coluna:'cupons', agregacao:'soma' }, null), '');
+});
+
+test('rotuloColuna: legível, sem mexer no que já é texto', () => {
+  assert.equal(C.rotuloColuna('valor_total'), 'Valor total');
+  assert.equal(C.rotuloColuna('Venda (R$)'), 'Venda (R$)');
+  assert.equal(C.rotuloColuna(''), '');
+});

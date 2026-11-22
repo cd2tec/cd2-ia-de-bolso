@@ -302,7 +302,12 @@ function aviso(id, agora, vistos){
     itens:ags.map(x => '⏰ ' + x.nome + ' (' + x.novas + ')'), nota:AVISO_NOTA };
 }
 
+// Resultado fictício de um exemplo agora (para a janela Agendar mostrar as colunas e o último valor), ou null.
+function amostra(id, agora){
+  const e = EXEMPLOS.find(x => x.id === id);
+  return e ? resultadoDe(e, agora) : null;
+}
 const api = { TAG, TOOLS, PROMPT, ROTEIRO, CONVITE, CONVITE_AGENDA, EXEMPLOS, EXEMPLOS_TOPO, EXEMPLO_FRASE, call, grafico, roteiro, texto, instrucao, norm,
-  exemplos, execucoes, rodar, aviso };
+  exemplos, execucoes, rodar, aviso, amostra };
 if(typeof module !== 'undefined' && module.exports) module.exports = api; else root.CD2Demo = api;
 })(typeof window !== 'undefined' ? window : globalThis);

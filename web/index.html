@@ -564,6 +564,7 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
 .agd__resumo{margin:var(--space-4) 0 0;padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);background:var(--tint);font:400 13px/20px var(--font-sans)}
 .agd__ligado{margin-top:var(--space-3)}
 .agd__cond input[type=text]{width:12em}
+.agd__cond select#agCColSel{max-width:16em}
 .agd__cond input.agd__num{width:6em}
 .agd__cond[hidden],.agd__cond [hidden]{display:none}
 .answer .hist__julg{margin:0 0 var(--space-2);font:600 12px/18px var(--font-sans);color:var(--ink-muted)}
@@ -996,9 +997,11 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
           <option value="maximo">o maior valor de</option>
           <option value="minimo">o menor valor de</option>
         </select>
-        <input type="text" id="agCColuna" list="agCColunas" autocomplete="off" spellcheck="false" aria-label="Coluna do resultado">
-        <datalist id="agCColunas"></datalist>
+        <span id="agCValorDe" hidden>o valor de</span>
+        <select id="agCColSel" aria-label="Coluna do resultado"></select>
+        <input type="text" id="agCColuna" autocomplete="off" spellcheck="false" aria-label="Coluna do resultado" placeholder="nome da coluna" hidden>
       </div>
+      <p class="hint" id="agCSemCols" hidden>Ainda não sei quais colunas esta consulta traz. Rode a consulta uma vez (▶) e abra o agendamento de novo para escolher da lista, ou digite o nome da coluna.</p>
       <div class="agd__linha">
         <select id="agCOp" aria-label="Regra">
           <option value="maior">for maior que</option>
@@ -1015,6 +1018,7 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
         </select>
         <span id="agCGrupoN"><input type="number" id="agCN" class="agd__num" min="2" max="30" step="1" inputmode="numeric" aria-label="Quantas execuções na média"> execuções</span>
       </div>
+      <p class="hint" id="agCUltimo" aria-live="polite" hidden></p>
       <p class="hint">A regra é conferida pelo código, com o número que a consulta trouxe. Sempre grava no histórico; o aviso só sai quando a regra bate.</p>
     </div>
   </fieldset>
@@ -2594,7 +2598,7 @@ async function executarSalva(c, valores){
     const r = await CD2Ask.rodarSalva({ consulta:c, valores, motor:s.engine || 'postgres',
       runSql:CD2Ask.toolRunner(st.provider, { timeoutMs:15000 }), signal:st.ctl.signal });
     renderAnswer(body, String(c.nome || ''), r, { consulta:c });
-    if(r.ok) lembrarValores(c, r.valores || valores);
+    if(r.ok){ ultimosResultados.set(c.id, r); lembrarValores(c, r.valores || valores, r); }
   }catch(e){
     el.remove();
     if(e.name !== 'AbortError') addNote('Erro: ' + (e.message || e), true); else addNote('Interrompido.');
@@ -2602,12 +2606,24 @@ async function executarSalva(c, valores){
     st.busy = false; st.ctl = null; toggleBusy();
   }
 }
-function lembrarValores(c, valores){
+// Último resultado de cada consulta salva rodada nesta aba (id -> resultado): a janela Agendar usa para
+// listar as colunas e mostrar o último valor. Fica só na memória, nunca vai para as notas.
+const ultimosResultados = new Map();
+// Guarda os valores usados e, se a consulta ainda não sabe, as colunas do resultado (nomes e tipos, sem
+// valores), numa gravação só. r: o resultado da execução (opcional).
+function lembrarValores(c, valores, r){
   const ps = Array.isArray(c.params) ? c.params : [];
-  if(!ps.length || ps.every((p, i) => String(p.valor) === String(valores[i]))) return;
-  gravarConsultas(l => l.map(x => (x.id === c.id && Array.isArray(x.params) && x.params.length === valores.length)
-    ? Object.assign({}, x, { params:x.params.map((p, i) => Object.assign({}, p, { valor:String(valores[i]) })) }) : x))
-    .then(ok => { if(!ok) addNote('Não deu para guardar os valores usados: ' + st.notasErro, true); });
+  const mudouValores = ps.length && !ps.every((p, i) => String(p.valor) === String(valores[i]));
+  const cols = r && !(Array.isArray(c.colunas) && c.colunas.length) ? CD2Condicao.colunasDe(r) : [];
+  if(!mudouValores && !cols.length) return;
+  gravarConsultas(l => l.map(x => {
+    if(x.id !== c.id) return x;
+    let y = x;
+    if(mudouValores && Array.isArray(x.params) && x.params.length === valores.length)
+      y = Object.assign({}, y, { params:x.params.map((p, i) => Object.assign({}, p, { valor:String(valores[i]) })) });
+    if(cols.length) y = Object.assign({}, y, { colunas:cols, umaLinha:CD2Condicao.umaLinha(null, r) });
+    return y;
+  })).then(ok => { if(!ok) addNote('Não deu para guardar os valores usados: ' + st.notasErro, true); });
 }
 
 /* janela Salvar consulta (o 👍 do card) */
@@ -2701,14 +2717,17 @@ async function confirmarSalvar(){
   if(consultasSalvas().some(c => mesmoNome(c.nome, nome))) return mostrarErro(err, 'Já existe uma consulta com esse nome.');
   const marcados = sv.linhas.filter(l => l.marcado);
   if(marcados.some(l => !l.nome.trim())) return mostrarErro(err, 'Dê um nome a cada valor marcado.');
+  // colunas: nomes e tipos do resultado (nunca os valores), para a regra do "Quando avisar" vir em lista.
   const c = { id:'c' + Date.now(), nome, sql:r.sqlBase, visual:r.visual, x:r.x, y:r.y,
-    params:marcados.map(l => ({ nome:l.nome.trim(), tipo:l.tipo, inicio:l.inicio, fim:l.fim, valor:l.valor })), criada:hojeIso() };
+    params:marcados.map(l => ({ nome:l.nome.trim(), tipo:l.tipo, inicio:l.inicio, fim:l.fim, valor:l.valor })), criada:hojeIso(),
+    colunas:CD2Condicao.colunasDe(r), umaLinha:CD2Condicao.umaLinha(null, r) };
   const m = CD2Consultas.montarSql(c, []);
   if(!m.ok) return mostrarErro(err, m.erro);
   const b = $('#svSalvar'); b.disabled = true;
   const ok = await gravarConsultas(l => l.concat([c]));
   b.disabled = false;
   if(!ok) return mostrarErro(err, 'Não deu para salvar: ' + st.notasErro);
+  ultimosResultados.set(c.id, r);
   $('#salvar').close();
   if(sv.botao){ sv.botao.textContent = '👍 Salva'; sv.botao.disabled = true; }
   sv.r = null; sv.botao = null;
@@ -2717,7 +2736,7 @@ async function confirmarSalvar(){
 // Agendar só na versão instalada; no pen drive o "⏰ Agendar…" abre o convite. As marcas (⏰) aparecem
 // nos dois, porque a agenda vai nas notas; a bolinha das execuções não vistas, só na instalada.
 // pedido: o ?agenda=<id> do endereço, aberto quando o banco conectar (abrirHistoricoPedido).
-const ag = { consulta:null, gen:0, tinha:false, t:null, salvando:false, novidades:{}, genNov:-1, ultimo:0, pedindo:false,
+const ag = { consulta:null, gen:0, tinha:false, t:null, salvando:false, novidades:{}, genNov:-1, ultimo:0, ultimoRes:null, colunas:[], umaLinha:false, pedindo:false,
   pedido:(() => { try{ return new URLSearchParams(location.search).get('agenda') || null; }catch(e){ return null; } })() };
 const instalada = () => !!(inst.status && inst.status.origem === 'instalada');
 const ehParamData = p => !!p && (p.tipo === 'data' || p.tipo === 'datahora');
@@ -3122,9 +3141,12 @@ function abrirAgendar(c){
   // Um parâmetro por parâmetro da consulta: o que faltar entra com o padrão.
   const padrao = CD2Agenda.agendaPadrao(ps, hoje).params;
   ag.t.params = padrao.map((p, i) => ag.t.params[i] || p);
-  ag.t.cond = CD2Condicao.tela(c.agenda && c.agenda.condicao, c.y);
-  const dl = $('#agCColunas'); dl.innerHTML = '';
-  [c.y, c.x].filter((v, i, a) => v && a.indexOf(v) === i).forEach(v => opcao(dl, v, v));
+  // Colunas e último valor da regra: o resultado desta aba, o exemplo da Demonstração ou (instalada) a
+  // última execução do histórico, que chega depois e repinta.
+  ag.ultimoRes = ultimosResultados.get(c.id) || (ea === 'demo' ? CD2Demo.amostra(c.id, new Date()) : null);
+  ag.t.cond = CD2Condicao.tela(c.agenda && c.agenda.condicao, '');
+  prepararColunasAgendar(true);
+  if(!ag.ultimoRes && ea === 'instalada') buscarUltimaExecucao(c, ag.gen);
   $('#agTitulo').textContent = '⏰ Agendar "' + String(c.nome || '') + '"';
   $('#agTirar').hidden = !ag.tinha;
   $('#agSalvar').disabled = false; $('#agTirar').disabled = false;
@@ -3136,7 +3158,32 @@ function abrirAgendar(c){
 }
 function fecharAgendar(){
   const d = $('#agendar'); if(d.open) d.close();
-  ag.consulta = null; ag.t = null;
+  ag.consulta = null; ag.t = null; ag.ultimoRes = null;
+}
+// Lista de colunas da regra (só as numéricas). inicio: ao abrir, escolhe a coluna padrão (o y, ou a
+// primeira da lista) e, com várias linhas, a soma no lugar da "primeira linha".
+function prepararColunasAgendar(inicio){
+  const c = ag.consulta || {}, k = ag.t.cond;
+  ag.colunas = CD2Condicao.opcoesColuna(c, ag.ultimoRes, k.ligado ? k.coluna : '');
+  ag.umaLinha = CD2Condicao.umaLinha(c, ag.ultimoRes);
+  if(inicio && !k.ligado){
+    k.coluna = ag.colunas[0] || String(c.y || '');
+    k.agregacao = ag.umaLinha ? 'primeira' : 'soma';
+  }
+  if(ag.umaLinha) k.agregacao = 'primeira';
+  const sel = $('#agCColSel'); sel.innerHTML = '';
+  ag.colunas.forEach(n => opcao(sel, n, CD2Condicao.rotuloColuna(n)));
+}
+// Instalada: a última execução que deu certo, para as colunas e o último valor (só se a janela ainda é a mesma).
+async function buscarUltimaExecucao(c, gen){
+  let r = null;
+  try{ r = await ctlRequest('GET', rotaHistorico(st.notasChave || '', c.id) + '&n=10', null, 10000); }catch(e){}
+  if(!ag.consulta || ag.consulta.id !== c.id || ag.gen !== gen || !r || r.status !== 200 || !Array.isArray(r.data.itens)) return;
+  const e = r.data.itens.find(x => x && x.resultado && x.resultado.ok);
+  if(!e) return;
+  ag.ultimoRes = e.resultado;
+  prepararColunasAgendar(!ag.t.cond.ligado);
+  pintarAgendar();
 }
 // Põe o estado (ag.t) nos campos. Chamada ao abrir e ao trocar de frequência.
 function pintarAgendar(){
@@ -3152,7 +3199,7 @@ function pintarAgendar(){
   $('#agLigado').checked = t.ligado;
   const k = t.cond;
   document.querySelectorAll('#agendar input[name=agAviso]').forEach(r => { r.checked = r.value === (k.ligado ? 'condicao' : 'sempre'); });
-  $('#agCAgreg').value = k.agregacao; $('#agCColuna').value = k.coluna; $('#agCOp').value = k.operador;
+  $('#agCAgreg').value = k.agregacao; $('#agCColuna').value = k.coluna; $('#agCColSel').value = k.coluna; $('#agCOp').value = k.operador;
   $('#agCValor').value = k.valor; $('#agCBase').value = k.base; $('#agCN').value = k.n;
   mostrarCamposAgendar(); pintarParamsAgendar(); atualizarResumoAgendar();
 }
@@ -3174,6 +3221,12 @@ function mostrarCamposAgendar(){
   $('#agCond').hidden = !k.ligado;
   $('#agCPct').hidden = !rel; $('#agCBase').hidden = !rel;
   $('#agCGrupoN').hidden = !(rel && k.base === 'media');
+  // Coluna: lista quando se sabe quais existem; senão, campo livre com a explicação. Uma linha só: sem agregação.
+  const temLista = !!(ag.colunas && ag.colunas.length);
+  $('#agCColSel').hidden = !temLista; $('#agCColuna').hidden = temLista; $('#agCSemCols').hidden = temLista || !k.ligado;
+  $('#agCAgreg').hidden = !!ag.umaLinha; $('#agCValorDe').hidden = !ag.umaLinha;
+  const u = k.ligado ? CD2Condicao.textoUltimo(k, ag.ultimoRes) : '';
+  $('#agCUltimo').textContent = u; $('#agCUltimo').hidden = !u;
 }
 // A agenda da janela com a condição (agenda.condicao só quando "Só quando…").
 function agendaDaJanela(){
@@ -3290,7 +3343,7 @@ function mudouAgendar(e){
   else if(el.dataset && el.dataset.dia != null) t.dias[+el.dataset.dia] = el.checked;
   else if(el.name === 'agAviso') t.cond.ligado = el.value === 'condicao';
   else if(el.id === 'agCAgreg') t.cond.agregacao = el.value;
-  else if(el.id === 'agCColuna') t.cond.coluna = el.value;
+  else if(el.id === 'agCColuna' || el.id === 'agCColSel') t.cond.coluna = el.value;
   else if(el.id === 'agCOp') t.cond.operador = el.value;
   else if(el.id === 'agCValor') t.cond.valor = el.value;
   else if(el.id === 'agCBase') t.cond.base = el.value;

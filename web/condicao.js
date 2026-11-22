@@ -158,6 +158,50 @@ function textoJulgamento(j){
   return j.texto;
 }
 
+// ---- colunas para a regra ----
+// Colunas de um resultado ({ colunas, todas|linhas }) e se cada uma é número: [{ nome, numero }].
+// É o que a consulta salva guarda no 👍 (só nomes e tipos, nunca valores).
+function colunasDe(r){
+  if(!r || !Array.isArray(r.colunas)) return [];
+  const ls = (Array.isArray(r.todas) ? r.todas : Array.isArray(r.linhas) ? r.linhas : []).filter(objeto);
+  return r.colunas.filter(c => typeof c === 'string' && c).map(nome => {
+    const vs = ls.map(l => l[nome]).filter(v => v != null && v !== '');
+    return { nome, numero:vs.length > 0 && vs.every(v => Chart.num(v) != null) };
+  });
+}
+// Nome legível de uma coluna: 'valor_total' -> 'Valor total'; 'Venda (R$)' fica como está.
+function rotuloColuna(nome){
+  const t = String(nome == null ? '' : nome).replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : '';
+}
+// As colunas numéricas que a regra pode conferir, na ordem: o y da consulta primeiro.
+//   c: a consulta salva (c.colunas do 👍; c.y); ultimo: o resultado da última execução, ou null;
+//   atual: a coluna já escolhida na condição (fica na lista mesmo que tenha sumido, para não trocar calada).
+function opcoesColuna(c, ultimo, atual){
+  c = c || {};
+  let cols = Array.isArray(c.colunas) && c.colunas.length ? c.colunas.filter(objeto) : colunasDe(ultimo);
+  let nums = cols.filter(x => x.numero && typeof x.nome === 'string').map(x => x.nome);
+  if(!cols.length && c.y) nums = [c.y];
+  const lista = [];
+  const pôr = n => { if(n && !lista.some(x => x.toLowerCase() === String(n).toLowerCase())) lista.push(String(n)); };
+  if(c.y && nums.some(n => n.toLowerCase() === String(c.y).toLowerCase())) pôr(c.y);
+  nums.forEach(pôr);
+  if(atual) pôr(atual);
+  return lista;
+}
+// Resultado de uma linha só: a agregação não muda nada e sai da tela.
+function umaLinha(c, ultimo){
+  if(c && typeof c.umaLinha === 'boolean') return c.umaLinha;
+  const ls = ultimo && (Array.isArray(ultimo.todas) ? ultimo.todas : ultimo.linhas);
+  return Array.isArray(ls) && ls.length === 1;
+}
+// "Último resultado: 12.702" para orientar o limite, ou '' se não dá para calcular.
+function textoUltimo(cond, ultimo){
+  if(!cond || !ultimo || !ultimo.ok || typeof cond.coluna !== 'string' || !cond.coluna.trim()) return '';
+  const m = metrica({ coluna:cond.coluna, agregacao:AGREGACOES.indexOf(cond.agregacao) >= 0 ? cond.agregacao : 'primeira' }, ultimo.todas || ultimo.linhas);
+  return m.ok ? 'Último resultado: ' + fmt(m.valor) + '.' : '';
+}
+
 // ---- a janela Agendar ----
 // Estado do bloco "Quando avisar": textos do jeito que os campos dão. coluna: a coluna sugerida (o y salvo).
 function tela(c, coluna){
@@ -189,6 +233,7 @@ function daTela(t){
   return v.ok ? { ok:true, condicao:c } : v;
 }
 
-const api = { AGREGACOES, OPERADORES, BASES, MAX_N, relativo, validar, metrica, resumo, julgar, textoJulgamento, tela, daTela, numeroDe };
+const api = { AGREGACOES, OPERADORES, BASES, MAX_N, relativo, validar, metrica, resumo, julgar, textoJulgamento, tela, daTela, numeroDe,
+  colunasDe, rotuloColuna, opcoesColuna, umaLinha, textoUltimo };
 if(isNode) module.exports = api; else root.CD2Condicao = api;
 })(typeof window !== 'undefined' ? window : globalThis);
