@@ -19,14 +19,14 @@ import (
 var intlJS string
 
 // modulos são os arquivos de web/, na ordem em que um só pode exigir os anteriores.
-var modulos = []string{"chart", "catalog", "notas", "toolbox", "consultas", "ask", "agenda", "condicao"}
+var modulos = []string{"chart", "catalog", "notas", "toolbox", "consultas", "ask", "agenda", "condicao", "resumo"}
 
 // cola liga o Go aos mesmos prepararSalva e resultadoSalva que o rodarSalva (ask.js) usa antes e
 // depois do runSql, e aos horários da agenda. Tudo entra e sai como JSON; datas em ms Unix.
 // Sem tela, o motivo da recusa vai em erro: o texto do guardSql, ou o erro que o banco devolveu.
 const cola = `(function(g){
 "use strict";
-const Ask = g.__mod['./ask.js'], Tb = g.__mod['./toolbox.js'], Ag = g.__mod['./agenda.js'], Cond = g.__mod['./condicao.js'];
+const Ask = g.__mod['./ask.js'], Tb = g.__mod['./toolbox.js'], Ag = g.__mod['./agenda.js'], Cond = g.__mod['./condicao.js'], Res = g.__mod['./resumo.js'];
 g.__cd2 = {
   horarios(cj, de, ate){
     const c = JSON.parse(cj), a = c && c.agenda;
@@ -54,6 +54,12 @@ g.__cd2 = {
   julgar(cj, rj, aj){
     const c = JSON.parse(cj), cond = c && c.agenda ? c.agenda.condicao : null;
     return JSON.stringify(Cond.julgar(cond == null ? null : cond, JSON.parse(rj), JSON.parse(aj)));
+  },
+  resumoPedido(cj, rj, jj){
+    return JSON.stringify(Res.pedido(JSON.parse(cj), JSON.parse(rj), JSON.parse(jj)));
+  },
+  resumoConferir(texto, cj, rj, jj){
+    return JSON.stringify(Res.conferir(texto, JSON.parse(cj), JSON.parse(rj), JSON.parse(jj)));
   }
 };
 })(globalThis);`
@@ -104,6 +110,22 @@ type Julgamento struct {
 	Variacao *float64 `json:"variacao,omitempty"`
 	N        int      `json:"n,omitempty"`
 	Texto    string   `json:"texto"`
+}
+
+// PedidoResumo é o que web/resumo.js (pedido) monta para o modelo quando a condição disparou.
+type PedidoResumo struct {
+	Mensagens []map[string]string `json:"mensagens"`
+	Schema    json.RawMessage     `json:"schema"`
+	MaxTokens int                 `json:"maxTokens"`
+}
+
+// Conferencia é o que web/resumo.js (conferir) decidiu sobre a resposta do modelo: Linhas quando
+// Ok; senão Motivo ("formato" | "numero") e Detalhe.
+type Conferencia struct {
+	Ok      bool     `json:"ok"`
+	Linhas  []string `json:"linhas,omitempty"`
+	Motivo  string   `json:"motivo,omitempty"`
+	Detalhe string   `json:"detalhe,omitempty"`
 }
 
 // MaxBase é quantas execuções anteriores o agendador lê para a base da condição (o MAX_N do JS).
@@ -247,4 +269,36 @@ func (m *Motor) Julgar(consulta json.RawMessage, r Resultado, anteriores [][]map
 		return nil, err
 	}
 	return j, nil
+}
+
+// ResumoPedido monta o pedido do resumo. nil quando não há resumo (a condição não disparou).
+func (m *Motor) ResumoPedido(consulta json.RawMessage, r Resultado, j *Julgamento) (*PedidoResumo, error) {
+	rj, err := json.Marshal(r)
+	if err != nil {
+		return nil, err
+	}
+	jj, err := json.Marshal(j)
+	if err != nil {
+		return nil, err
+	}
+	var p *PedidoResumo
+	if err := m.chamar(&p, "resumoPedido", string(consulta), string(rj), string(jj)); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// ResumoConferir confere o texto que o modelo devolveu contra os mesmos dados do pedido.
+func (m *Motor) ResumoConferir(texto string, consulta json.RawMessage, r Resultado, j *Julgamento) (Conferencia, error) {
+	var c Conferencia
+	rj, err := json.Marshal(r)
+	if err != nil {
+		return c, err
+	}
+	jj, err := json.Marshal(j)
+	if err != nil {
+		return c, err
+	}
+	err = m.chamar(&c, "resumoConferir", texto, string(consulta), string(rj), string(jj))
+	return c, err
 }

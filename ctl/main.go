@@ -140,6 +140,8 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 			Motor:     motor,
 			Hist:      hist,
 			Tick:      30 * time.Second,
+			// Resumo do alerta (Fase 2): o mesmo modelo do chat, na porta do harness.
+			Resumir: agenda.NovoResumidor(fmt.Sprintf("http://127.0.0.1:%d/v1/chat/completions", *hport)),
 		})
 		ag = &agendaAPI{Agendador: agendador, Historico: hist, ligado: instalada}
 		if instalada {
