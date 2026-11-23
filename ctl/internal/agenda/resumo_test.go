@@ -176,6 +176,10 @@ func TestNovoResumidor(t *testing.T) {
 		t.Fatalf("got %q, %v", got, err)
 	}
 	rf, _ := corpo["response_format"].(map[string]any)
+	kw, _ := corpo["chat_template_kwargs"].(map[string]any)
+	if kw["enable_thinking"] != false {
+		t.Fatalf("thinking não foi desligado: %+v", corpo["chat_template_kwargs"])
+	}
 	if corpo["temperature"] != float64(0) || corpo["max_tokens"] != float64(300) || rf["type"] != "json_schema" {
 		t.Fatalf("corpo = %+v", corpo)
 	}

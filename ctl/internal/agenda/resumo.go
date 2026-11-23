@@ -32,6 +32,9 @@ func NovoResumidor(url string) func(ctx context.Context, p PedidoResumo) (string
 	return func(ctx context.Context, p PedidoResumo) (string, error) {
 		corpo, err := json.Marshal(map[string]any{
 			"model": "cd2", "messages": p.Mensagens, "stream": false, "temperature": 0, "max_tokens": p.MaxTokens,
+			// Thinking desligado no resumo (critério da CIDB-11). O modelo do produto (Qwen3-4B-Instruct-2507)
+			// já não tem modo thinking; a chave do template deixa explícito para qualquer Qwen3.
+			"chat_template_kwargs": map[string]any{"enable_thinking": false},
 			"response_format": map[string]any{"type": "json_schema",
 				"json_schema": map[string]any{"name": "resumo", "strict": true, "schema": p.Schema}},
 		})
