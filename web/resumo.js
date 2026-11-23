@@ -68,20 +68,34 @@ const SISTEMA = [
   'Você escreve o resumo de um alerta de uma consulta ao banco de dados de uma empresa.',
   'Responda só com um objeto JSON {"linhas": ["...", "..."]}: de 1 a 3 frases curtas em português, cada uma com até 140 caracteres.',
   'Regras:',
-  '- Use só números e datas que aparecem nos dados, escritos exatamente como estão. Não calcule nada: nada de somas, diferenças, médias ou percentuais novos.',
+  '- Use só números e datas do Resultado e da Base de comparação, escritos exatamente como estão. Não calcule nada: nada de somas, diferenças, médias, percentuais ou contagens novas.',
   '- A primeira frase diz o que disparou o alerta.',
-  '- As outras destacam o que chama atenção nas linhas (o maior, o menor, o que mais mudou).',
+  '- As outras destacam o que chama atenção no resultado (o maior, o menor, o que mais mudou).',
   '- Não dê conselhos, não explique causas e não invente.'
 ].join('\n');
 
+// Base de comparação da regra, como a CIDB-11 pede ("a partir do resultado atual e da base de comparação"):
+// o valor fixo da regra (maior/menor que) ou o valor da execução anterior ou da média das N anteriores.
+// { texto, valor } ou null quando não há base (sem condição, ou variação ainda sem anterior).
+function baseDe(d){
+  const c = d.condicao, j = d.julgamento;
+  if(!objeto(c)) return null;
+  if(c.operador === 'maior' || c.operador === 'menor'){
+    return typeof c.valor === 'number' && isFinite(c.valor) ? { texto:'valor fixo da regra = ' + Chart.fmt(c.valor), valor:c.valor } : null;
+  }
+  if(typeof j.base !== 'number' || !isFinite(j.base)) return null;
+  const de = c.base === 'media' && j.n > 1 ? 'média das ' + j.n + ' execuções anteriores' : 'execução anterior';
+  return { texto:de + ' = ' + Chart.fmt(j.base), valor:j.base };
+}
+
 function mensagens(consulta, resultado, julgamento){
-  const d = dados(consulta, resultado, julgamento);
+  const d = dados(consulta, resultado, julgamento), b = baseDe(d);
   const linhas = d.linhas.map(l => d.colunas.map(c => c + ': ' + celula(l[c])).join('; '));
   const user = [
     'Consulta: ' + d.titulo,
     'Alerta: ' + d.alerta,
-    'Colunas: ' + d.colunas.join(', '),
-    'Linhas (' + d.linhas.length + (d.total > d.linhas.length ? ' de ' + d.total : '') + '):',
+    'Base de comparação: ' + (b ? b.texto : 'nenhuma'),
+    'Resultado (' + (d.total > d.linhas.length ? 'as ' + d.linhas.length + ' primeiras de ' + d.total + ' linhas; ' : '') + 'colunas: ' + d.colunas.join(', ') + '):',
     linhas.join('\n')
   ].join('\n');
   return [{ role:'system', content:SISTEMA }, { role:'user', content:user }];
@@ -101,9 +115,11 @@ function numerosDoTexto(t){
   String(t == null ? '' : t).replace(RE_NUMERO, m => { const v = lerNumero(m); if(v != null) out.push(v); return m; });
   return out;
 }
-// Tudo o que o resumo pode citar: valores das células enviadas, números escritos nelas, no título,
-// nos nomes de coluna e na frase do alerta, o valor conferido, a base, o limite, a variação, o
-// tamanho do recorte; e as datas das células.
+// O que o resumo pode citar (CIDB-11: "todo número presente no resumo existe no resultado ou na base de
+// comparação"): os valores e as datas das células enviadas (números escritos em texto, como "350ml" ou
+// "Loja 04", também são do resultado) e o valor da base. Mais dois números que o código tira do resultado e
+// da base e que já estão no aviso de hoje: o valor conferido (a soma, o maior...) e a variação %. (Leitura
+// nossa do critério, a confirmar com o produto.) Título, nomes de coluna e contagens não entram.
 function permitidos(consulta, resultado, julgamento){
   const d = dados(consulta, resultado, julgamento), nums = [], datas = [];
   const add = v => { if(typeof v === 'number' && isFinite(v)) nums.push(Math.abs(v)); };
@@ -115,11 +131,9 @@ function permitidos(consulta, resultado, julgamento){
       if(n != null) add(n); else numerosDoTexto(v).forEach(add);
     }
   }
-  d.colunas.forEach(c => numerosDoTexto(c).forEach(add));
-  numerosDoTexto(d.titulo).forEach(add);
-  numerosDoTexto(d.alerta).forEach(add);
-  const j = d.julgamento, c = d.condicao;
-  [j.valor, j.base, j.variacao, j.n, c && c.valor, d.linhas.length, d.total].forEach(v => add(typeof v === 'number' ? v : null));
+  const b = baseDe(d), j = d.julgamento;
+  if(b) add(b.valor);
+  [j.valor, j.variacao].forEach(v => add(typeof v === 'number' ? v : null));
   return { nums, datas };
 }
 
@@ -208,6 +222,6 @@ function textoFalha(r){
 // Texto do aviso com o resumo: as frases, uma por linha.
 function textoAviso(linhas){ return (Array.isArray(linhas) ? linhas : []).join('\n'); }
 
-const api = { SCHEMA, MAX_FRASES, MAX_FRASE, MAX_LINHAS, MAX_TOKENS, dados, mensagens, pedido, permitidos, conferir, textoAviso, textoFalha, celula };
+const api = { SCHEMA, MAX_FRASES, MAX_FRASE, MAX_LINHAS, MAX_TOKENS, dados, baseDe, mensagens, pedido, permitidos, conferir, textoAviso, textoFalha, celula };
 if(isNode) module.exports = api; else root.CD2Resumo = api;
 })(typeof window !== 'undefined' ? window : globalThis);

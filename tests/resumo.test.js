@@ -36,15 +36,17 @@ test('mensagens: título, frase do alerta e linhas no formato brasileiro', () =>
   const u = R.mensagens(consulta, resultado, jul)[1].content;
   assert.match(u, /Consulta: Faturamento nos últimos 30 dias/);
   assert.match(u, /Alerta: A soma de faturamento = 384\.921,27, acima de 1\./);
+  assert.match(u, /Base de comparação: valor fixo da regra = 1\n/);
+  assert.match(u, /Resultado \(colunas: data, faturamento\):\ndata: 30\/10\/2026; faturamento: 105\.032,38/);
   assert.match(u, /data: 31\/10\/2026; faturamento: 135\.979,13/);
-  assert.match(u, /Linhas \(4\):/);
 });
 
 test('mensagens: corta em 20 linhas e diz quantas eram', () => {
   const muitas = Array.from({ length:30 }, (_, i) => ({ loja:'Loja ' + (i + 1), total:i }));
   const r = { ok:true, colunas:['loja', 'total'], todas:muitas };
   const u = R.mensagens({ nome:'x' }, r, { texto:'t', disparou:true, aviso:true })[1].content;
-  assert.match(u, /Linhas \(20 de 30\):/);
+  assert.match(u, /Resultado \(as 20 primeiras de 30 linhas; colunas: loja, total\):/);
+  assert.match(u, /Base de comparação: nenhuma/);
   assert.equal(u.split('\n').filter(l => l.startsWith('loja:')).length, 20);
 });
 
@@ -82,13 +84,15 @@ test('conferir: data ou horário que não está nos dados descarta', () => {
   assert.equal(R.conferir(resp(['Rodou às 13:00.']), consulta, resultado, jul).ok, false);
 });
 
-test('conferir: números do título, de nomes e da regra podem ser citados', () => {
+test('conferir: números do resultado (inclusive em texto) e da base valem; do título, não', () => {
   const c = { nome:'Produto com mais saída nos últimos 7 dias',
     agenda:{ condicao:{ coluna:'quantidade', agregacao:'primeira', operador:'menor', valor:2500 } } };
   const r = { ok:true, colunas:['produto', 'quantidade'], todas:[{ produto:'Cerveja Pilsen Do Campo 350ml', quantidade:2053 }] };
   const j = C.julgar(c.agenda.condicao, r, []);
-  const ok = R.conferir(resp(['Nos últimos 7 dias, a Cerveja Pilsen Do Campo 350ml saiu 2.053 vezes, abaixo de 2.500.']), c, r, j);
+  const ok = R.conferir(resp(['A Cerveja Pilsen Do Campo 350ml saiu 2.053 vezes, abaixo de 2.500.']), c, r, j);
   assert.equal(ok.ok, true, JSON.stringify(ok));
+  const titulo = R.conferir(resp(['Nos últimos 7 dias, a quantidade foi 2.053.']), c, r, j);
+  assert.equal(titulo.ok, false); assert.match(titulo.detalhe, /número 7 /);
 });
 
 test('conferir: variação e base vêm do julgamento', () => {
@@ -96,7 +100,10 @@ test('conferir: variação e base vêm do julgamento', () => {
   const r = { ok:true, colunas:['total'], todas:[{ total:80 }] };
   const j = C.julgar(c.agenda.condicao, r, [[{ total:100 }]]);
   assert.equal(j.disparou, true);
-  assert.equal(R.conferir(resp(['O total caiu 20% (de 100 para 80), mais que o limite de 10%.']), c, r, j).ok, true);
+  assert.match(R.mensagens(c, r, j)[1].content, /Base de comparação: execução anterior = 100\n/);
+  assert.equal(R.conferir(resp(['O total caiu 20% (de 100 para 80) em relação à execução anterior.']), c, r, j).ok, true);
+  // O limite de uma regra de variação é um percentual da regra, não a base: não entra.
+  assert.equal(R.conferir(resp(['O total caiu 20%, mais que o limite de 10%.']), c, r, j).ok, false);
   assert.equal(R.conferir(resp(['O total caiu 25%.']), c, r, j).ok, false);
 });
 
@@ -135,4 +142,16 @@ test('textoFalha: por que saiu sem resumo; vazio quando teve', () => {
   assert.equal(R.textoFalha({ falha:'prazo' }), 'Sem resumo da IA: o modelo demorou mais que o prazo.');
   assert.equal(R.textoFalha({ linhas:['ok'], ms:10 }), '');
   assert.equal(R.textoFalha(null), '');
+});
+
+test('baseDe: valor fixo, execução anterior, média das N; nenhuma sem base', () => {
+  const r = { ok:true, colunas:['total'], todas:[{ total:80 }] };
+  const b = (cond, ants) => R.baseDe(R.dados({ agenda:{ condicao:cond } }, r, C.julgar(cond, r, ants)));
+  assert.deepEqual(b({ coluna:'total', agregacao:'primeira', operador:'maior', valor:50 }, []), { texto:'valor fixo da regra = 50', valor:50 });
+  assert.deepEqual(b({ coluna:'total', agregacao:'primeira', operador:'caiu', valor:10, base:'anterior' }, [[{ total:100 }]]),
+    { texto:'execução anterior = 100', valor:100 });
+  assert.deepEqual(b({ coluna:'total', agregacao:'primeira', operador:'caiu', valor:10, base:'media', n:3 }, [[{ total:100 }], [{ total:120 }], [{ total:140 }]]),
+    { texto:'média das 3 execuções anteriores = 120', valor:120 });
+  assert.equal(b({ coluna:'total', agregacao:'primeira', operador:'caiu', valor:10, base:'anterior' }, []), null, 'sem anterior');
+  assert.equal(R.baseDe(R.dados({}, r, null)), null, 'sem condição');
 });
