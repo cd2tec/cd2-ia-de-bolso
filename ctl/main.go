@@ -144,6 +144,7 @@ func run(args []string, key string, stop <-chan os.Signal, stdout, stderr io.Wri
 		ag = &agendaAPI{Agendador: agendador, Historico: hist, ligado: instalada}
 		if instalada {
 			go func() { defer close(agFim); agendador.Rodar(agCtx) }()
+			iniciarNotificacoes(agCtx, agendador, stderr)
 		} else {
 			close(agFim)
 		}
