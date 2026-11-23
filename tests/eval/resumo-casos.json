@@ -1,0 +1,2002 @@
+[
+ {
+  "id": "01",
+  "rotulo": "Faturamento por dia nos últimos 30 dias · limite acima",
+  "consulta": {
+   "nome": "Faturamento por dia nos últimos 30 dias",
+   "x": "data",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 2527903
+    }
+   }
+  },
+  "colunas": [
+   "data",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "data": "2026-10-24",
+    "faturamento": 115656.05
+   },
+   {
+    "data": "2026-10-25",
+    "faturamento": 97340.0
+   },
+   {
+    "data": "2026-10-26",
+    "faturamento": 75426.19
+   },
+   {
+    "data": "2026-10-27",
+    "faturamento": 86517.53
+   },
+   {
+    "data": "2026-10-28",
+    "faturamento": 92143.86
+   },
+   {
+    "data": "2026-10-29",
+    "faturamento": 89741.16
+   },
+   {
+    "data": "2026-10-30",
+    "faturamento": 102748.13
+   },
+   {
+    "data": "2026-10-31",
+    "faturamento": 133335.43
+   },
+   {
+    "data": "2026-11-01",
+    "faturamento": 100892.94
+   },
+   {
+    "data": "2026-11-02",
+    "faturamento": 85239.78
+   },
+   {
+    "data": "2026-11-03",
+    "faturamento": 84894.71
+   },
+   {
+    "data": "2026-11-04",
+    "faturamento": 87862.95
+   },
+   {
+    "data": "2026-11-05",
+    "faturamento": 99176.66
+   },
+   {
+    "data": "2026-11-06",
+    "faturamento": 99262.46
+   },
+   {
+    "data": "2026-11-07",
+    "faturamento": 129615.69
+   },
+   {
+    "data": "2026-11-08",
+    "faturamento": 94156.31
+   },
+   {
+    "data": "2026-11-09",
+    "faturamento": 78356.08
+   },
+   {
+    "data": "2026-11-10",
+    "faturamento": 86459.28
+   },
+   {
+    "data": "2026-11-11",
+    "faturamento": 92015.91
+   },
+   {
+    "data": "2026-11-12",
+    "faturamento": 85836.43
+   },
+   {
+    "data": "2026-11-13",
+    "faturamento": 103536.96
+   },
+   {
+    "data": "2026-11-14",
+    "faturamento": 126259.85
+   },
+   {
+    "data": "2026-11-15",
+    "faturamento": 96908.32
+   },
+   {
+    "data": "2026-11-16",
+    "faturamento": 76920.5
+   },
+   {
+    "data": "2026-11-17",
+    "faturamento": 67597.09
+   },
+   {
+    "data": "2026-11-18",
+    "faturamento": 72536.26
+   },
+   {
+    "data": "2026-11-19",
+    "faturamento": 80278.72
+   },
+   {
+    "data": "2026-11-20",
+    "faturamento": 102056.0
+   },
+   {
+    "data": "2026-11-21",
+    "faturamento": 115147.11
+   },
+   {
+    "data": "2026-11-22",
+    "faturamento": 50862.99
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "02",
+  "rotulo": "Faturamento por dia nos últimos 30 dias · limite abaixo",
+  "consulta": {
+   "nome": "Faturamento por dia nos últimos 30 dias",
+   "x": "data",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 55950
+    }
+   }
+  },
+  "colunas": [
+   "data",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "data": "2026-10-24",
+    "faturamento": 115656.05
+   },
+   {
+    "data": "2026-10-25",
+    "faturamento": 97340.0
+   },
+   {
+    "data": "2026-10-26",
+    "faturamento": 75426.19
+   },
+   {
+    "data": "2026-10-27",
+    "faturamento": 86517.53
+   },
+   {
+    "data": "2026-10-28",
+    "faturamento": 92143.86
+   },
+   {
+    "data": "2026-10-29",
+    "faturamento": 89741.16
+   },
+   {
+    "data": "2026-10-30",
+    "faturamento": 102748.13
+   },
+   {
+    "data": "2026-10-31",
+    "faturamento": 133335.43
+   },
+   {
+    "data": "2026-11-01",
+    "faturamento": 100892.94
+   },
+   {
+    "data": "2026-11-02",
+    "faturamento": 85239.78
+   },
+   {
+    "data": "2026-11-03",
+    "faturamento": 84894.71
+   },
+   {
+    "data": "2026-11-04",
+    "faturamento": 87862.95
+   },
+   {
+    "data": "2026-11-05",
+    "faturamento": 99176.66
+   },
+   {
+    "data": "2026-11-06",
+    "faturamento": 99262.46
+   },
+   {
+    "data": "2026-11-07",
+    "faturamento": 129615.69
+   },
+   {
+    "data": "2026-11-08",
+    "faturamento": 94156.31
+   },
+   {
+    "data": "2026-11-09",
+    "faturamento": 78356.08
+   },
+   {
+    "data": "2026-11-10",
+    "faturamento": 86459.28
+   },
+   {
+    "data": "2026-11-11",
+    "faturamento": 92015.91
+   },
+   {
+    "data": "2026-11-12",
+    "faturamento": 85836.43
+   },
+   {
+    "data": "2026-11-13",
+    "faturamento": 103536.96
+   },
+   {
+    "data": "2026-11-14",
+    "faturamento": 126259.85
+   },
+   {
+    "data": "2026-11-15",
+    "faturamento": 96908.32
+   },
+   {
+    "data": "2026-11-16",
+    "faturamento": 76920.5
+   },
+   {
+    "data": "2026-11-17",
+    "faturamento": 67597.09
+   },
+   {
+    "data": "2026-11-18",
+    "faturamento": 72536.26
+   },
+   {
+    "data": "2026-11-19",
+    "faturamento": 80278.72
+   },
+   {
+    "data": "2026-11-20",
+    "faturamento": 102056.0
+   },
+   {
+    "data": "2026-11-21",
+    "faturamento": 115147.11
+   },
+   {
+    "data": "2026-11-22",
+    "faturamento": 50862.99
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "03",
+  "rotulo": "Faturamento por dia nos últimos 30 dias · variação contra a anterior",
+  "consulta": {
+   "nome": "Faturamento por dia nos últimos 30 dias",
+   "x": "data",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "soma",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    }
+   }
+  },
+  "colunas": [
+   "data",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "data": "2026-10-24",
+    "faturamento": 115656.05
+   },
+   {
+    "data": "2026-10-25",
+    "faturamento": 97340.0
+   },
+   {
+    "data": "2026-10-26",
+    "faturamento": 75426.19
+   },
+   {
+    "data": "2026-10-27",
+    "faturamento": 86517.53
+   },
+   {
+    "data": "2026-10-28",
+    "faturamento": 92143.86
+   },
+   {
+    "data": "2026-10-29",
+    "faturamento": 89741.16
+   },
+   {
+    "data": "2026-10-30",
+    "faturamento": 102748.13
+   },
+   {
+    "data": "2026-10-31",
+    "faturamento": 133335.43
+   },
+   {
+    "data": "2026-11-01",
+    "faturamento": 100892.94
+   },
+   {
+    "data": "2026-11-02",
+    "faturamento": 85239.78
+   },
+   {
+    "data": "2026-11-03",
+    "faturamento": 84894.71
+   },
+   {
+    "data": "2026-11-04",
+    "faturamento": 87862.95
+   },
+   {
+    "data": "2026-11-05",
+    "faturamento": 99176.66
+   },
+   {
+    "data": "2026-11-06",
+    "faturamento": 99262.46
+   },
+   {
+    "data": "2026-11-07",
+    "faturamento": 129615.69
+   },
+   {
+    "data": "2026-11-08",
+    "faturamento": 94156.31
+   },
+   {
+    "data": "2026-11-09",
+    "faturamento": 78356.08
+   },
+   {
+    "data": "2026-11-10",
+    "faturamento": 86459.28
+   },
+   {
+    "data": "2026-11-11",
+    "faturamento": 92015.91
+   },
+   {
+    "data": "2026-11-12",
+    "faturamento": 85836.43
+   },
+   {
+    "data": "2026-11-13",
+    "faturamento": 103536.96
+   },
+   {
+    "data": "2026-11-14",
+    "faturamento": 126259.85
+   },
+   {
+    "data": "2026-11-15",
+    "faturamento": 96908.32
+   },
+   {
+    "data": "2026-11-16",
+    "faturamento": 76920.5
+   },
+   {
+    "data": "2026-11-17",
+    "faturamento": 67597.09
+   },
+   {
+    "data": "2026-11-18",
+    "faturamento": 72536.26
+   },
+   {
+    "data": "2026-11-19",
+    "faturamento": 80278.72
+   },
+   {
+    "data": "2026-11-20",
+    "faturamento": 102056.0
+   },
+   {
+    "data": "2026-11-21",
+    "faturamento": 115147.11
+   },
+   {
+    "data": "2026-11-22",
+    "faturamento": 50862.99
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "data": "2026-10-17",
+     "faturamento": 129001.13
+    },
+    {
+     "data": "2026-10-18",
+     "faturamento": 97706.42
+    },
+    {
+     "data": "2026-10-19",
+     "faturamento": 82677.02
+    },
+    {
+     "data": "2026-10-20",
+     "faturamento": 78390.07
+    },
+    {
+     "data": "2026-10-21",
+     "faturamento": 73373.12
+    },
+    {
+     "data": "2026-10-22",
+     "faturamento": 86251.23
+    },
+    {
+     "data": "2026-10-23",
+     "faturamento": 99155.88
+    },
+    {
+     "data": "2026-10-24",
+     "faturamento": 115656.05
+    },
+    {
+     "data": "2026-10-25",
+     "faturamento": 97340.0
+    },
+    {
+     "data": "2026-10-26",
+     "faturamento": 75426.19
+    },
+    {
+     "data": "2026-10-27",
+     "faturamento": 86517.53
+    },
+    {
+     "data": "2026-10-28",
+     "faturamento": 92143.86
+    },
+    {
+     "data": "2026-10-29",
+     "faturamento": 89741.16
+    },
+    {
+     "data": "2026-10-30",
+     "faturamento": 102748.13
+    },
+    {
+     "data": "2026-10-31",
+     "faturamento": 133335.43
+    },
+    {
+     "data": "2026-11-01",
+     "faturamento": 100892.94
+    },
+    {
+     "data": "2026-11-02",
+     "faturamento": 85239.78
+    },
+    {
+     "data": "2026-11-03",
+     "faturamento": 84894.71
+    },
+    {
+     "data": "2026-11-04",
+     "faturamento": 87862.95
+    },
+    {
+     "data": "2026-11-05",
+     "faturamento": 99176.66
+    },
+    {
+     "data": "2026-11-06",
+     "faturamento": 99262.46
+    },
+    {
+     "data": "2026-11-07",
+     "faturamento": 129615.69
+    },
+    {
+     "data": "2026-11-08",
+     "faturamento": 94156.31
+    },
+    {
+     "data": "2026-11-09",
+     "faturamento": 78356.08
+    },
+    {
+     "data": "2026-11-10",
+     "faturamento": 86459.28
+    },
+    {
+     "data": "2026-11-11",
+     "faturamento": 92015.91
+    },
+    {
+     "data": "2026-11-12",
+     "faturamento": 85836.43
+    },
+    {
+     "data": "2026-11-13",
+     "faturamento": 103536.96
+    },
+    {
+     "data": "2026-11-14",
+     "faturamento": 126259.85
+    },
+    {
+     "data": "2026-11-15",
+     "faturamento": 96908.32
+    }
+   ]
+  ]
+ },
+ {
+  "id": "04",
+  "rotulo": "Faturamento por loja nos últimos 7 dias · limite acima",
+  "consulta": {
+   "nome": "Faturamento por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 508859
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "faturamento": 201268.45
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "faturamento": 163249.98
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "faturamento": 126640.53
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "faturamento": 74239.71
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "05",
+  "rotulo": "Faturamento por loja nos últimos 7 dias · limite abaixo",
+  "consulta": {
+   "nome": "Faturamento por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 81665
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "faturamento": 201268.45
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "faturamento": 163249.98
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "faturamento": 126640.53
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "faturamento": 74239.71
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "06",
+  "rotulo": "Faturamento por loja nos últimos 7 dias · variação contra a anterior",
+  "consulta": {
+   "nome": "Faturamento por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "soma",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "faturamento": 201268.45
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "faturamento": 163249.98
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "faturamento": 126640.53
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "faturamento": 74239.71
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "loja": "Loja 01 - Centro",
+     "faturamento": 234986.3
+    },
+    {
+     "loja": "Loja 02 - Taquaral",
+     "faturamento": 180688.74
+    },
+    {
+     "loja": "Loja 03 - Sumaré",
+     "faturamento": 145700.78
+    },
+    {
+     "loja": "Loja 04 - Valinhos",
+     "faturamento": 107997.01
+    }
+   ]
+  ]
+ },
+ {
+  "id": "07",
+  "rotulo": "Ticket médio por loja nos últimos 7 dias · limite acima",
+  "consulta": {
+   "nome": "Ticket médio por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "ticket_medio",
+   "agenda": {
+    "condicao": {
+     "coluna": "ticket_medio",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 365
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "ticket_medio"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "ticket_medio": 103.16
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "ticket_medio": 103.11
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "ticket_medio": 101.78
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "ticket_medio": 97.94
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "08",
+  "rotulo": "Ticket médio por loja nos últimos 7 dias · limite abaixo",
+  "consulta": {
+   "nome": "Ticket médio por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "ticket_medio",
+   "agenda": {
+    "condicao": {
+     "coluna": "ticket_medio",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 109
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "ticket_medio"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "ticket_medio": 103.16
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "ticket_medio": 103.11
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "ticket_medio": 101.78
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "ticket_medio": 97.94
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "09",
+  "rotulo": "Ticket médio por loja nos últimos 7 dias · variação contra a anterior",
+  "consulta": {
+   "nome": "Ticket médio por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "ticket_medio",
+   "agenda": {
+    "condicao": {
+     "coluna": "ticket_medio",
+     "agregacao": "soma",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "ticket_medio"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "ticket_medio": 103.16
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "ticket_medio": 103.11
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "ticket_medio": 101.78
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "ticket_medio": 97.94
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "loja": "Loja 02 - Taquaral",
+     "ticket_medio": 107.55
+    },
+    {
+     "loja": "Loja 03 - Sumaré",
+     "ticket_medio": 105.28
+    },
+    {
+     "loja": "Loja 04 - Valinhos",
+     "ticket_medio": 102.95
+    },
+    {
+     "loja": "Loja 01 - Centro",
+     "ticket_medio": 101.16
+    }
+   ]
+  ]
+ },
+ {
+  "id": "10",
+  "rotulo": "Cupons cancelados por dia nos últimos 14 dias · limite acima",
+  "consulta": {
+   "nome": "Cupons cancelados por dia nos últimos 14 dias",
+   "x": "data",
+   "y": "cancelados",
+   "agenda": {
+    "condicao": {
+     "coluna": "cancelados",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 168
+    }
+   }
+  },
+  "colunas": [
+   "data",
+   "cancelados"
+  ],
+  "linhas": [
+   {
+    "data": "2026-11-09",
+    "cancelados": 16
+   },
+   {
+    "data": "2026-11-10",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-11",
+    "cancelados": 12
+   },
+   {
+    "data": "2026-11-12",
+    "cancelados": 8
+   },
+   {
+    "data": "2026-11-13",
+    "cancelados": 25
+   },
+   {
+    "data": "2026-11-14",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-15",
+    "cancelados": 22
+   },
+   {
+    "data": "2026-11-16",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-17",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-18",
+    "cancelados": 12
+   },
+   {
+    "data": "2026-11-19",
+    "cancelados": 11
+   },
+   {
+    "data": "2026-11-20",
+    "cancelados": 15
+   },
+   {
+    "data": "2026-11-21",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-22",
+    "cancelados": 6
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "11",
+  "rotulo": "Cupons cancelados por dia nos últimos 14 dias · limite abaixo",
+  "consulta": {
+   "nome": "Cupons cancelados por dia nos últimos 14 dias",
+   "x": "data",
+   "y": "cancelados",
+   "agenda": {
+    "condicao": {
+     "coluna": "cancelados",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 8
+    }
+   }
+  },
+  "colunas": [
+   "data",
+   "cancelados"
+  ],
+  "linhas": [
+   {
+    "data": "2026-11-09",
+    "cancelados": 16
+   },
+   {
+    "data": "2026-11-10",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-11",
+    "cancelados": 12
+   },
+   {
+    "data": "2026-11-12",
+    "cancelados": 8
+   },
+   {
+    "data": "2026-11-13",
+    "cancelados": 25
+   },
+   {
+    "data": "2026-11-14",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-15",
+    "cancelados": 22
+   },
+   {
+    "data": "2026-11-16",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-17",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-18",
+    "cancelados": 12
+   },
+   {
+    "data": "2026-11-19",
+    "cancelados": 11
+   },
+   {
+    "data": "2026-11-20",
+    "cancelados": 15
+   },
+   {
+    "data": "2026-11-21",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-22",
+    "cancelados": 6
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "12",
+  "rotulo": "Cupons cancelados por dia nos últimos 14 dias · variação contra a anterior",
+  "consulta": {
+   "nome": "Cupons cancelados por dia nos últimos 14 dias",
+   "x": "data",
+   "y": "cancelados",
+   "agenda": {
+    "condicao": {
+     "coluna": "cancelados",
+     "agregacao": "soma",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    }
+   }
+  },
+  "colunas": [
+   "data",
+   "cancelados"
+  ],
+  "linhas": [
+   {
+    "data": "2026-11-09",
+    "cancelados": 16
+   },
+   {
+    "data": "2026-11-10",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-11",
+    "cancelados": 12
+   },
+   {
+    "data": "2026-11-12",
+    "cancelados": 8
+   },
+   {
+    "data": "2026-11-13",
+    "cancelados": 25
+   },
+   {
+    "data": "2026-11-14",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-15",
+    "cancelados": 22
+   },
+   {
+    "data": "2026-11-16",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-17",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-18",
+    "cancelados": 12
+   },
+   {
+    "data": "2026-11-19",
+    "cancelados": 11
+   },
+   {
+    "data": "2026-11-20",
+    "cancelados": 15
+   },
+   {
+    "data": "2026-11-21",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-22",
+    "cancelados": 6
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "data": "2026-11-02",
+     "cancelados": 12
+    },
+    {
+     "data": "2026-11-03",
+     "cancelados": 8
+    },
+    {
+     "data": "2026-11-04",
+     "cancelados": 14
+    },
+    {
+     "data": "2026-11-05",
+     "cancelados": 9
+    },
+    {
+     "data": "2026-11-06",
+     "cancelados": 18
+    },
+    {
+     "data": "2026-11-07",
+     "cancelados": 15
+    },
+    {
+     "data": "2026-11-08",
+     "cancelados": 14
+    },
+    {
+     "data": "2026-11-09",
+     "cancelados": 16
+    },
+    {
+     "data": "2026-11-10",
+     "cancelados": 14
+    },
+    {
+     "data": "2026-11-11",
+     "cancelados": 12
+    },
+    {
+     "data": "2026-11-12",
+     "cancelados": 8
+    },
+    {
+     "data": "2026-11-13",
+     "cancelados": 25
+    },
+    {
+     "data": "2026-11-14",
+     "cancelados": 14
+    },
+    {
+     "data": "2026-11-15",
+     "cancelados": 22
+    }
+   ]
+  ]
+ },
+ {
+  "id": "13",
+  "rotulo": "Faturamento por forma de pagamento nos últimos 7 dias · limite acima",
+  "consulta": {
+   "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+   "x": "forma",
+   "y": "valor",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 508859
+    }
+   }
+  },
+  "colunas": [
+   "forma",
+   "valor"
+  ],
+  "linhas": [
+   {
+    "forma": "Cartão de Débito",
+    "valor": 164741.66
+   },
+   {
+    "forma": "Cartão de Crédito",
+    "valor": 151836.51
+   },
+   {
+    "forma": "PIX",
+    "valor": 142405.34
+   },
+   {
+    "forma": "Dinheiro",
+    "valor": 70762.41
+   },
+   {
+    "forma": "Vale-alimentação",
+    "valor": 35652.75
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "14",
+  "rotulo": "Faturamento por forma de pagamento nos últimos 7 dias · limite abaixo",
+  "consulta": {
+   "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+   "x": "forma",
+   "y": "valor",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 39219
+    }
+   }
+  },
+  "colunas": [
+   "forma",
+   "valor"
+  ],
+  "linhas": [
+   {
+    "forma": "Cartão de Débito",
+    "valor": 164741.66
+   },
+   {
+    "forma": "Cartão de Crédito",
+    "valor": 151836.51
+   },
+   {
+    "forma": "PIX",
+    "valor": 142405.34
+   },
+   {
+    "forma": "Dinheiro",
+    "valor": 70762.41
+   },
+   {
+    "forma": "Vale-alimentação",
+    "valor": 35652.75
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "15",
+  "rotulo": "Faturamento por forma de pagamento nos últimos 7 dias · variação contra a anterior",
+  "consulta": {
+   "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+   "x": "forma",
+   "y": "valor",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor",
+     "agregacao": "soma",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    }
+   }
+  },
+  "colunas": [
+   "forma",
+   "valor"
+  ],
+  "linhas": [
+   {
+    "forma": "Cartão de Débito",
+    "valor": 164741.66
+   },
+   {
+    "forma": "Cartão de Crédito",
+    "valor": 151836.51
+   },
+   {
+    "forma": "PIX",
+    "valor": 142405.34
+   },
+   {
+    "forma": "Dinheiro",
+    "valor": 70762.41
+   },
+   {
+    "forma": "Vale-alimentação",
+    "valor": 35652.75
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "forma": "Cartão de Débito",
+     "valor": 196928.78
+    },
+    {
+     "forma": "Cartão de Crédito",
+     "valor": 185210.27
+    },
+    {
+     "forma": "PIX",
+     "valor": 165325.32
+    },
+    {
+     "forma": "Dinheiro",
+     "valor": 81959.08
+    },
+    {
+     "forma": "Vale-alimentação",
+     "valor": 39949.38
+    }
+   ]
+  ]
+ },
+ {
+  "id": "16",
+  "rotulo": "Produto com mais saída nos últimos 7 dias · limite acima",
+  "consulta": {
+   "nome": "Produto com mais saída nos últimos 7 dias",
+   "x": "produto",
+   "y": "quantidade",
+   "agenda": {
+    "condicao": {
+     "coluna": "quantidade",
+     "agregacao": "primeira",
+     "operador": "maior",
+     "valor": 1815
+    }
+   }
+  },
+  "colunas": [
+   "produto",
+   "quantidade"
+  ],
+  "linhas": [
+   {
+    "produto": "Leite Condensado Dona Clara 395g",
+    "quantidade": 2017.0
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "17",
+  "rotulo": "Produto com mais saída nos últimos 7 dias · limite abaixo",
+  "consulta": {
+   "nome": "Produto com mais saída nos últimos 7 dias",
+   "x": "produto",
+   "y": "quantidade",
+   "agenda": {
+    "condicao": {
+     "coluna": "quantidade",
+     "agregacao": "primeira",
+     "operador": "menor",
+     "valor": 2220
+    }
+   }
+  },
+  "colunas": [
+   "produto",
+   "quantidade"
+  ],
+  "linhas": [
+   {
+    "produto": "Leite Condensado Dona Clara 395g",
+    "quantidade": 2017.0
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "18",
+  "rotulo": "Produto com mais saída nos últimos 7 dias · variação contra a anterior",
+  "consulta": {
+   "nome": "Produto com mais saída nos últimos 7 dias",
+   "x": "produto",
+   "y": "quantidade",
+   "agenda": {
+    "condicao": {
+     "coluna": "quantidade",
+     "agregacao": "primeira",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    }
+   }
+  },
+  "colunas": [
+   "produto",
+   "quantidade"
+  ],
+  "linhas": [
+   {
+    "produto": "Leite Condensado Dona Clara 395g",
+    "quantidade": 2017.0
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "produto": "Cerveja Pilsen Do Campo 350ml",
+     "quantidade": 2602.0
+    }
+   ]
+  ]
+ },
+ {
+  "id": "19",
+  "rotulo": "Top 10 produtos por quantidade nos últimos 7 dias · limite acima",
+  "consulta": {
+   "nome": "Top 10 produtos por quantidade nos últimos 7 dias",
+   "x": "produto",
+   "y": "quantidade",
+   "agenda": {
+    "condicao": {
+     "coluna": "quantidade",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 13466
+    }
+   }
+  },
+  "colunas": [
+   "produto",
+   "quantidade"
+  ],
+  "linhas": [
+   {
+    "produto": "Leite Condensado Dona Clara 395g",
+    "quantidade": 2017.0
+   },
+   {
+    "produto": "Cerveja Pilsen Do Campo 350ml",
+    "quantidade": 2000.0
+   },
+   {
+    "produto": "Cerveja Pilsen Boa Mesa 600ml",
+    "quantidade": 1808.0
+   },
+   {
+    "produto": "Energético Serra Azul 250ml",
+    "quantidade": 1710.0
+   },
+   {
+    "produto": "Macarrão Espaguete Tropical 500g",
+    "quantidade": 1573.0
+   },
+   {
+    "produto": "Cebola",
+    "quantidade": 1336.865
+   },
+   {
+    "produto": "Pão de Queijo",
+    "quantidade": 1282.701
+   },
+   {
+    "produto": "Açúcar Refinado Primor 5kg",
+    "quantidade": 1279.0
+   },
+   {
+    "produto": "Desodorante Aerosol Boa Mesa 150ml",
+    "quantidade": 1004.0
+   },
+   {
+    "produto": "Café Torrado e Moído Estrela do Sul 250g",
+    "quantidade": 952.0
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "20",
+  "rotulo": "Top 10 produtos por quantidade nos últimos 7 dias · limite abaixo",
+  "consulta": {
+   "nome": "Top 10 produtos por quantidade nos últimos 7 dias",
+   "x": "produto",
+   "y": "quantidade",
+   "agenda": {
+    "condicao": {
+     "coluna": "quantidade",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 1048
+    }
+   }
+  },
+  "colunas": [
+   "produto",
+   "quantidade"
+  ],
+  "linhas": [
+   {
+    "produto": "Leite Condensado Dona Clara 395g",
+    "quantidade": 2017.0
+   },
+   {
+    "produto": "Cerveja Pilsen Do Campo 350ml",
+    "quantidade": 2000.0
+   },
+   {
+    "produto": "Cerveja Pilsen Boa Mesa 600ml",
+    "quantidade": 1808.0
+   },
+   {
+    "produto": "Energético Serra Azul 250ml",
+    "quantidade": 1710.0
+   },
+   {
+    "produto": "Macarrão Espaguete Tropical 500g",
+    "quantidade": 1573.0
+   },
+   {
+    "produto": "Cebola",
+    "quantidade": 1336.865
+   },
+   {
+    "produto": "Pão de Queijo",
+    "quantidade": 1282.701
+   },
+   {
+    "produto": "Açúcar Refinado Primor 5kg",
+    "quantidade": 1279.0
+   },
+   {
+    "produto": "Desodorante Aerosol Boa Mesa 150ml",
+    "quantidade": 1004.0
+   },
+   {
+    "produto": "Café Torrado e Moído Estrela do Sul 250g",
+    "quantidade": 952.0
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "21",
+  "rotulo": "Top 10 produtos por quantidade nos últimos 7 dias · variação contra a anterior",
+  "consulta": {
+   "nome": "Top 10 produtos por quantidade nos últimos 7 dias",
+   "x": "produto",
+   "y": "quantidade",
+   "agenda": {
+    "condicao": {
+     "coluna": "quantidade",
+     "agregacao": "soma",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    }
+   }
+  },
+  "colunas": [
+   "produto",
+   "quantidade"
+  ],
+  "linhas": [
+   {
+    "produto": "Leite Condensado Dona Clara 395g",
+    "quantidade": 2017.0
+   },
+   {
+    "produto": "Cerveja Pilsen Do Campo 350ml",
+    "quantidade": 2000.0
+   },
+   {
+    "produto": "Cerveja Pilsen Boa Mesa 600ml",
+    "quantidade": 1808.0
+   },
+   {
+    "produto": "Energético Serra Azul 250ml",
+    "quantidade": 1710.0
+   },
+   {
+    "produto": "Macarrão Espaguete Tropical 500g",
+    "quantidade": 1573.0
+   },
+   {
+    "produto": "Cebola",
+    "quantidade": 1336.865
+   },
+   {
+    "produto": "Pão de Queijo",
+    "quantidade": 1282.701
+   },
+   {
+    "produto": "Açúcar Refinado Primor 5kg",
+    "quantidade": 1279.0
+   },
+   {
+    "produto": "Desodorante Aerosol Boa Mesa 150ml",
+    "quantidade": 1004.0
+   },
+   {
+    "produto": "Café Torrado e Moído Estrela do Sul 250g",
+    "quantidade": 952.0
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "produto": "Cerveja Pilsen Do Campo 350ml",
+     "quantidade": 2602.0
+    },
+    {
+     "produto": "Leite Condensado Dona Clara 395g",
+     "quantidade": 2378.0
+    },
+    {
+     "produto": "Cerveja Pilsen Boa Mesa 600ml",
+     "quantidade": 2165.0
+    },
+    {
+     "produto": "Energético Serra Azul 250ml",
+     "quantidade": 2053.0
+    },
+    {
+     "produto": "Macarrão Espaguete Tropical 500g",
+     "quantidade": 1733.0
+    },
+    {
+     "produto": "Cebola",
+     "quantidade": 1506.859
+    },
+    {
+     "produto": "Açúcar Refinado Primor 5kg",
+     "quantidade": 1493.0
+    },
+    {
+     "produto": "Pão de Queijo",
+     "quantidade": 1483.339
+    },
+    {
+     "produto": "Desodorante Aerosol Boa Mesa 150ml",
+     "quantidade": 1143.0
+    },
+    {
+     "produto": "Café Torrado e Moído Estrela do Sul 250g",
+     "quantidade": 1130.0
+    }
+   ]
+  ]
+ },
+ {
+  "id": "22",
+  "rotulo": "Ruptura de estoque por loja · limite acima",
+  "consulta": {
+   "nome": "Ruptura de estoque por loja",
+   "x": "loja",
+   "y": "itens_em_ruptura",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens_em_ruptura",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 17
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens_em_ruptura"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens_em_ruptura": 7
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens_em_ruptura": 6
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens_em_ruptura": 5
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens_em_ruptura": 1
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "23",
+  "rotulo": "Ruptura de estoque por loja · limite abaixo",
+  "consulta": {
+   "nome": "Ruptura de estoque por loja",
+   "x": "loja",
+   "y": "itens_em_ruptura",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens_em_ruptura",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 2
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens_em_ruptura"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens_em_ruptura": 7
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens_em_ruptura": 6
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens_em_ruptura": 5
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens_em_ruptura": 1
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "24",
+  "rotulo": "Ruptura de estoque por loja · maior valor",
+  "consulta": {
+   "nome": "Ruptura de estoque por loja",
+   "x": "loja",
+   "y": "itens_em_ruptura",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens_em_ruptura",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 4
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens_em_ruptura"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens_em_ruptura": 7
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens_em_ruptura": 6
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens_em_ruptura": 5
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens_em_ruptura": 1
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "25",
+  "rotulo": "Itens abaixo do estoque mínimo por loja · limite acima",
+  "consulta": {
+   "nome": "Itens abaixo do estoque mínimo por loja",
+   "x": "loja",
+   "y": "itens",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 69
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens": 19
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens": 10
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "26",
+  "rotulo": "Itens abaixo do estoque mínimo por loja · limite abaixo",
+  "consulta": {
+   "nome": "Itens abaixo do estoque mínimo por loja",
+   "x": "loja",
+   "y": "itens",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 12
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens": 19
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens": 10
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "27",
+  "rotulo": "Itens abaixo do estoque mínimo por loja · maior valor",
+  "consulta": {
+   "nome": "Itens abaixo do estoque mínimo por loja",
+   "x": "loja",
+   "y": "itens",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 12
+    }
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens": 19
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens": 10
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "28",
+  "rotulo": "Perdas por motivo nos últimos 30 dias · limite acima",
+  "consulta": {
+   "nome": "Perdas por motivo nos últimos 30 dias",
+   "x": "motivo",
+   "y": "valor_custo",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor_custo",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 16354
+    }
+   }
+  },
+  "colunas": [
+   "motivo",
+   "valor_custo"
+  ],
+  "linhas": [
+   {
+    "motivo": "avaria",
+    "valor_custo": 7522.36
+   },
+   {
+    "motivo": "vencimento",
+    "valor_custo": 7473.53
+   },
+   {
+    "motivo": "quebra operacional",
+    "valor_custo": 1667.83
+   },
+   {
+    "motivo": "furto",
+    "valor_custo": 1507.41
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "29",
+  "rotulo": "Perdas por motivo nos últimos 30 dias · limite abaixo",
+  "consulta": {
+   "nome": "Perdas por motivo nos últimos 30 dias",
+   "x": "motivo",
+   "y": "valor_custo",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor_custo",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 1659
+    }
+   }
+  },
+  "colunas": [
+   "motivo",
+   "valor_custo"
+  ],
+  "linhas": [
+   {
+    "motivo": "avaria",
+    "valor_custo": 7522.36
+   },
+   {
+    "motivo": "vencimento",
+    "valor_custo": 7473.53
+   },
+   {
+    "motivo": "quebra operacional",
+    "valor_custo": 1667.83
+   },
+   {
+    "motivo": "furto",
+    "valor_custo": 1507.41
+   }
+  ],
+  "anteriores": []
+ },
+ {
+  "id": "30",
+  "rotulo": "Perdas por motivo nos últimos 30 dias · variação contra a anterior",
+  "consulta": {
+   "nome": "Perdas por motivo nos últimos 30 dias",
+   "x": "motivo",
+   "y": "valor_custo",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor_custo",
+     "agregacao": "soma",
+     "operador": "subiu",
+     "valor": 0,
+     "base": "anterior"
+    }
+   }
+  },
+  "colunas": [
+   "motivo",
+   "valor_custo"
+  ],
+  "linhas": [
+   {
+    "motivo": "avaria",
+    "valor_custo": 7522.36
+   },
+   {
+    "motivo": "vencimento",
+    "valor_custo": 7473.53
+   },
+   {
+    "motivo": "quebra operacional",
+    "valor_custo": 1667.83
+   },
+   {
+    "motivo": "furto",
+    "valor_custo": 1507.41
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "motivo": "avaria",
+     "valor_custo": 7808.18
+    },
+    {
+     "motivo": "vencimento",
+     "valor_custo": 6849.9
+    },
+    {
+     "motivo": "furto",
+     "valor_custo": 1616.64
+    },
+    {
+     "motivo": "quebra operacional",
+     "valor_custo": 1080.65
+    }
+   ]
+  ]
+ }
+]
