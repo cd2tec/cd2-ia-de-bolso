@@ -76,7 +76,11 @@ test('variação contra a execução anterior', () => {
   assert.equal(r.texto, 'A soma de total caiu 30% (100 para 70) em relação à execução anterior.');
   const nao = C.julgar(c, ok([{ total:90 }]), [[{ total:100 }]]);
   assert.equal(nao.disparou, false); assert.equal(nao.aviso, false);
-  assert.match(nao.texto, /dentro do limite de 20%\.$/);
+  assert.equal(nao.texto, 'A soma de total caiu 10% (100 para 90) em relação à execução anterior, não caiu mais de 20%.');
+  // Sentido contrário ao da regra: a frase diz o que a regra pedia, não "dentro do limite".
+  const subiu = C.julgar(c, ok([{ total:346.8 }]), [[{ total:100 }]]);
+  assert.equal(subiu.aviso, false);
+  assert.equal(subiu.texto, 'A soma de total subiu 246,8% (100 para 346,8) em relação à execução anterior, não caiu mais de 20%.');
 });
 
 test('subiu e variou', () => {
@@ -85,6 +89,9 @@ test('subiu e variou', () => {
   assert.equal(C.julgar(variacao('subiu', 10, 'anterior'), ok([{ total:80 }]), ant).disparou, false);
   assert.equal(C.julgar(variacao('variou', 10, 'anterior'), ok([{ total:80 }]), ant).disparou, true);
   assert.equal(C.julgar(variacao('variou', 10, 'anterior'), ok([{ total:105 }]), ant).disparou, false);
+  assert.match(C.julgar(variacao('subiu', 10, 'anterior'), ok([{ total:80 }]), ant).texto, /, não subiu mais de 10%\.$/);
+  assert.match(C.julgar(variacao('variou', 10, 'anterior'), ok([{ total:105 }]), ant).texto, /, não variou mais de 10%\.$/);
+  assert.match(C.julgar(variacao('caiu', 10, 'anterior'), ok([{ total:100 }]), ant).texto, /ficou igual \(100\) .*, não caiu mais de 10%\.$/);
 });
 
 test('média das n anteriores: usa só as n mais novas que deram certo', () => {

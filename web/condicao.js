@@ -146,7 +146,10 @@ function julgar(c, resultado, anteriores){
   if(!isFinite(variacao)) mudou = (variacao > 0 ? ' subiu' : ' caiu') + ' de 0 para ' + fmt(v);
   else if(variacao === 0) mudou = ' ficou igual (' + fmt(v) + ')';
   else mudou = (variacao > 0 ? ' subiu ' : ' caiu ') + fmtPct(variacao) + ' (' + fmt(base) + ' para ' + fmt(v) + ')';
-  const texto = Nome + mudou + ' em relação ' + contra + (disparou ? '.' : ', dentro do limite de ' + fmtPct(c.valor) + '.');
+  // Sem disparo, diz o que a regra pedia ("não caiu mais de 10%"): "dentro do limite" confundia quando o
+  // número foi no sentido contrário (subiu 246% numa regra de queda).
+  const NAO = { subiu:'não subiu mais de ', caiu:'não caiu mais de ', variou:'não variou mais de ' };
+  const texto = Nome + mudou + ' em relação ' + contra + (disparou ? '.' : ', ' + NAO[c.operador] + fmtPct(c.valor) + '.');
   return { avaliada:true, disparou, aviso:disparou, valor:v, base, variacao:isFinite(variacao) ? variacao : null, n:bases.length, texto };
 }
 
