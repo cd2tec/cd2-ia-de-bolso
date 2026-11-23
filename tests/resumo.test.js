@@ -129,3 +129,10 @@ test('textoAviso: uma frase por linha', () => {
 test('soma de conferência bate com o julgamento', () => {
   assert.ok(Math.abs(jul.valor - soma) < 1e-6);
 });
+
+test('textoFalha: por que saiu sem resumo; vazio quando teve', () => {
+  assert.equal(R.textoFalha({ falha:'numero', ms:10 }), 'Sem resumo da IA: o resumo citava um número que não estava nos dados.');
+  assert.equal(R.textoFalha({ falha:'prazo' }), 'Sem resumo da IA: o modelo demorou mais que o prazo.');
+  assert.equal(R.textoFalha({ linhas:['ok'], ms:10 }), '');
+  assert.equal(R.textoFalha(null), '');
+});

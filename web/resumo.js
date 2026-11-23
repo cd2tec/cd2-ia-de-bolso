@@ -193,9 +193,21 @@ function temNumero(p, v, tol){
   return p.nums.some(x => Math.abs(x - v) <= t + Math.abs(x) * 1e-12);
 }
 
+// Por que uma execução que disparou saiu sem resumo, para o card do histórico. '' quando teve resumo.
+const FALHAS = {
+  prazo:'o modelo demorou mais que o prazo',
+  modelo:'o modelo não respondeu',
+  formato:'a resposta do modelo veio fora do formato',
+  numero:'o resumo citava um número que não estava nos dados'
+};
+function textoFalha(r){
+  if(!objeto(r) || (Array.isArray(r.linhas) && r.linhas.length) || !r.falha) return '';
+  return 'Sem resumo da IA: ' + (FALHAS[r.falha] || 'falhou') + '.';
+}
+
 // Texto do aviso com o resumo: as frases, uma por linha.
 function textoAviso(linhas){ return (Array.isArray(linhas) ? linhas : []).join('\n'); }
 
-const api = { SCHEMA, MAX_FRASES, MAX_FRASE, MAX_LINHAS, MAX_TOKENS, dados, mensagens, pedido, permitidos, conferir, textoAviso, celula };
+const api = { SCHEMA, MAX_FRASES, MAX_FRASE, MAX_LINHAS, MAX_TOKENS, dados, mensagens, pedido, permitidos, conferir, textoAviso, textoFalha, celula };
 if(isNode) module.exports = api; else root.CD2Resumo = api;
 })(typeof window !== 'undefined' ? window : globalThis);
