@@ -155,3 +155,19 @@ test('baseDe: valor fixo, execução anterior, média das N; nenhuma sem base', 
   assert.equal(b({ coluna:'total', agregacao:'primeira', operador:'caiu', valor:10, base:'anterior' }, []), null, 'sem anterior');
   assert.equal(R.baseDe(R.dados({}, r, null)), null, 'sem condição');
 });
+
+test('novaTentativa: a resposta recusada e o motivo; limite de 2', () => {
+  assert.equal(R.MAX_TENTATIVAS, 2);
+  const m = [{ role:'system', content:'s' }, { role:'user', content:'u' }];
+  const n = R.novaTentativa(m, '{"linhas":["x 12%"]}', { ok:false, motivo:'numero', detalhe:'número 12 não está nos dados' });
+  assert.equal(n.length, 4);
+  assert.deepEqual(n[2], { role:'assistant', content:'{"linhas":["x 12%"]}' });
+  assert.match(n[3].content, /^A resposta anterior foi recusada: número 12 não está nos dados\. Responda de novo/);
+  assert.equal(m.length, 2, 'não altera as mensagens originais');
+  assert.match(R.novaTentativa(m, 'oi', { ok:false, motivo:'formato' })[3].content, /a resposta não era o JSON pedido/);
+});
+
+test('textoFalha: diz quantas tentativas quando foram mais de uma', () => {
+  assert.equal(R.textoFalha({ falha:'numero', tentativas:2 }), 'Sem resumo da IA: o resumo citava um número que não estava nos dados (2 tentativas).');
+  assert.equal(R.textoFalha({ falha:'modelo', tentativas:1 }), 'Sem resumo da IA: o modelo não respondeu.');
+});

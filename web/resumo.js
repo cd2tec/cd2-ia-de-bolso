@@ -216,12 +216,25 @@ const FALHAS = {
 };
 function textoFalha(r){
   if(!objeto(r) || (Array.isArray(r.linhas) && r.linhas.length) || !r.falha) return '';
-  return 'Sem resumo da IA: ' + (FALHAS[r.falha] || 'falhou') + '.';
+  const vezes = r.tentativas > 1 ? ' (' + r.tentativas + ' tentativas)' : '';
+  return 'Sem resumo da IA: ' + (FALHAS[r.falha] || 'falhou') + vezes + '.';
+}
+
+// Tentativas por resumo: a segunda só depois de a conferência recusar a primeira (formato ou número que não
+// está nos dados), com o motivo no pedido. O mesmo limite do chat (web/ask.js, 2 tentativas por pergunta).
+const MAX_TENTATIVAS = 2;
+// Mensagens da tentativa seguinte: as anteriores, a resposta recusada e o motivo.
+function novaTentativa(mensagens, resposta, conf){
+  const motivo = (conf && conf.detalhe) || (conf && conf.motivo === 'formato' ? 'a resposta não era o JSON pedido' : 'a resposta foi recusada');
+  return (Array.isArray(mensagens) ? mensagens : []).concat([
+    { role:'assistant', content:String(resposta == null ? '' : resposta).slice(0, 2000) },
+    { role:'user', content:'A resposta anterior foi recusada: ' + motivo + '. Responda de novo só com o objeto JSON {"linhas": [...]}, de 1 a 3 frases, usando só números e datas do Resultado e da Base de comparação, escritos exatamente como estão.' }
+  ]);
 }
 
 // Texto do aviso com o resumo: as frases, uma por linha.
 function textoAviso(linhas){ return (Array.isArray(linhas) ? linhas : []).join('\n'); }
 
-const api = { SCHEMA, MAX_FRASES, MAX_FRASE, MAX_LINHAS, MAX_TOKENS, dados, baseDe, mensagens, pedido, permitidos, conferir, textoAviso, textoFalha, celula };
+const api = { SCHEMA, MAX_TENTATIVAS, MAX_FRASES, MAX_FRASE, MAX_LINHAS, MAX_TOKENS, dados, baseDe, mensagens, pedido, permitidos, conferir, novaTentativa, textoAviso, textoFalha, celula };
 if(isNode) module.exports = api; else root.CD2Resumo = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -60,6 +60,9 @@ g.__cd2 = {
   },
   resumoConferir(texto, cj, rj, jj){
     return JSON.stringify(Res.conferir(texto, JSON.parse(cj), JSON.parse(rj), JSON.parse(jj)));
+  },
+  resumoDeNovo(mj, texto, confj){
+    return JSON.stringify({ mensagens:Res.novaTentativa(JSON.parse(mj), texto, JSON.parse(confj)), max:Res.MAX_TENTATIVAS });
   }
 };
 })(globalThis);`
@@ -301,4 +304,25 @@ func (m *Motor) ResumoConferir(texto string, consulta json.RawMessage, r Resulta
 	}
 	err = m.chamar(&c, "resumoConferir", texto, string(consulta), string(rj), string(jj))
 	return c, err
+}
+
+// ResumoDeNovo monta as mensagens da tentativa seguinte (a resposta recusada e o motivo) e diz o limite
+// de tentativas (MAX_TENTATIVAS de web/resumo.js).
+func (m *Motor) ResumoDeNovo(mensagens []map[string]string, texto string, c Conferencia) ([]map[string]string, int, error) {
+	mj, err := json.Marshal(mensagens)
+	if err != nil {
+		return nil, 0, err
+	}
+	cj, err := json.Marshal(c)
+	if err != nil {
+		return nil, 0, err
+	}
+	var out struct {
+		Mensagens []map[string]string `json:"mensagens"`
+		Max       int                 `json:"max"`
+	}
+	if err := m.chamar(&out, "resumoDeNovo", string(mj), texto, string(cj)); err != nil {
+		return nil, 0, err
+	}
+	return out.Mensagens, out.Max, nil
 }

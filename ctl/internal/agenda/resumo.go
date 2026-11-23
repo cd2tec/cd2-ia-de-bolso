@@ -19,10 +19,11 @@ const PrazoResumo = 25 * time.Second
 // Resumo é o que ficou do resumo de uma execução que disparou. Linhas quando o modelo respondeu e
 // a conferência passou; senão Falha: "prazo" | "modelo" | "formato" | "numero". Ms: quanto levou.
 type Resumo struct {
-	Linhas  []string `json:"linhas,omitempty"`
-	Falha   string   `json:"falha,omitempty"`
-	Detalhe string   `json:"detalhe,omitempty"`
-	Ms      int64    `json:"ms"`
+	Linhas     []string `json:"linhas,omitempty"`
+	Falha      string   `json:"falha,omitempty"`
+	Detalhe    string   `json:"detalhe,omitempty"`
+	Tentativas int      `json:"tentativas"`
+	Ms         int64    `json:"ms"`
 }
 
 // NovoResumidor chama o modelo do harness (llamafile, API compatível com a da OpenAI) em url
@@ -86,30 +87,41 @@ func (a *Agendador) resumir(ctx context.Context, c consulta, res Resultado, j *J
 	if prazo <= 0 {
 		prazo = PrazoResumo
 	}
+	// Todas as tentativas cabem no mesmo prazo: estourou, o aviso sai como antes.
 	ini := time.Now()
 	rctx, cancel := context.WithTimeout(ctx, prazo)
-	texto, err := a.o.Resumir(rctx, *p)
-	estourou := errors.Is(rctx.Err(), context.DeadlineExceeded) // antes do cancel, que também marca Err
-	cancel()
-	r := &Resumo{Ms: time.Since(ini).Milliseconds()}
-	switch {
-	case ctx.Err() != nil:
-		return nil
-	case err != nil && estourou:
-		r.Falha = "prazo"
-		return r
-	case err != nil:
-		r.Falha, r.Detalhe = "modelo", err.Error()
-		return r
-	}
-	conf, err := a.o.Motor.ResumoConferir(texto, c.raw, res, j)
-	switch {
-	case err != nil:
-		r.Falha, r.Detalhe = "formato", err.Error()
-	case !conf.Ok:
+	defer cancel()
+	r := &Resumo{}
+	pedido := *p
+	for {
+		r.Tentativas++
+		texto, err := a.o.Resumir(rctx, pedido)
+		r.Ms = time.Since(ini).Milliseconds()
+		switch {
+		case ctx.Err() != nil:
+			return nil
+		case err != nil && errors.Is(rctx.Err(), context.DeadlineExceeded):
+			r.Falha, r.Detalhe = "prazo", ""
+			return r
+		case err != nil:
+			r.Falha, r.Detalhe = "modelo", err.Error()
+			return r
+		}
+		conf, err := a.o.Motor.ResumoConferir(texto, c.raw, res, j)
+		if err != nil {
+			r.Falha, r.Detalhe = "formato", err.Error()
+			return r
+		}
+		if conf.Ok {
+			r.Linhas, r.Falha, r.Detalhe = conf.Linhas, "", ""
+			return r
+		}
 		r.Falha, r.Detalhe = conf.Motivo, conf.Detalhe
-	default:
-		r.Linhas = conf.Linhas
+		// Erro de validação: tenta de novo com o motivo, até o limite de web/resumo.js.
+		msgs, max, err := a.o.Motor.ResumoDeNovo(pedido.Mensagens, texto, conf)
+		if err != nil || r.Tentativas >= max {
+			return r
+		}
+		pedido.Mensagens = msgs
 	}
-	return r
 }

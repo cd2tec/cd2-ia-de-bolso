@@ -190,3 +190,101 @@ func TestNovoResumidor(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestResumoSegundaTentativaComOMotivo(t *testing.T) {
+	f := novoAmbiente()
+	f.por("c1", "Vendas", agendaCom(limite2000))
+	f.responder(linhasCom(2500), nil)
+	a := novoAgendador(t, f)
+	var pedidos []PedidoResumo
+	n := comResumo(t, a, func(_ context.Context, p PedidoResumo) (string, error) {
+		pedidos = append(pedidos, p)
+		if len(pedidos) == 1 {
+			return respostaModelo("O total subiu 37%."), nil
+		}
+		return respostaModelo("A soma de total foi 2.500, acima de 2.000."), nil
+	})
+	ligarExecutor(t, a)
+
+	a.Passo(dia(26, 8, 0))
+	a.esperarFila()
+	if n.Load() != 2 {
+		t.Fatalf("chamadas = %d, quero 2", n.Load())
+	}
+	seg := pedidos[1].Mensagens
+	if len(seg) != len(pedidos[0].Mensagens)+2 || seg[len(seg)-2]["role"] != "assistant" ||
+		!strings.Contains(seg[len(seg)-1]["content"], "número 37 não está nos dados") {
+		t.Fatalf("segunda tentativa = %+v", seg)
+	}
+	r := historico(t, a, "c1")[0].Resumo
+	if r == nil || r.Falha != "" || r.Tentativas != 2 || len(r.Linhas) != 1 {
+		t.Fatalf("resumo = %+v", r)
+	}
+	if av, _ := a.Avisos(0); len(av) != 1 || av[0].Texto != "Rodou às 08:00 · A soma de total foi 2.500, acima de 2.000." {
+		t.Fatalf("avisos = %+v", av)
+	}
+}
+
+func TestResumoLimiteDeTentativas(t *testing.T) {
+	f := novoAmbiente()
+	f.por("c1", "Vendas", agendaCom(limite2000))
+	f.responder(linhasCom(2500), nil)
+	a := novoAgendador(t, f)
+	n := comResumo(t, a, func(context.Context, PedidoResumo) (string, error) { return "não é json", nil })
+	ligarExecutor(t, a)
+
+	a.Passo(dia(26, 8, 0))
+	a.esperarFila()
+	if n.Load() != 2 {
+		t.Fatalf("chamadas = %d, quero 2 (o limite)", n.Load())
+	}
+	r := historico(t, a, "c1")[0].Resumo
+	if r == nil || r.Falha != "formato" || r.Tentativas != 2 {
+		t.Fatalf("resumo = %+v", r)
+	}
+	if av, _ := a.Avisos(0); len(av) != 1 || av[0].Texto != "Rodou às 08:00 · A soma de total = 2.500, acima de 2.000." {
+		t.Fatalf("avisos = %+v", av)
+	}
+}
+
+func TestResumoErroDoModeloNaoTentaDeNovo(t *testing.T) {
+	f := novoAmbiente()
+	f.por("c1", "Vendas", agendaCom(limite2000))
+	f.responder(linhasCom(2500), nil)
+	a := novoAgendador(t, f)
+	n := comResumo(t, a, func(context.Context, PedidoResumo) (string, error) { return "", errors.New("conexão recusada") })
+	ligarExecutor(t, a)
+
+	a.Passo(dia(26, 8, 0))
+	a.esperarFila()
+	if r := historico(t, a, "c1")[0].Resumo; n.Load() != 1 || r == nil || r.Falha != "modelo" || r.Tentativas != 1 {
+		t.Fatalf("chamadas = %d, resumo = %+v", n.Load(), r)
+	}
+}
+
+func TestResumoPrazoValeParaTodasAsTentativas(t *testing.T) {
+	f := novoAmbiente()
+	f.por("c1", "Vendas", agendaCom(limite2000))
+	f.responder(linhasCom(2500), nil)
+	a := novoAgendador(t, f)
+	a.o.PrazoResumo = 80 * time.Millisecond
+	n := comResumo(t, a, func(ctx context.Context, _ PedidoResumo) (string, error) {
+		select {
+		case <-time.After(50 * time.Millisecond): // cada tentativa cabe, as duas juntas não
+			return "não é json", nil
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	})
+	ligarExecutor(t, a)
+
+	a.Passo(dia(26, 8, 0))
+	a.esperarFila()
+	r := historico(t, a, "c1")[0].Resumo
+	if r == nil || r.Falha != "prazo" || n.Load() != 2 {
+		t.Fatalf("chamadas = %d, resumo = %+v", n.Load(), r)
+	}
+	if av, _ := a.Avisos(0); len(av) != 1 || !strings.HasSuffix(av[0].Texto, "acima de 2.000.") {
+		t.Fatalf("avisos = %+v", av)
+	}
+}
