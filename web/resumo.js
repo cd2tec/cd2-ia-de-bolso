@@ -1,0 +1,201 @@
+/* Resumo do alerta pelo modelo (Fase 2 do mini agente). Quando a condição do agendamento dispara,
+   o cd2-ctl pede ao modelo até 3 frases sobre o resultado e a base de comparação. Este arquivo monta
+   o pedido e confere a resposta; quem chama o modelo é o Go (o goja não faz rede).
+
+   O número nunca vem do modelo: todo número e toda data do resumo precisam existir nos dados que
+   foram enviados (linhas, valor conferido, base, limite, variação). Um só que não exista descarta o
+   resumo inteiro, e o aviso sai como antes (o texto da condição). Sem DOM: roda no Node e no goja. */
+(function(root){
+"use strict";
+const isNode = typeof module !== 'undefined' && module.exports;
+const Chart = isNode ? require('./chart.js') : root.CD2Chart;
+
+const MAX_FRASES = 3;
+const MAX_FRASE = 160;     // caracteres por frase
+const MAX_LINHAS = 20;     // linhas do resultado enviadas ao modelo
+const MAX_COLUNAS = 8;
+const MAX_CELULA = 60;
+const MAX_TOKENS = 300;
+
+const SCHEMA = {
+  type:'object',
+  properties:{ linhas:{ type:'array', minItems:1, maxItems:MAX_FRASES, items:{ type:'string', minLength:1, maxLength:MAX_FRASE } } },
+  required:['linhas']
+};
+
+const objeto = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+const limpo = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\s]+/g, ' ').trim().slice(0, n);
+
+// ---- datas ----
+const RE_ISO = /^(\d{4})-(\d{2})-(\d{2})(?:[T ][\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+// Data de uma célula ('2026-10-31', '2026-10-31T00:00:00Z') como { d, m, a }, ou null.
+function dataDe(v){
+  if(typeof v !== 'string') return null;
+  const x = RE_ISO.exec(v.trim());
+  return x ? { d:+x[3], m:+x[2], a:+x[1] } : null;
+}
+const dd = n => (n < 10 ? '0' : '') + n;
+const dataBr = o => dd(o.d) + '/' + dd(o.m) + '/' + o.a;
+
+// Célula como o modelo vê: data em dd/mm/aaaa, número no formato brasileiro, texto cortado.
+function celula(v){
+  if(v == null || v === '') return '';
+  const d = dataDe(v);
+  if(d) return dataBr(d);
+  if(typeof v === 'number' || (typeof v === 'string' && Chart.num(v) != null && /\./.test(v))) return Chart.fmt(v);
+  return limpo(v, MAX_CELULA);
+}
+
+// ---- o que vai para o modelo ----
+// Os dados do resumo: o recorte do resultado que o modelo vê e a conferência usa.
+function dados(consulta, resultado, julgamento){
+  const r = resultado || {}, j = julgamento || {};
+  const todas = (Array.isArray(r.todas) ? r.todas : Array.isArray(r.linhas) ? r.linhas : []).filter(objeto);
+  const colunas = (Array.isArray(r.colunas) && r.colunas.length ? r.colunas : todas.length ? Object.keys(todas[0]) : [])
+    .filter(c => typeof c === 'string' && c).slice(0, MAX_COLUNAS);
+  return {
+    titulo:limpo((consulta && consulta.nome) || r.titulo || '', 120),
+    alerta:limpo(j.texto, 400),
+    colunas,
+    linhas:todas.slice(0, MAX_LINHAS),
+    total:todas.length,
+    julgamento:j,
+    condicao:(consulta && consulta.agenda && consulta.agenda.condicao) || null
+  };
+}
+
+const SISTEMA = [
+  'Você escreve o resumo de um alerta de uma consulta ao banco de dados de uma empresa.',
+  'Responda só com um objeto JSON {"linhas": ["...", "..."]}: de 1 a 3 frases curtas em português, cada uma com até 140 caracteres.',
+  'Regras:',
+  '- Use só números e datas que aparecem nos dados, escritos exatamente como estão. Não calcule nada: nada de somas, diferenças, médias ou percentuais novos.',
+  '- A primeira frase diz o que disparou o alerta.',
+  '- As outras destacam o que chama atenção nas linhas (o maior, o menor, o que mais mudou).',
+  '- Não dê conselhos, não explique causas e não invente.'
+].join('\n');
+
+function mensagens(consulta, resultado, julgamento){
+  const d = dados(consulta, resultado, julgamento);
+  const linhas = d.linhas.map(l => d.colunas.map(c => c + ': ' + celula(l[c])).join('; '));
+  const user = [
+    'Consulta: ' + d.titulo,
+    'Alerta: ' + d.alerta,
+    'Colunas: ' + d.colunas.join(', '),
+    'Linhas (' + d.linhas.length + (d.total > d.linhas.length ? ' de ' + d.total : '') + '):',
+    linhas.join('\n')
+  ].join('\n');
+  return [{ role:'system', content:SISTEMA }, { role:'user', content:user }];
+}
+
+// Pedido ao modelo, só quando a condição disparou e vai avisar. Fora disso, null: não há resumo.
+function pedido(consulta, resultado, julgamento){
+  const j = julgamento;
+  if(!objeto(j) || !j.disparou || !j.aviso || !resultado || !resultado.ok) return null;
+  return { mensagens:mensagens(consulta, resultado, j), schema:SCHEMA, maxTokens:MAX_TOKENS };
+}
+
+// ---- conferência ----
+// Números de um texto livre (nomes de produto, título, frase do alerta): "350ml" -> 350.
+function numerosDoTexto(t){
+  const out = [];
+  String(t == null ? '' : t).replace(RE_NUMERO, m => { const v = lerNumero(m); if(v != null) out.push(v); return m; });
+  return out;
+}
+// Tudo o que o resumo pode citar: valores das células enviadas, números escritos nelas, no título,
+// nos nomes de coluna e na frase do alerta, o valor conferido, a base, o limite, a variação, o
+// tamanho do recorte; e as datas das células.
+function permitidos(consulta, resultado, julgamento){
+  const d = dados(consulta, resultado, julgamento), nums = [], datas = [];
+  const add = v => { if(typeof v === 'number' && isFinite(v)) nums.push(Math.abs(v)); };
+  for(const l of d.linhas){
+    for(const c of d.colunas){
+      const v = l[c], dt = dataDe(v);
+      if(dt){ datas.push(dt); continue; }
+      const n = Chart.num(v);
+      if(n != null) add(n); else numerosDoTexto(v).forEach(add);
+    }
+  }
+  d.colunas.forEach(c => numerosDoTexto(c).forEach(add));
+  numerosDoTexto(d.titulo).forEach(add);
+  numerosDoTexto(d.alerta).forEach(add);
+  const j = d.julgamento, c = d.condicao;
+  [j.valor, j.base, j.variacao, j.n, c && c.valor, d.linhas.length, d.total].forEach(v => add(typeof v === 'number' ? v : null));
+  return { nums, datas };
+}
+
+// "1.234,56", "135.979", "12,5", "40" e o "-" na frente; o resto (%, mil, milhões) vem depois.
+const RE_NUMERO = /\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?/g;
+function lerNumero(s){
+  const t = String(s).replace(/\./g, '').replace(',', '.');
+  const v = Number(t);
+  return isFinite(v) ? v : null;
+}
+// Casas decimais escritas: "2,87" -> 2. A tolerância é meia unidade da última casa.
+const casas = s => { const i = s.indexOf(','); return i < 0 ? 0 : s.length - i - 1; };
+const MULT = [[/^\s*(?:milh(?:ão|ões|oes|ao))\b/i, 1e6], [/^\s*(?:bilh(?:ão|ões|oes|ao))\b/i, 1e9], [/^\s*mil\b/i, 1e3]];
+
+const RE_DATA_BR = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{4}|\d{2}))?\b/g;
+const RE_DATA_ISO = /\b(\d{4})-(\d{2})-(\d{2})\b/g;
+const RE_HORA = /\b\d{1,2}:\d{2}\b/;
+
+// Confere a resposta do modelo. { ok:true, linhas } ou { ok:false, motivo, detalhe }:
+//   formato: não é o JSON pedido (ou frases vazias, longas ou demais);
+//   numero: algum número ou data do resumo não existe nos dados.
+function conferir(texto, consulta, resultado, julgamento){
+  let s = String(texto == null ? '' : texto);
+  const k = s.lastIndexOf('</think>'); if(k >= 0) s = s.slice(k + 8);
+  let o = null;
+  try{ o = JSON.parse(s.trim()); }catch(e){
+    const a = s.indexOf('{'), b = s.lastIndexOf('}');
+    if(a >= 0 && b > a){ try{ o = JSON.parse(s.slice(a, b + 1)); }catch(e2){ o = null; } }
+  }
+  if(!objeto(o) || !Array.isArray(o.linhas)) return { ok:false, motivo:'formato', detalhe:'não veio {"linhas": [...]}' };
+  const linhas = o.linhas.map(l => typeof l === 'string' ? limpo(l, 1000) : '').filter(Boolean);
+  if(!linhas.length || linhas.length > MAX_FRASES || linhas.length !== o.linhas.length) return { ok:false, motivo:'formato', detalhe:'de 1 a ' + MAX_FRASES + ' frases' };
+  if(linhas.some(l => l.length > MAX_FRASE)) return { ok:false, motivo:'formato', detalhe:'frase com mais de ' + MAX_FRASE + ' caracteres' };
+
+  const p = permitidos(consulta, resultado, julgamento);
+  for(const l of linhas){
+    const r = conferirFrase(l, p);
+    if(!r.ok) return { ok:false, motivo:'numero', detalhe:r.detalhe };
+  }
+  return { ok:true, linhas };
+}
+
+function conferirFrase(frase, p){
+  if(RE_HORA.test(frase)) return { ok:false, detalhe:'horário que não está nos dados' };
+  let resto = frase, falha = null;
+  // Datas antes dos números: "31/10/2026" não pode virar 31, 10 e 2026.
+  resto = resto.replace(RE_DATA_ISO, (m, a, mm, d) => { if(!temData(p, +d, +mm, +a)) falha = falha || m; return ' '; });
+  resto = resto.replace(RE_DATA_BR, (m, d, mm, a) => {
+    const ano = a == null ? null : (a.length === 2 ? 2000 + +a : +a);
+    if(!temData(p, +d, +mm, ano)) falha = falha || m;
+    return ' ';
+  });
+  if(falha) return { ok:false, detalhe:'data ' + falha + ' não está nos dados' };
+  RE_NUMERO.lastIndex = 0;
+  let m;
+  while((m = RE_NUMERO.exec(resto))){
+    const bruto = m[0];
+    let v = lerNumero(bruto), tol = 0.5 * Math.pow(10, -casas(bruto));
+    const depois = resto.slice(m.index + bruto.length);
+    for(const [re, f] of MULT){ if(re.test(depois)){ v *= f; tol *= f; break; } }
+    if(v == null || !temNumero(p, v, tol)) return { ok:false, detalhe:'número ' + bruto + ' não está nos dados' };
+  }
+  return { ok:true };
+}
+
+function temData(p, d, m, a){
+  return p.datas.some(x => x.d === d && x.m === m && (a == null || x.a === a));
+}
+function temNumero(p, v, tol){
+  const t = Math.max(tol, 1e-9);
+  return p.nums.some(x => Math.abs(x - v) <= t + Math.abs(x) * 1e-12);
+}
+
+// Texto do aviso com o resumo: as frases, uma por linha.
+function textoAviso(linhas){ return (Array.isArray(linhas) ? linhas : []).join('\n'); }
+
+const api = { SCHEMA, MAX_FRASES, MAX_FRASE, MAX_LINHAS, MAX_TOKENS, dados, mensagens, pedido, permitidos, conferir, textoAviso, celula };
+if(isNode) module.exports = api; else root.CD2Resumo = api;
+})(typeof window !== 'undefined' ? window : globalThis);
