@@ -1133,7 +1133,7 @@ const st = { cfg:{}, messages:[], provider:null, tools:[], busy:false, ctl:null,
 // Histórico de um agendamento aberto na área da conversa (id da consulta); a conversa fica guardada
 // em `guardados` e continua recebendo o que chegar enquanto isso (chatAtual).
 const hs = { id:null, demo:false, gen:0, chave:'', token:0, guardados:null, rolagem:0, antes:0, acabou:false, carregando:false,
-  abriu:false, rodando:false, total:0, obs:null, el:null, lista:null, estado:null, primeiro:null, ultimo:null };
+  abriu:false, rodando:false, total:0, obs:null, el:null, lista:null, estado:null, primeiro:null, ultimo:null, maisNovo:0 };
 const chatAtual = () => hs.id ? hs.guardados : $('#chat');
 
 /* ---------- storage (best effort) ---------- */
@@ -2784,7 +2784,7 @@ async function pedirNovidades(){
   ag.novidades = nov; ag.genNov = gen;
   atualizarMarcas();
 }
-function tiqueAgenda(){ atualizarMarcas(); pedirNovidades(); }
+function tiqueAgenda(){ atualizarMarcas(); pedirNovidades(); novasNoHistorico(); }
 /* histórico de um agendamento, na área da conversa */
 // Abre de "🗂 Ver histórico", do clique numa consulta agendada (instalada) ou do ?agenda=<id>.
 // A conversa sai do #chat para hs.guardados e volta igual no "← Voltar para a conversa".
@@ -2802,7 +2802,7 @@ function abrirHistorico(id){
     while(chat.firstChild) hs.guardados.appendChild(chat.firstChild);
     hs.rolagem = $('#main').scrollTop;
   }
-  Object.assign(hs, { id, demo:emDemo(), gen:st.catalogGen, chave:st.notasChave || '', token:hs.token + 1, antes:0, acabou:false, carregando:false,
+  Object.assign(hs, { id, demo:emDemo(), gen:st.catalogGen, chave:st.notasChave || '', token:hs.token + 1, antes:0, maisNovo:0, acabou:false, carregando:false,
     abriu:false, rodando:false, total:0, obs:null, primeiro:null, ultimo:null });
   const el = document.createElement('section'); el.className = 'hist'; el.setAttribute('aria-label', 'Histórico do agendamento');
   el.innerHTML = '<div class="hist__cab"><button type="button" class="sm hist__voltar">← Voltar para a conversa</button><h2></h2>'
@@ -2875,6 +2875,7 @@ async function carregarHistorico(){
     return estadoHistorico('Não consegui ler o histórico: ' + ((r && r.data && r.data.erro) || MSG_SEM_CTL), true);
   }
   const itens = r.data.itens;
+  if(primeira && itens.length) hs.maisNovo = itens[0].seq;
   hs.total = Number.isInteger(r.data.total) ? r.data.total : hs.total;
   hs.acabou = !r.data.mais || !itens.length;
   if(itens.length) hs.antes = itens[itens.length - 1].seq;
@@ -2913,12 +2914,28 @@ function desenharExecucoes(itens){
     }
   }
 }
-// Execução que acabou de rodar pelo Rodar agora do histórico: no topo, aberta.
-function execucaoNoTopo(e){
+// Com o histórico aberto, a cada tique: as execuções gravadas depois da mais nova da tela entram no topo.
+// Sem isso, as "Sem aviso" (que não viram novidade) só apareciam ao reabrir, e parecia que não rodou.
+async function novasNoHistorico(){
+  if(!hs.id || hs.demo || hs.carregando || hs.rodando || !hs.lista || !st.ctlKey) return;
+  const tk = hs.token, desde = hs.maisNovo;
+  let r = null;
+  try{ r = await ctlRequest('GET', rotaHistorico(hs.chave, hs.id) + '&n=20', null, 5000); }catch(e){}
+  if(tk !== hs.token || hs.maisNovo !== desde || !r || r.status !== 200 || !Array.isArray(r.data.itens)) return;
+  const novas = r.data.itens.filter(e => e.seq > desde);
+  if(!novas.length) return;
+  // Da mais velha para a mais nova: cada uma vai para o topo; só a mais nova fica aberta.
+  novas.reverse().forEach((e, i) => execucaoNoTopo(e, i === novas.length - 1));
+  if(Number.isInteger(r.data.total)) hs.total = r.data.total;
+  if(novas.some(e => e.novo)) marcarVisto(tk);
+}
+// Execução que acabou de rodar pelo Rodar agora do histórico, ou que o tique trouxe: no topo.
+function execucaoNoTopo(e, aberta){
+  if(e.seq > hs.maisNovo) hs.maisNovo = e.seq;
   const rotulo = CD2Agenda.rotuloDia(CD2Agenda.diaDaExecucao(e) || new Date(), new Date());
   if(!hs.primeiro || hs.primeiro.rotulo !== rotulo){ hs.primeiro = grupoHistorico(rotulo, true); if(!hs.ultimo) hs.ultimo = hs.primeiro; }
   hs.abriu = true;
-  hs.primeiro.box.insertBefore(cardExecucao(e, true), hs.primeiro.box.firstChild);
+  hs.primeiro.box.insertBefore(cardExecucao(e, aberta !== false), hs.primeiro.box.firstChild);
   estadoHistorico('');
 }
 // O Resultado gravado pelo cd2-ctl no formato do rodarSalva, para o renderAnswer. O SQL não é
