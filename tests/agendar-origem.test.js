@@ -55,7 +55,7 @@ test('Demonstração: a janela Agendar abre com os exemplos, nunca o convite, me
     const c = montar({ status, demo:true });
     const els = {};
     let colunas = 0;
-    Object.assign(c, { CD2Agenda:A, CD2Condicao:require('../web/condicao.js'), CD2Demo:require('../web/demo.js'), ag:{},
+    Object.assign(c, { CD2Agenda:A, CD2Condicao:require('../web/condicao.js'), CD2Aprofundar:require('../web/aprofundar.js'), CD2Demo:require('../web/demo.js'), ag:{},
       ultimosResultados:new Map(), prepararColunasAgendar: () => { colunas++; }, buscarUltimaExecucao: () => { throw new Error('Demonstração não lê o histórico'); },
       hojeIso: () => '2026-10-24', mostrarErro: () => {}, pintarAgendar: () => {},
       $: sel => sel.startsWith('#agendar ') ? null : (els[sel] = els[sel] || { showModal: () => c.abertos.push('janela') }) });
