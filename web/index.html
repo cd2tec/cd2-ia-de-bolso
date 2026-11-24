@@ -581,6 +581,14 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
 .answer .hist__resumo{margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);border-left:3px solid var(--ink-brand);border-radius:var(--radius-sm);background:var(--tint)}
 .answer .hist__resumo p{margin:0;font:400 14px/22px var(--font-sans);color:var(--ink)}
 .answer .hist__resumo .hist__resumo-t{margin:0 0 var(--space-1);font:600 11px/16px var(--font-sans);color:var(--ink-muted)}
+.answer .hist__acao{margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);border:1px solid var(--line);border-radius:var(--radius-sm)}
+.answer .hist__acao p{margin:0 0 var(--space-1);font:400 13px/20px var(--font-sans);color:var(--ink)}
+.answer .hist__acao .hist__acao-t{font:600 12px/18px var(--font-sans)}
+.answer .hist__acao .hist__acao-nota{font:500 12px/18px var(--font-sans);color:var(--ink-muted)}
+.answer .hist__acao .acts{margin:var(--space-1) 0 0}
+.answer .hist__acao details{margin:var(--space-1) 0 0}
+.answer .hist__acao summary{cursor:pointer;font:600 12px/18px var(--font-sans);color:var(--ink-muted)}
+.answer .hist__acao ul{margin:var(--space-1) 0 0;padding-left:var(--space-4);font:400 12px/18px var(--font-sans);color:var(--ink-muted)}
 .answer .valores{margin:0 0 var(--space-2);font:600 13px/20px var(--font-sans);color:var(--ink-muted)}
 .answer .acts{flex-wrap:wrap}
 #salvar{width:min(660px,92vw)}
@@ -3016,6 +3024,100 @@ function blocoResumo(e){
   const f = CD2Resumo.textoFalha(r);
   return f ? linhaHistorico(f) : null;
 }
+// Ação sugerida pelo resumo (Fase 4, História 5): o que a IA sugeriu, Aprovar e Recusar enquanto ninguém
+// decidiu, e depois o que aconteceu, com a auditoria (proposta, decisão, resultado, quando e quem).
+// Nada roda sem o clique em Aprovar, e só depois de a aprovação estar gravada na auditoria do cd2-ctl.
+// null sem ação sugerida (o card é o da História 3) e na demonstração (que não tem cd2-ctl).
+const TEXTO_FASE_ACAO = {
+  aprovada:'Aprovada, mas o resultado não foi registrado (a tela pode ter sido fechada no meio).',
+  recusada:'Recusada: nada foi feito.',
+  executada:'Feito.',
+  falhou:'Não deu certo.'
+};
+function blocoAcao(e){
+  const est = CD2Acao.estado(e);
+  if(!est || hs.demo) return null;
+  const d = document.createElement('div'); d.className = 'hist__acao'; d.dataset.acao = est.tipo;
+  const t = document.createElement('p'); t.className = 'hist__acao-t'; t.textContent = 'Ação sugerida pela IA: ' + est.rotulo; d.appendChild(t);
+  const msg = document.createElement('p'); msg.className = 'hist__acao-nota'; msg.setAttribute('role', 'status'); d.appendChild(msg);
+  if(est.fase === 'pendente'){
+    msg.textContent = est.tipo === 'rascunho_email' ? 'Nada é feito sem o seu clique. O rascunho abre no seu programa de e-mail e nada é enviado.' : 'Nada é feito sem o seu clique.';
+    const acts = document.createElement('div'); acts.className = 'acts';
+    const ok = botaoSm('Aprovar', 'destaque'), nao = botaoSm('Recusar');
+    ok.setAttribute('aria-label', 'Aprovar: ' + est.rotulo); nao.setAttribute('aria-label', 'Recusar: ' + est.rotulo);
+    ok.onclick = () => decidirAcao(e, d, true);
+    nao.onclick = () => decidirAcao(e, d, false);
+    acts.append(ok, nao); d.appendChild(acts);
+  }else{
+    const r = est.fase === 'falhou' && est.resultado ? ' ' + CD2Acao.textoEvento(est.resultado) : '';
+    if(est.fase === 'falhou') mostrarErro(msg, TEXTO_FASE_ACAO.falhou + r); else msg.textContent = TEXTO_FASE_ACAO[est.fase] || '';
+  }
+  if(est.eventos.length){
+    const det = document.createElement('details'), sm = document.createElement('summary'), ul = document.createElement('ul');
+    sm.textContent = 'Auditoria'; det.appendChild(sm);
+    est.eventos.forEach(ev => { const li = document.createElement('li'); li.textContent = CD2Acao.textoEvento(ev); ul.appendChild(li); });
+    det.appendChild(ul); d.appendChild(det);
+  }
+  return d;
+}
+// Grava um evento da ação na auditoria. { ok, auditoria } ou { ok:false, erro }.
+async function auditarAcao(e, evento, detalhe){
+  let r = null;
+  try{
+    r = await ctlRequest('POST', '/agenda/acao', { chave:hs.chave, consulta:hs.id, seq:e.seq, em:e.em, evento,
+      acao:e.resumo.acao, detalhe:detalhe || '' }, 10000);
+  }catch(x){}
+  if(r && r.status === 200 && Array.isArray(r.data.auditoria)) return { ok:true, auditoria:r.data.auditoria };
+  return { ok:false, erro:(r && r.data && r.data.erro) || MSG_SEM_CTL, status:r ? r.status : 0 };
+}
+// Executa a ação aprovada, na página (cópia, download e mailto só funcionam a partir do clique).
+// { ok, detalhe } ou { ok:false, erro }.
+async function executarAcao(e){
+  const c = consultaDoHistorico() || {}, nome = (e.resultado && e.resultado.titulo) || String(c.nome || '');
+  switch(e.resumo.acao){
+    case 'copiar_resumo': {
+      const t = CD2Acao.textoCopia(e);
+      if(!t) return { ok:false, erro:'a execução não tem resumo' };
+      try{ await navigator.clipboard.writeText(t); }catch(x){ return { ok:false, erro:'o navegador não deixou copiar (' + ((x && x.message) || 'sem permissão') + ')' }; }
+      return { ok:true, detalhe:'resumo copiado' };
+    }
+    case 'gerar_csv': {
+      const a = CD2Acao.arquivoCsv(e, new Date());
+      if(!a.ok) return { ok:false, erro:a.erro };
+      try{ baixarArquivo(a.nome, a.conteudo, 'text/csv;charset=utf-8'); }catch(x){ return { ok:false, erro:'o navegador não gerou o arquivo' }; }
+      return { ok:true, detalhe:'arquivo ' + a.nome };
+    }
+    case 'rascunho_email': {
+      const m = CD2Acao.rascunhoEmail(nome, e);
+      if(!m.ok) return { ok:false, erro:m.erro };
+      // A página não tem como saber se o programa de e-mail abriu: fica registrado que o rascunho foi pedido.
+      try{ const a = document.createElement('a'); a.href = m.url; document.body.appendChild(a); a.click(); a.remove(); }
+      catch(x){ return { ok:false, erro:'o navegador não abriu o rascunho' }; }
+      return { ok:true, detalhe:'rascunho pedido ao programa de e-mail (sem envio)' };
+    }
+  }
+  return { ok:false, erro:'ação desconhecida' };
+}
+function trocarBlocoAcao(e, d){ const n = blocoAcao(e); if(n) d.replaceWith(n); return n; }
+async function decidirAcao(e, d, aprovar){
+  const msg = d.querySelector('.hist__acao-nota');
+  d.querySelectorAll('button').forEach(b => { b.disabled = true; });
+  msg.textContent = aprovar ? 'Gravando a aprovação…' : 'Gravando a recusa…';
+  const dec = await auditarAcao(e, aprovar ? 'aprovada' : 'recusada');
+  if(!dec.ok){
+    if(dec.status === 409 && /banco conectado mudou/.test(dec.erro)) return bancoMudouAgenda({ data:{ erro:dec.erro } });
+    d.querySelectorAll('button').forEach(b => { b.disabled = false; });
+    return mostrarErro(msg, 'Não consegui gravar a decisão, e nada foi feito: ' + dec.erro);
+  }
+  e.auditoria = dec.auditoria;
+  if(!aprovar) return trocarBlocoAcao(e, d);
+  // Só depois da aprovação gravada: executa e grava o resultado.
+  const r = await executarAcao(e);
+  const fim = await auditarAcao(e, r.ok ? 'executada' : 'falhou', r.ok ? r.detalhe : r.erro);
+  if(fim.ok) e.auditoria = fim.auditoria;
+  const n = trocarBlocoAcao(e, d);
+  if(!fim.ok && n) mostrarErro(n.querySelector('.hist__acao-nota'), (r.ok ? 'Feito, mas' : 'Não deu certo (' + r.erro + '), e') + ' não consegui gravar o resultado na auditoria: ' + fim.erro);
+}
 function cardExecucao(e, aberta){
   const it = document.createElement('div'); it.className = 'hist__it'; it.dataset.seq = String(e.seq);
   const c = consultaDoHistorico() || {};
@@ -3031,6 +3133,7 @@ function cardExecucao(e, aberta){
   const lj = linhaJulgamento(e); if(lj) card.appendChild(lj);
   const ba = blocoAprofundamento(e); if(ba) card.appendChild(ba);
   const br = blocoResumo(e); if(br) card.appendChild(br);
+  const bac = blocoAcao(e); if(bac) card.appendChild(bac);
   const acts = document.createElement('div'); acts.className = 'acts';
   if(erro){
     const p = document.createElement('p'); p.className = 'hist__msg'; mostrarErro(p, erro); card.appendChild(p);
@@ -3056,6 +3159,7 @@ function abrirResultado(it, e){
     const lj = linhaJulgamento(e); if(lj) m.after(lj);
     const ba = blocoAprofundamento(e); if(ba) (lj || m).after(ba);
     const br = blocoResumo(e); if(br) (ba || lj || m).after(br);
+    const bac = blocoAcao(e); if(bac) (br || ba || lj || m).after(bac);
   }
   it.appendChild(body);
 }
