@@ -54,7 +54,10 @@ test('Demonstração: a janela Agendar abre com os exemplos, nunca o convite, me
   for(const status of [null, { origem:'pendrive' }, { origem:'instalada' }]){
     const c = montar({ status, demo:true });
     const els = {};
-    Object.assign(c, { CD2Agenda:A, ag:{}, hojeIso: () => '2026-10-24', mostrarErro: () => {}, pintarAgendar: () => {},
+    let colunas = 0;
+    Object.assign(c, { CD2Agenda:A, CD2Condicao:require('../web/condicao.js'), CD2Demo:require('../web/demo.js'), ag:{},
+      ultimosResultados:new Map(), prepararColunasAgendar: () => { colunas++; }, buscarUltimaExecucao: () => { throw new Error('Demonstração não lê o histórico'); },
+      hojeIso: () => '2026-10-24', mostrarErro: () => {}, pintarAgendar: () => {},
       $: sel => sel.startsWith('#agendar ') ? null : (els[sel] = els[sel] || { showModal: () => c.abertos.push('janela') }) });
     c.st.catalogGen = 1;
     assert.equal(c.estadoAgendar(), 'demo');
@@ -65,6 +68,8 @@ test('Demonstração: a janela Agendar abre com os exemplos, nunca o convite, me
     assert.equal(els['#agDemo'].hidden, true);
     assert.equal(els['#agTirar'].hidden, true);
     assert.equal(c.ag.t.freq, 'horas');
+    assert.equal(colunas, 1, 'monta a lista de colunas da regra');
+    assert.deepEqual(c.ag.ultimoRes.colunas, ['Departamento', 'Venda (R$)', 'Margem (%)'], 'o exemplo traz as colunas do resultado fictício');
   }
 });
 test('o item do menu usa o estado: desligado com "Carregando…" enquanto não sabe', () => {
