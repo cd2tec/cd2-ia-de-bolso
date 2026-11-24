@@ -1,0 +1,5805 @@
+[
+ {
+  "id": "A01",
+  "piloto": "vendas",
+  "rotulo": "Faturamento por dia nos últimos 7 dias · maior_soma",
+  "consulta": {
+   "id": "principal",
+   "nome": "Faturamento por dia nos últimos 7 dias",
+   "x": "data",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 508859
+    },
+    "aprofundamentos": [
+     "op_clientes_cidade",
+     "op_fat_loja",
+     "op_rup_dep"
+    ]
+   }
+  },
+  "colunas": [
+   "data",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "data": "2026-11-16",
+    "faturamento": 76920.5
+   },
+   {
+    "data": "2026-11-17",
+    "faturamento": 67597.09
+   },
+   {
+    "data": "2026-11-18",
+    "faturamento": 72536.26
+   },
+   {
+    "data": "2026-11-19",
+    "faturamento": 80278.72
+   },
+   {
+    "data": "2026-11-20",
+    "faturamento": 102056.0
+   },
+   {
+    "data": "2026-11-21",
+    "faturamento": 115147.11
+   },
+   {
+    "data": "2026-11-22",
+    "faturamento": 50862.99
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_clientes_cidade",
+    "nome": "Clientes cadastrados por cidade",
+    "colunas": [
+     "cidade",
+     "clientes"
+    ],
+    "linhas": [
+     {
+      "cidade": "Campinas",
+      "clientes": 966
+     },
+     {
+      "cidade": "Valinhos",
+      "clientes": 534
+     },
+     {
+      "cidade": "Sumaré",
+      "clientes": 516
+     },
+     {
+      "cidade": "Paulínia",
+      "clientes": 499
+     },
+     {
+      "cidade": "Hortolândia",
+      "clientes": 485
+     }
+    ]
+   },
+   {
+    "id": "op_fat_loja",
+    "nome": "Faturamento por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "faturamento": 201268.45
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "faturamento": 163249.98
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "faturamento": 126640.53
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "faturamento": 74239.71
+     }
+    ]
+   },
+   {
+    "id": "op_rup_dep",
+    "nome": "Ruptura de estoque por departamento",
+    "colunas": [
+     "departamento",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "itens_em_ruptura": 5
+     },
+     {
+      "departamento": "Bebidas",
+      "itens_em_ruptura": 4
+     },
+     {
+      "departamento": "Hortifruti",
+      "itens_em_ruptura": 3
+     },
+     {
+      "departamento": "Congelados",
+      "itens_em_ruptura": 3
+     },
+     {
+      "departamento": "Padaria",
+      "itens_em_ruptura": 2
+     },
+     {
+      "departamento": "Pet",
+      "itens_em_ruptura": 1
+     },
+     {
+      "departamento": "Açougue",
+      "itens_em_ruptura": 1
+     }
+    ]
+   }
+  ],
+  "esperada": "Faturamento por loja nos últimos 7 dias",
+  "aceitaveis": [
+   "Faturamento por loja nos últimos 7 dias"
+  ],
+  "porque": "faturamento acima do limite: abrir por loja mostra de onde veio; as outras não falam de venda"
+ },
+ {
+  "id": "A02",
+  "piloto": "vendas",
+  "rotulo": "Faturamento por dia nos últimos 7 dias · menor_min",
+  "consulta": {
+   "id": "principal",
+   "nome": "Faturamento por dia nos últimos 7 dias",
+   "x": "data",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 55950
+    },
+    "aprofundamentos": [
+     "op_compras_pend",
+     "op_fat_hora",
+     "op_perda_loja"
+    ]
+   }
+  },
+  "colunas": [
+   "data",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "data": "2026-11-16",
+    "faturamento": 76920.5
+   },
+   {
+    "data": "2026-11-17",
+    "faturamento": 67597.09
+   },
+   {
+    "data": "2026-11-18",
+    "faturamento": 72536.26
+   },
+   {
+    "data": "2026-11-19",
+    "faturamento": 80278.72
+   },
+   {
+    "data": "2026-11-20",
+    "faturamento": 102056.0
+   },
+   {
+    "data": "2026-11-21",
+    "faturamento": 115147.11
+   },
+   {
+    "data": "2026-11-22",
+    "faturamento": 50862.99
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_compras_pend",
+    "nome": "Compras pendentes por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "pedidos",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "Pires Ltda. Ltda",
+      "pedidos": 9,
+      "valor": 132262.62
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "pedidos": 7,
+      "valor": 67859.06
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "pedidos": 5,
+      "valor": 56402.52
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "pedidos": 5,
+      "valor": 47449.21
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 44306.29
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 39162.18
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "pedidos": 2,
+      "valor": 38701.08
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 37752.45
+     },
+     {
+      "fornecedor": "Rocha Distribuidora Ltda",
+      "pedidos": 4,
+      "valor": 33373.59
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 23051.81
+     }
+    ]
+   },
+   {
+    "id": "op_fat_hora",
+    "nome": "Faturamento por hora do dia nos últimos 7 dias",
+    "colunas": [
+     "hora",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "hora": 7,
+      "faturamento": 16555.59
+     },
+     {
+      "hora": 8,
+      "faturamento": 25155.52
+     },
+     {
+      "hora": 9,
+      "faturamento": 30225.14
+     },
+     {
+      "hora": 10,
+      "faturamento": 40234.4
+     },
+     {
+      "hora": 11,
+      "faturamento": 53153.4
+     },
+     {
+      "hora": 12,
+      "faturamento": 55527.65
+     },
+     {
+      "hora": 13,
+      "faturamento": 50708.99
+     },
+     {
+      "hora": 14,
+      "faturamento": 29987.79
+     },
+     {
+      "hora": 15,
+      "faturamento": 30329.61
+     },
+     {
+      "hora": 16,
+      "faturamento": 26404.44
+     },
+     {
+      "hora": 17,
+      "faturamento": 39219.12
+     },
+     {
+      "hora": 18,
+      "faturamento": 59611.64
+     },
+     {
+      "hora": 19,
+      "faturamento": 52885.01
+     },
+     {
+      "hora": 20,
+      "faturamento": 32542.94
+     },
+     {
+      "hora": 21,
+      "faturamento": 22857.43
+     }
+    ]
+   },
+   {
+    "id": "op_perda_loja",
+    "nome": "Perdas por loja nos últimos 30 dias",
+    "colunas": [
+     "loja",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "valor_custo": 6516.06
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "valor_custo": 4509.72
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "valor_custo": 3587.27
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "valor_custo": 3558.08
+     }
+    ]
+   }
+  ],
+  "esperada": "Faturamento por hora do dia nos últimos 7 dias",
+  "aceitaveis": [
+   "Faturamento por hora do dia nos últimos 7 dias"
+  ],
+  "porque": "dia fraco: a única das três que abre a venda é por hora"
+ },
+ {
+  "id": "A03",
+  "piloto": "vendas",
+  "rotulo": "Faturamento por dia nos últimos 7 dias · caiu",
+  "consulta": {
+   "id": "principal",
+   "nome": "Faturamento por dia nos últimos 7 dias",
+   "x": "data",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "soma",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    },
+    "aprofundamentos": [
+     "op_fat_loja",
+     "op_clientes_cidade",
+     "op_fat_dep"
+    ]
+   }
+  },
+  "colunas": [
+   "data",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "data": "2026-11-16",
+    "faturamento": 76920.5
+   },
+   {
+    "data": "2026-11-17",
+    "faturamento": 67597.09
+   },
+   {
+    "data": "2026-11-18",
+    "faturamento": 72536.26
+   },
+   {
+    "data": "2026-11-19",
+    "faturamento": 80278.72
+   },
+   {
+    "data": "2026-11-20",
+    "faturamento": 102056.0
+   },
+   {
+    "data": "2026-11-21",
+    "faturamento": 115147.11
+   },
+   {
+    "data": "2026-11-22",
+    "faturamento": 50862.99
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "data": "2026-11-09",
+     "faturamento": 78356.08
+    },
+    {
+     "data": "2026-11-10",
+     "faturamento": 86459.28
+    },
+    {
+     "data": "2026-11-11",
+     "faturamento": 92015.91
+    },
+    {
+     "data": "2026-11-12",
+     "faturamento": 85836.43
+    },
+    {
+     "data": "2026-11-13",
+     "faturamento": 103536.96
+    },
+    {
+     "data": "2026-11-14",
+     "faturamento": 126259.85
+    },
+    {
+     "data": "2026-11-15",
+     "faturamento": 96908.32
+    }
+   ]
+  ],
+  "opcoes": [
+   {
+    "id": "op_fat_loja",
+    "nome": "Faturamento por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "faturamento": 201268.45
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "faturamento": 163249.98
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "faturamento": 126640.53
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "faturamento": 74239.71
+     }
+    ]
+   },
+   {
+    "id": "op_clientes_cidade",
+    "nome": "Clientes cadastrados por cidade",
+    "colunas": [
+     "cidade",
+     "clientes"
+    ],
+    "linhas": [
+     {
+      "cidade": "Campinas",
+      "clientes": 966
+     },
+     {
+      "cidade": "Valinhos",
+      "clientes": 534
+     },
+     {
+      "cidade": "Sumaré",
+      "clientes": 516
+     },
+     {
+      "cidade": "Paulínia",
+      "clientes": 499
+     },
+     {
+      "cidade": "Hortolândia",
+      "clientes": 485
+     }
+    ]
+   },
+   {
+    "id": "op_fat_dep",
+    "nome": "Faturamento por departamento nos últimos 7 dias",
+    "colunas": [
+     "departamento",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "faturamento": 144271.66
+     },
+     {
+      "departamento": "Bebidas",
+      "faturamento": 113216.58
+     },
+     {
+      "departamento": "Padaria",
+      "faturamento": 77958.99
+     },
+     {
+      "departamento": "Açougue",
+      "faturamento": 53865.67
+     },
+     {
+      "departamento": "Higiene e Perfumaria",
+      "faturamento": 45205.3
+     },
+     {
+      "departamento": "Frios e Laticínios",
+      "faturamento": 41778.79
+     },
+     {
+      "departamento": "Limpeza",
+      "faturamento": 26357.46
+     },
+     {
+      "departamento": "Pet",
+      "faturamento": 21673.61
+     },
+     {
+      "departamento": "Congelados",
+      "faturamento": 21049.35
+     },
+     {
+      "departamento": "Hortifruti",
+      "faturamento": 20021.26
+     }
+    ]
+   }
+  ],
+  "esperada": "Faturamento por loja nos últimos 7 dias",
+  "aceitaveis": [
+   "Faturamento por loja nos últimos 7 dias",
+   "Faturamento por departamento nos últimos 7 dias"
+  ],
+  "porque": "queda contra a semana anterior: por loja ou por departamento localizam a queda"
+ },
+ {
+  "id": "A04",
+  "piloto": "vendas",
+  "rotulo": "Faturamento por loja nos últimos 7 dias · maior_soma",
+  "consulta": {
+   "id": "principal",
+   "nome": "Faturamento por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 508859
+    },
+    "aprofundamentos": [
+     "op_fat_dep",
+     "op_rup_loja",
+     "op_canc_op"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "faturamento": 201268.45
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "faturamento": 163249.98
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "faturamento": 126640.53
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "faturamento": 74239.71
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_fat_dep",
+    "nome": "Faturamento por departamento nos últimos 7 dias",
+    "colunas": [
+     "departamento",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "faturamento": 144271.66
+     },
+     {
+      "departamento": "Bebidas",
+      "faturamento": 113216.58
+     },
+     {
+      "departamento": "Padaria",
+      "faturamento": 77958.99
+     },
+     {
+      "departamento": "Açougue",
+      "faturamento": 53865.67
+     },
+     {
+      "departamento": "Higiene e Perfumaria",
+      "faturamento": 45205.3
+     },
+     {
+      "departamento": "Frios e Laticínios",
+      "faturamento": 41778.79
+     },
+     {
+      "departamento": "Limpeza",
+      "faturamento": 26357.46
+     },
+     {
+      "departamento": "Pet",
+      "faturamento": 21673.61
+     },
+     {
+      "departamento": "Congelados",
+      "faturamento": 21049.35
+     },
+     {
+      "departamento": "Hortifruti",
+      "faturamento": 20021.26
+     }
+    ]
+   },
+   {
+    "id": "op_rup_loja",
+    "nome": "Ruptura de estoque por loja",
+    "colunas": [
+     "loja",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 04 - Valinhos",
+      "itens_em_ruptura": 7
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "itens_em_ruptura": 6
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "itens_em_ruptura": 5
+     },
+     {
+      "loja": "Loja 01 - Centro",
+      "itens_em_ruptura": 1
+     }
+    ]
+   },
+   {
+    "id": "op_canc_op",
+    "nome": "Cupons cancelados por operador nos últimos 7 dias",
+    "colunas": [
+     "operador",
+     "cancelados"
+    ],
+    "linhas": [
+     {
+      "operador": "Dra. Maria Fernanda Araújo",
+      "cancelados": 7
+     },
+     {
+      "operador": "Kamilly Brito",
+      "cancelados": 6
+     },
+     {
+      "operador": "Dra. Vitória Carvalho",
+      "cancelados": 5
+     },
+     {
+      "operador": "Sr. Davi Moraes",
+      "cancelados": 5
+     },
+     {
+      "operador": "Davi Câmara",
+      "cancelados": 5
+     },
+     {
+      "operador": "Erick Carvalho",
+      "cancelados": 4
+     },
+     {
+      "operador": "Dr. Benjamin da Mota",
+      "cancelados": 4
+     },
+     {
+      "operador": "Esther Cavalcanti",
+      "cancelados": 3
+     },
+     {
+      "operador": "Dr. Luiz Otávio Aparecida",
+      "cancelados": 3
+     },
+     {
+      "operador": "Alexandre Sá",
+      "cancelados": 3
+     }
+    ]
+   }
+  ],
+  "esperada": "Faturamento por departamento nos últimos 7 dias",
+  "aceitaveis": [
+   "Faturamento por departamento nos últimos 7 dias"
+  ],
+  "porque": "faturamento alto: por departamento mostra o que vendeu; ruptura e cancelamento não explicam alta"
+ },
+ {
+  "id": "A05",
+  "piloto": "vendas",
+  "rotulo": "Faturamento por loja nos últimos 7 dias · menor_min",
+  "consulta": {
+   "id": "principal",
+   "nome": "Faturamento por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 81665
+    },
+    "aprofundamentos": [
+     "op_clientes_cidade",
+     "op_perda_prod",
+     "op_rup_loja"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "faturamento": 201268.45
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "faturamento": 163249.98
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "faturamento": 126640.53
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "faturamento": 74239.71
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_clientes_cidade",
+    "nome": "Clientes cadastrados por cidade",
+    "colunas": [
+     "cidade",
+     "clientes"
+    ],
+    "linhas": [
+     {
+      "cidade": "Campinas",
+      "clientes": 966
+     },
+     {
+      "cidade": "Valinhos",
+      "clientes": 534
+     },
+     {
+      "cidade": "Sumaré",
+      "clientes": 516
+     },
+     {
+      "cidade": "Paulínia",
+      "clientes": 499
+     },
+     {
+      "cidade": "Hortolândia",
+      "clientes": 485
+     }
+    ]
+   },
+   {
+    "id": "op_perda_prod",
+    "nome": "Produtos com mais perda nos últimos 30 dias",
+    "colunas": [
+     "produto",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "produto": "Picanha Bovina",
+      "valor_custo": 1900.77
+     },
+     {
+      "produto": "Carne Moída Patinho",
+      "valor_custo": 1442.26
+     },
+     {
+      "produto": "Presunto Cozido",
+      "valor_custo": 1192.31
+     },
+     {
+      "produto": "Pão de Queijo",
+      "valor_custo": 817.76
+     },
+     {
+      "produto": "Ração Cães Adultos Estrela do Sul 10kg",
+      "valor_custo": 779.8
+     },
+     {
+      "produto": "Linguiça Toscana",
+      "valor_custo": 767.86
+     },
+     {
+      "produto": "Manteiga com Sal Ouro Fino 200g",
+      "valor_custo": 653.48
+     },
+     {
+      "produto": "Filé de Peito de Frango",
+      "valor_custo": 622.08
+     },
+     {
+      "produto": "Costela Bovina",
+      "valor_custo": 608.61
+     },
+     {
+      "produto": "Queijo Mussarela",
+      "valor_custo": 524.6
+     }
+    ]
+   },
+   {
+    "id": "op_rup_loja",
+    "nome": "Ruptura de estoque por loja",
+    "colunas": [
+     "loja",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 04 - Valinhos",
+      "itens_em_ruptura": 7
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "itens_em_ruptura": 6
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "itens_em_ruptura": 5
+     },
+     {
+      "loja": "Loja 01 - Centro",
+      "itens_em_ruptura": 1
+     }
+    ]
+   }
+  ],
+  "esperada": "Ruptura de estoque por loja",
+  "aceitaveis": [
+   "Ruptura de estoque por loja"
+  ],
+  "porque": "loja abaixo do mínimo: falta de produto na loja explica venda baixa"
+ },
+ {
+  "id": "A06",
+  "piloto": "vendas",
+  "rotulo": "Faturamento por loja nos últimos 7 dias · caiu",
+  "consulta": {
+   "id": "principal",
+   "nome": "Faturamento por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "soma",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    },
+    "aprofundamentos": [
+     "op_fat_pag",
+     "op_canc_loja",
+     "op_fat_dep"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "faturamento": 201268.45
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "faturamento": 163249.98
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "faturamento": 126640.53
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "faturamento": 74239.71
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "loja": "Loja 01 - Centro",
+     "faturamento": 234986.3
+    },
+    {
+     "loja": "Loja 02 - Taquaral",
+     "faturamento": 180688.74
+    },
+    {
+     "loja": "Loja 03 - Sumaré",
+     "faturamento": 145700.78
+    },
+    {
+     "loja": "Loja 04 - Valinhos",
+     "faturamento": 107997.01
+    }
+   ]
+  ],
+  "opcoes": [
+   {
+    "id": "op_fat_pag",
+    "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+    "colunas": [
+     "forma",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "forma": "Cartão de Débito",
+      "valor": 164741.66
+     },
+     {
+      "forma": "Cartão de Crédito",
+      "valor": 151836.51
+     },
+     {
+      "forma": "PIX",
+      "valor": 142405.34
+     },
+     {
+      "forma": "Dinheiro",
+      "valor": 70762.41
+     },
+     {
+      "forma": "Vale-alimentação",
+      "valor": 35652.75
+     }
+    ]
+   },
+   {
+    "id": "op_canc_loja",
+    "nome": "Cupons cancelados por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "cancelados"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "cancelados": 30
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "cancelados": 25
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "cancelados": 11
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "cancelados": 10
+     }
+    ]
+   },
+   {
+    "id": "op_fat_dep",
+    "nome": "Faturamento por departamento nos últimos 7 dias",
+    "colunas": [
+     "departamento",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "faturamento": 144271.66
+     },
+     {
+      "departamento": "Bebidas",
+      "faturamento": 113216.58
+     },
+     {
+      "departamento": "Padaria",
+      "faturamento": 77958.99
+     },
+     {
+      "departamento": "Açougue",
+      "faturamento": 53865.67
+     },
+     {
+      "departamento": "Higiene e Perfumaria",
+      "faturamento": 45205.3
+     },
+     {
+      "departamento": "Frios e Laticínios",
+      "faturamento": 41778.79
+     },
+     {
+      "departamento": "Limpeza",
+      "faturamento": 26357.46
+     },
+     {
+      "departamento": "Pet",
+      "faturamento": 21673.61
+     },
+     {
+      "departamento": "Congelados",
+      "faturamento": 21049.35
+     },
+     {
+      "departamento": "Hortifruti",
+      "faturamento": 20021.26
+     }
+    ]
+   }
+  ],
+  "esperada": "Faturamento por departamento nos últimos 7 dias",
+  "aceitaveis": [
+   "Faturamento por departamento nos últimos 7 dias",
+   "Cupons cancelados por loja nos últimos 7 dias"
+  ],
+  "porque": "queda por loja: departamento mostra o que caiu; cancelamento por loja também pode explicar"
+ },
+ {
+  "id": "A07",
+  "piloto": "vendas",
+  "rotulo": "Cupons cancelados por dia nos últimos 7 dias · maior_soma",
+  "consulta": {
+   "id": "principal",
+   "nome": "Cupons cancelados por dia nos últimos 7 dias",
+   "x": "data",
+   "y": "cancelados",
+   "agenda": {
+    "condicao": {
+     "coluna": "cancelados",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 68
+    },
+    "aprofundamentos": [
+     "op_canc_op",
+     "op_top_prod",
+     "op_fat_pag"
+    ]
+   }
+  },
+  "colunas": [
+   "data",
+   "cancelados"
+  ],
+  "linhas": [
+   {
+    "data": "2026-11-16",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-17",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-18",
+    "cancelados": 12
+   },
+   {
+    "data": "2026-11-19",
+    "cancelados": 11
+   },
+   {
+    "data": "2026-11-20",
+    "cancelados": 15
+   },
+   {
+    "data": "2026-11-21",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-22",
+    "cancelados": 6
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_canc_op",
+    "nome": "Cupons cancelados por operador nos últimos 7 dias",
+    "colunas": [
+     "operador",
+     "cancelados"
+    ],
+    "linhas": [
+     {
+      "operador": "Dra. Maria Fernanda Araújo",
+      "cancelados": 7
+     },
+     {
+      "operador": "Kamilly Brito",
+      "cancelados": 6
+     },
+     {
+      "operador": "Dra. Vitória Carvalho",
+      "cancelados": 5
+     },
+     {
+      "operador": "Sr. Davi Moraes",
+      "cancelados": 5
+     },
+     {
+      "operador": "Davi Câmara",
+      "cancelados": 5
+     },
+     {
+      "operador": "Erick Carvalho",
+      "cancelados": 4
+     },
+     {
+      "operador": "Dr. Benjamin da Mota",
+      "cancelados": 4
+     },
+     {
+      "operador": "Esther Cavalcanti",
+      "cancelados": 3
+     },
+     {
+      "operador": "Dr. Luiz Otávio Aparecida",
+      "cancelados": 3
+     },
+     {
+      "operador": "Alexandre Sá",
+      "cancelados": 3
+     }
+    ]
+   },
+   {
+    "id": "op_top_prod",
+    "nome": "Top 10 produtos por faturamento nos últimos 7 dias",
+    "colunas": [
+     "produto",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "produto": "Pão de Queijo",
+      "faturamento": 50253.72
+     },
+     {
+      "produto": "Açúcar Refinado Primor 5kg",
+      "faturamento": 27914.6
+     },
+     {
+      "produto": "Carne Moída Patinho",
+      "faturamento": 24458.24
+     },
+     {
+      "produto": "Picanha Bovina",
+      "faturamento": 20214.04
+     },
+     {
+      "produto": "Desodorante Aerosol Boa Mesa 150ml",
+      "faturamento": 18036.02
+     },
+     {
+      "produto": "Energético Serra Azul 250ml",
+      "faturamento": 14728.89
+     },
+     {
+      "produto": "Leite Condensado Dona Clara 395g",
+      "faturamento": 14382.12
+     },
+     {
+      "produto": "Café Torrado e Moído Estrela do Sul 250g",
+      "faturamento": 13688.99
+     },
+     {
+      "produto": "Vinho Tinto Seco Tropical 750ml",
+      "faturamento": 13101.06
+     },
+     {
+      "produto": "Bolo de Fubá Boa Mesa 400g",
+      "faturamento": 12663.78
+     }
+    ]
+   },
+   {
+    "id": "op_fat_pag",
+    "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+    "colunas": [
+     "forma",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "forma": "Cartão de Débito",
+      "valor": 164741.66
+     },
+     {
+      "forma": "Cartão de Crédito",
+      "valor": 151836.51
+     },
+     {
+      "forma": "PIX",
+      "valor": 142405.34
+     },
+     {
+      "forma": "Dinheiro",
+      "valor": 70762.41
+     },
+     {
+      "forma": "Vale-alimentação",
+      "valor": 35652.75
+     }
+    ]
+   }
+  ],
+  "esperada": "Cupons cancelados por operador nos últimos 7 dias",
+  "aceitaveis": [
+   "Cupons cancelados por operador nos últimos 7 dias"
+  ],
+  "porque": "muitos cancelamentos: por operador é a única que abre os cancelamentos"
+ },
+ {
+  "id": "A08",
+  "piloto": "vendas",
+  "rotulo": "Cupons cancelados por dia nos últimos 7 dias · maximo",
+  "consulta": {
+   "id": "principal",
+   "nome": "Cupons cancelados por dia nos últimos 7 dias",
+   "x": "data",
+   "y": "cancelados",
+   "agenda": {
+    "condicao": {
+     "coluna": "cancelados",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 12
+    },
+    "aprofundamentos": [
+     "op_compras_pend",
+     "op_canc_loja",
+     "op_fat_dep"
+    ]
+   }
+  },
+  "colunas": [
+   "data",
+   "cancelados"
+  ],
+  "linhas": [
+   {
+    "data": "2026-11-16",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-17",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-18",
+    "cancelados": 12
+   },
+   {
+    "data": "2026-11-19",
+    "cancelados": 11
+   },
+   {
+    "data": "2026-11-20",
+    "cancelados": 15
+   },
+   {
+    "data": "2026-11-21",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-22",
+    "cancelados": 6
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_compras_pend",
+    "nome": "Compras pendentes por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "pedidos",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "Pires Ltda. Ltda",
+      "pedidos": 9,
+      "valor": 132262.62
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "pedidos": 7,
+      "valor": 67859.06
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "pedidos": 5,
+      "valor": 56402.52
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "pedidos": 5,
+      "valor": 47449.21
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 44306.29
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 39162.18
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "pedidos": 2,
+      "valor": 38701.08
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 37752.45
+     },
+     {
+      "fornecedor": "Rocha Distribuidora Ltda",
+      "pedidos": 4,
+      "valor": 33373.59
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 23051.81
+     }
+    ]
+   },
+   {
+    "id": "op_canc_loja",
+    "nome": "Cupons cancelados por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "cancelados"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "cancelados": 30
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "cancelados": 25
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "cancelados": 11
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "cancelados": 10
+     }
+    ]
+   },
+   {
+    "id": "op_fat_dep",
+    "nome": "Faturamento por departamento nos últimos 7 dias",
+    "colunas": [
+     "departamento",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "faturamento": 144271.66
+     },
+     {
+      "departamento": "Bebidas",
+      "faturamento": 113216.58
+     },
+     {
+      "departamento": "Padaria",
+      "faturamento": 77958.99
+     },
+     {
+      "departamento": "Açougue",
+      "faturamento": 53865.67
+     },
+     {
+      "departamento": "Higiene e Perfumaria",
+      "faturamento": 45205.3
+     },
+     {
+      "departamento": "Frios e Laticínios",
+      "faturamento": 41778.79
+     },
+     {
+      "departamento": "Limpeza",
+      "faturamento": 26357.46
+     },
+     {
+      "departamento": "Pet",
+      "faturamento": 21673.61
+     },
+     {
+      "departamento": "Congelados",
+      "faturamento": 21049.35
+     },
+     {
+      "departamento": "Hortifruti",
+      "faturamento": 20021.26
+     }
+    ]
+   }
+  ],
+  "esperada": "Cupons cancelados por loja nos últimos 7 dias",
+  "aceitaveis": [
+   "Cupons cancelados por loja nos últimos 7 dias"
+  ],
+  "porque": "pico de cancelamento: por loja localiza onde aconteceu"
+ },
+ {
+  "id": "A09",
+  "piloto": "vendas",
+  "rotulo": "Cupons cancelados por dia nos últimos 7 dias · subiu",
+  "consulta": {
+   "id": "principal",
+   "nome": "Cupons cancelados por dia nos últimos 7 dias",
+   "x": "data",
+   "y": "cancelados",
+   "agenda": {
+    "condicao": {
+     "coluna": "cancelados",
+     "agregacao": "soma",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    },
+    "aprofundamentos": [
+     "op_canc_loja",
+     "op_canc_op",
+     "op_rup_dep"
+    ]
+   }
+  },
+  "colunas": [
+   "data",
+   "cancelados"
+  ],
+  "linhas": [
+   {
+    "data": "2026-11-16",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-17",
+    "cancelados": 9
+   },
+   {
+    "data": "2026-11-18",
+    "cancelados": 12
+   },
+   {
+    "data": "2026-11-19",
+    "cancelados": 11
+   },
+   {
+    "data": "2026-11-20",
+    "cancelados": 15
+   },
+   {
+    "data": "2026-11-21",
+    "cancelados": 14
+   },
+   {
+    "data": "2026-11-22",
+    "cancelados": 6
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "data": "2026-11-09",
+     "cancelados": 16
+    },
+    {
+     "data": "2026-11-10",
+     "cancelados": 14
+    },
+    {
+     "data": "2026-11-11",
+     "cancelados": 12
+    },
+    {
+     "data": "2026-11-12",
+     "cancelados": 8
+    },
+    {
+     "data": "2026-11-13",
+     "cancelados": 25
+    },
+    {
+     "data": "2026-11-14",
+     "cancelados": 14
+    },
+    {
+     "data": "2026-11-15",
+     "cancelados": 22
+    }
+   ]
+  ],
+  "opcoes": [
+   {
+    "id": "op_canc_loja",
+    "nome": "Cupons cancelados por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "cancelados"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "cancelados": 30
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "cancelados": 25
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "cancelados": 11
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "cancelados": 10
+     }
+    ]
+   },
+   {
+    "id": "op_canc_op",
+    "nome": "Cupons cancelados por operador nos últimos 7 dias",
+    "colunas": [
+     "operador",
+     "cancelados"
+    ],
+    "linhas": [
+     {
+      "operador": "Dra. Maria Fernanda Araújo",
+      "cancelados": 7
+     },
+     {
+      "operador": "Kamilly Brito",
+      "cancelados": 6
+     },
+     {
+      "operador": "Dra. Vitória Carvalho",
+      "cancelados": 5
+     },
+     {
+      "operador": "Sr. Davi Moraes",
+      "cancelados": 5
+     },
+     {
+      "operador": "Davi Câmara",
+      "cancelados": 5
+     },
+     {
+      "operador": "Erick Carvalho",
+      "cancelados": 4
+     },
+     {
+      "operador": "Dr. Benjamin da Mota",
+      "cancelados": 4
+     },
+     {
+      "operador": "Esther Cavalcanti",
+      "cancelados": 3
+     },
+     {
+      "operador": "Dr. Luiz Otávio Aparecida",
+      "cancelados": 3
+     },
+     {
+      "operador": "Alexandre Sá",
+      "cancelados": 3
+     }
+    ]
+   },
+   {
+    "id": "op_rup_dep",
+    "nome": "Ruptura de estoque por departamento",
+    "colunas": [
+     "departamento",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "itens_em_ruptura": 5
+     },
+     {
+      "departamento": "Bebidas",
+      "itens_em_ruptura": 4
+     },
+     {
+      "departamento": "Hortifruti",
+      "itens_em_ruptura": 3
+     },
+     {
+      "departamento": "Congelados",
+      "itens_em_ruptura": 3
+     },
+     {
+      "departamento": "Padaria",
+      "itens_em_ruptura": 2
+     },
+     {
+      "departamento": "Pet",
+      "itens_em_ruptura": 1
+     },
+     {
+      "departamento": "Açougue",
+      "itens_em_ruptura": 1
+     }
+    ]
+   }
+  ],
+  "esperada": "Cupons cancelados por loja nos últimos 7 dias",
+  "aceitaveis": [
+   "Cupons cancelados por loja nos últimos 7 dias",
+   "Cupons cancelados por operador nos últimos 7 dias"
+  ],
+  "porque": "cancelamentos mudaram contra a semana anterior: por loja ou por operador abrem a mudança"
+ },
+ {
+  "id": "A10",
+  "piloto": "vendas",
+  "rotulo": "Ticket médio por loja nos últimos 7 dias · menor_min",
+  "consulta": {
+   "id": "principal",
+   "nome": "Ticket médio por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "ticket_medio",
+   "agenda": {
+    "condicao": {
+     "coluna": "ticket_medio",
+     "agregacao": "minimo",
+     "operador": "menor",
+     "valor": 109
+    },
+    "aprofundamentos": [
+     "op_clientes_cidade",
+     "op_desc_loja",
+     "op_compras_pend"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "ticket_medio"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "ticket_medio": 103.16
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "ticket_medio": 103.11
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "ticket_medio": 101.78
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "ticket_medio": 97.94
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_clientes_cidade",
+    "nome": "Clientes cadastrados por cidade",
+    "colunas": [
+     "cidade",
+     "clientes"
+    ],
+    "linhas": [
+     {
+      "cidade": "Campinas",
+      "clientes": 966
+     },
+     {
+      "cidade": "Valinhos",
+      "clientes": 534
+     },
+     {
+      "cidade": "Sumaré",
+      "clientes": 516
+     },
+     {
+      "cidade": "Paulínia",
+      "clientes": 499
+     },
+     {
+      "cidade": "Hortolândia",
+      "clientes": 485
+     }
+    ]
+   },
+   {
+    "id": "op_desc_loja",
+    "nome": "Desconto concedido por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "desconto"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "desconto": 1601.77
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "desconto": 1291.19
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "desconto": 1132.71
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "desconto": 555.51
+     }
+    ]
+   },
+   {
+    "id": "op_compras_pend",
+    "nome": "Compras pendentes por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "pedidos",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "Pires Ltda. Ltda",
+      "pedidos": 9,
+      "valor": 132262.62
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "pedidos": 7,
+      "valor": 67859.06
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "pedidos": 5,
+      "valor": 56402.52
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "pedidos": 5,
+      "valor": 47449.21
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 44306.29
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 39162.18
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "pedidos": 2,
+      "valor": 38701.08
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 37752.45
+     },
+     {
+      "fornecedor": "Rocha Distribuidora Ltda",
+      "pedidos": 4,
+      "valor": 33373.59
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 23051.81
+     }
+    ]
+   }
+  ],
+  "esperada": "Desconto concedido por loja nos últimos 7 dias",
+  "aceitaveis": [
+   "Desconto concedido por loja nos últimos 7 dias"
+  ],
+  "porque": "ticket baixo: desconto por loja é a única ligada ao valor do cupom"
+ },
+ {
+  "id": "A11",
+  "piloto": "vendas",
+  "rotulo": "Ticket médio por loja nos últimos 7 dias · caiu",
+  "consulta": {
+   "id": "principal",
+   "nome": "Ticket médio por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "ticket_medio",
+   "agenda": {
+    "condicao": {
+     "coluna": "ticket_medio",
+     "agregacao": "media",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    },
+    "aprofundamentos": [
+     "op_perda_loja",
+     "op_top_prod",
+     "op_desc_loja"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "ticket_medio"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "ticket_medio": 103.16
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "ticket_medio": 103.11
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "ticket_medio": 101.78
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "ticket_medio": 97.94
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "loja": "Loja 02 - Taquaral",
+     "ticket_medio": 107.55
+    },
+    {
+     "loja": "Loja 03 - Sumaré",
+     "ticket_medio": 105.28
+    },
+    {
+     "loja": "Loja 04 - Valinhos",
+     "ticket_medio": 102.95
+    },
+    {
+     "loja": "Loja 01 - Centro",
+     "ticket_medio": 101.16
+    }
+   ]
+  ],
+  "opcoes": [
+   {
+    "id": "op_perda_loja",
+    "nome": "Perdas por loja nos últimos 30 dias",
+    "colunas": [
+     "loja",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "valor_custo": 6516.06
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "valor_custo": 4509.72
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "valor_custo": 3587.27
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "valor_custo": 3558.08
+     }
+    ]
+   },
+   {
+    "id": "op_top_prod",
+    "nome": "Top 10 produtos por faturamento nos últimos 7 dias",
+    "colunas": [
+     "produto",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "produto": "Pão de Queijo",
+      "faturamento": 50253.72
+     },
+     {
+      "produto": "Açúcar Refinado Primor 5kg",
+      "faturamento": 27914.6
+     },
+     {
+      "produto": "Carne Moída Patinho",
+      "faturamento": 24458.24
+     },
+     {
+      "produto": "Picanha Bovina",
+      "faturamento": 20214.04
+     },
+     {
+      "produto": "Desodorante Aerosol Boa Mesa 150ml",
+      "faturamento": 18036.02
+     },
+     {
+      "produto": "Energético Serra Azul 250ml",
+      "faturamento": 14728.89
+     },
+     {
+      "produto": "Leite Condensado Dona Clara 395g",
+      "faturamento": 14382.12
+     },
+     {
+      "produto": "Café Torrado e Moído Estrela do Sul 250g",
+      "faturamento": 13688.99
+     },
+     {
+      "produto": "Vinho Tinto Seco Tropical 750ml",
+      "faturamento": 13101.06
+     },
+     {
+      "produto": "Bolo de Fubá Boa Mesa 400g",
+      "faturamento": 12663.78
+     }
+    ]
+   },
+   {
+    "id": "op_desc_loja",
+    "nome": "Desconto concedido por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "desconto"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "desconto": 1601.77
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "desconto": 1291.19
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "desconto": 1132.71
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "desconto": 555.51
+     }
+    ]
+   }
+  ],
+  "esperada": "Desconto concedido por loja nos últimos 7 dias",
+  "aceitaveis": [
+   "Desconto concedido por loja nos últimos 7 dias",
+   "Top 10 produtos por faturamento nos últimos 7 dias"
+  ],
+  "porque": "ticket caiu: desconto ou mix de produtos explicam o valor do cupom"
+ },
+ {
+  "id": "A12",
+  "piloto": "vendas",
+  "rotulo": "Faturamento por forma de pagamento nos últimos 7 dias · maior_soma",
+  "consulta": {
+   "id": "principal",
+   "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+   "x": "forma",
+   "y": "valor",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 508859
+    },
+    "aprofundamentos": [
+     "op_perda_prod",
+     "op_fat_loja",
+     "op_rupA_prod"
+    ]
+   }
+  },
+  "colunas": [
+   "forma",
+   "valor"
+  ],
+  "linhas": [
+   {
+    "forma": "Cartão de Débito",
+    "valor": 164741.66
+   },
+   {
+    "forma": "Cartão de Crédito",
+    "valor": 151836.51
+   },
+   {
+    "forma": "PIX",
+    "valor": 142405.34
+   },
+   {
+    "forma": "Dinheiro",
+    "valor": 70762.41
+   },
+   {
+    "forma": "Vale-alimentação",
+    "valor": 35652.75
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_perda_prod",
+    "nome": "Produtos com mais perda nos últimos 30 dias",
+    "colunas": [
+     "produto",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "produto": "Picanha Bovina",
+      "valor_custo": 1900.77
+     },
+     {
+      "produto": "Carne Moída Patinho",
+      "valor_custo": 1442.26
+     },
+     {
+      "produto": "Presunto Cozido",
+      "valor_custo": 1192.31
+     },
+     {
+      "produto": "Pão de Queijo",
+      "valor_custo": 817.76
+     },
+     {
+      "produto": "Ração Cães Adultos Estrela do Sul 10kg",
+      "valor_custo": 779.8
+     },
+     {
+      "produto": "Linguiça Toscana",
+      "valor_custo": 767.86
+     },
+     {
+      "produto": "Manteiga com Sal Ouro Fino 200g",
+      "valor_custo": 653.48
+     },
+     {
+      "produto": "Filé de Peito de Frango",
+      "valor_custo": 622.08
+     },
+     {
+      "produto": "Costela Bovina",
+      "valor_custo": 608.61
+     },
+     {
+      "produto": "Queijo Mussarela",
+      "valor_custo": 524.6
+     }
+    ]
+   },
+   {
+    "id": "op_fat_loja",
+    "nome": "Faturamento por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "faturamento": 201268.45
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "faturamento": 163249.98
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "faturamento": 126640.53
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "faturamento": 74239.71
+     }
+    ]
+   },
+   {
+    "id": "op_rupA_prod",
+    "nome": "Produtos curva A em ruptura",
+    "colunas": [
+     "loja",
+     "produto"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "produto": "Cerveja Pilsen Boa Mesa 600ml"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Açúcar Refinado Primor 5kg"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Bolo de Fubá Dona Clara 400g"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Cebola"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Sorvete Napolitano Casa Nossa 2L"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Tomate Italiano"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Arroz Tipo 1 Vale Verde 1kg"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Banana Prata"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Batata Pré-frita Estrela do Sul 1kg"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Suco de Uva Integral Bom Grão 1L"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Vinho Tinto Seco Bom Grão 750ml"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Café Torrado e Moído Estrela do Sul 250g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Carne Moída Patinho"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Macarrão Espaguete Tropical 500g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Pão de Forma Do Campo 500g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Suco de Uva Integral Bom Grão 1L"
+     }
+    ]
+   }
+  ],
+  "esperada": "Faturamento por loja nos últimos 7 dias",
+  "aceitaveis": [
+   "Faturamento por loja nos últimos 7 dias"
+  ],
+  "porque": "pagamentos acima do limite: por loja mostra de onde veio a venda"
+ },
+ {
+  "id": "A13",
+  "piloto": "vendas",
+  "rotulo": "Faturamento por forma de pagamento nos últimos 7 dias · maximo",
+  "consulta": {
+   "id": "principal",
+   "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+   "x": "forma",
+   "y": "valor",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 131793
+    },
+    "aprofundamentos": [
+     "op_fat_hora",
+     "op_rup_forn",
+     "op_clientes_cidade"
+    ]
+   }
+  },
+  "colunas": [
+   "forma",
+   "valor"
+  ],
+  "linhas": [
+   {
+    "forma": "Cartão de Débito",
+    "valor": 164741.66
+   },
+   {
+    "forma": "Cartão de Crédito",
+    "valor": 151836.51
+   },
+   {
+    "forma": "PIX",
+    "valor": 142405.34
+   },
+   {
+    "forma": "Dinheiro",
+    "valor": 70762.41
+   },
+   {
+    "forma": "Vale-alimentação",
+    "valor": 35652.75
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_fat_hora",
+    "nome": "Faturamento por hora do dia nos últimos 7 dias",
+    "colunas": [
+     "hora",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "hora": 7,
+      "faturamento": 16555.59
+     },
+     {
+      "hora": 8,
+      "faturamento": 25155.52
+     },
+     {
+      "hora": 9,
+      "faturamento": 30225.14
+     },
+     {
+      "hora": 10,
+      "faturamento": 40234.4
+     },
+     {
+      "hora": 11,
+      "faturamento": 53153.4
+     },
+     {
+      "hora": 12,
+      "faturamento": 55527.65
+     },
+     {
+      "hora": 13,
+      "faturamento": 50708.99
+     },
+     {
+      "hora": 14,
+      "faturamento": 29987.79
+     },
+     {
+      "hora": 15,
+      "faturamento": 30329.61
+     },
+     {
+      "hora": 16,
+      "faturamento": 26404.44
+     },
+     {
+      "hora": 17,
+      "faturamento": 39219.12
+     },
+     {
+      "hora": 18,
+      "faturamento": 59611.64
+     },
+     {
+      "hora": 19,
+      "faturamento": 52885.01
+     },
+     {
+      "hora": 20,
+      "faturamento": 32542.94
+     },
+     {
+      "hora": 21,
+      "faturamento": 22857.43
+     }
+    ]
+   },
+   {
+    "id": "op_rup_forn",
+    "nome": "Ruptura de estoque por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "da Mota Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "itens_em_ruptura": 2
+     },
+     {
+      "fornecedor": "Nunes Silva Ltda. Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     }
+    ]
+   },
+   {
+    "id": "op_clientes_cidade",
+    "nome": "Clientes cadastrados por cidade",
+    "colunas": [
+     "cidade",
+     "clientes"
+    ],
+    "linhas": [
+     {
+      "cidade": "Campinas",
+      "clientes": 966
+     },
+     {
+      "cidade": "Valinhos",
+      "clientes": 534
+     },
+     {
+      "cidade": "Sumaré",
+      "clientes": 516
+     },
+     {
+      "cidade": "Paulínia",
+      "clientes": 499
+     },
+     {
+      "cidade": "Hortolândia",
+      "clientes": 485
+     }
+    ]
+   }
+  ],
+  "esperada": "Faturamento por hora do dia nos últimos 7 dias",
+  "aceitaveis": [
+   "Faturamento por hora do dia nos últimos 7 dias"
+  ],
+  "porque": "forma de pagamento com valor alto: por hora é a única que abre a venda"
+ },
+ {
+  "id": "A14",
+  "piloto": "vendas",
+  "rotulo": "Faturamento por dia nos últimos 7 dias · maximo",
+  "consulta": {
+   "id": "principal",
+   "nome": "Faturamento por dia nos últimos 7 dias",
+   "x": "data",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 92118
+    },
+    "aprofundamentos": [
+     "op_perda_prod",
+     "op_compras_pend",
+     "op_top_prod"
+    ]
+   }
+  },
+  "colunas": [
+   "data",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "data": "2026-11-16",
+    "faturamento": 76920.5
+   },
+   {
+    "data": "2026-11-17",
+    "faturamento": 67597.09
+   },
+   {
+    "data": "2026-11-18",
+    "faturamento": 72536.26
+   },
+   {
+    "data": "2026-11-19",
+    "faturamento": 80278.72
+   },
+   {
+    "data": "2026-11-20",
+    "faturamento": 102056.0
+   },
+   {
+    "data": "2026-11-21",
+    "faturamento": 115147.11
+   },
+   {
+    "data": "2026-11-22",
+    "faturamento": 50862.99
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_perda_prod",
+    "nome": "Produtos com mais perda nos últimos 30 dias",
+    "colunas": [
+     "produto",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "produto": "Picanha Bovina",
+      "valor_custo": 1900.77
+     },
+     {
+      "produto": "Carne Moída Patinho",
+      "valor_custo": 1442.26
+     },
+     {
+      "produto": "Presunto Cozido",
+      "valor_custo": 1192.31
+     },
+     {
+      "produto": "Pão de Queijo",
+      "valor_custo": 817.76
+     },
+     {
+      "produto": "Ração Cães Adultos Estrela do Sul 10kg",
+      "valor_custo": 779.8
+     },
+     {
+      "produto": "Linguiça Toscana",
+      "valor_custo": 767.86
+     },
+     {
+      "produto": "Manteiga com Sal Ouro Fino 200g",
+      "valor_custo": 653.48
+     },
+     {
+      "produto": "Filé de Peito de Frango",
+      "valor_custo": 622.08
+     },
+     {
+      "produto": "Costela Bovina",
+      "valor_custo": 608.61
+     },
+     {
+      "produto": "Queijo Mussarela",
+      "valor_custo": 524.6
+     }
+    ]
+   },
+   {
+    "id": "op_compras_pend",
+    "nome": "Compras pendentes por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "pedidos",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "Pires Ltda. Ltda",
+      "pedidos": 9,
+      "valor": 132262.62
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "pedidos": 7,
+      "valor": 67859.06
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "pedidos": 5,
+      "valor": 56402.52
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "pedidos": 5,
+      "valor": 47449.21
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 44306.29
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 39162.18
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "pedidos": 2,
+      "valor": 38701.08
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 37752.45
+     },
+     {
+      "fornecedor": "Rocha Distribuidora Ltda",
+      "pedidos": 4,
+      "valor": 33373.59
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 23051.81
+     }
+    ]
+   },
+   {
+    "id": "op_top_prod",
+    "nome": "Top 10 produtos por faturamento nos últimos 7 dias",
+    "colunas": [
+     "produto",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "produto": "Pão de Queijo",
+      "faturamento": 50253.72
+     },
+     {
+      "produto": "Açúcar Refinado Primor 5kg",
+      "faturamento": 27914.6
+     },
+     {
+      "produto": "Carne Moída Patinho",
+      "faturamento": 24458.24
+     },
+     {
+      "produto": "Picanha Bovina",
+      "faturamento": 20214.04
+     },
+     {
+      "produto": "Desodorante Aerosol Boa Mesa 150ml",
+      "faturamento": 18036.02
+     },
+     {
+      "produto": "Energético Serra Azul 250ml",
+      "faturamento": 14728.89
+     },
+     {
+      "produto": "Leite Condensado Dona Clara 395g",
+      "faturamento": 14382.12
+     },
+     {
+      "produto": "Café Torrado e Moído Estrela do Sul 250g",
+      "faturamento": 13688.99
+     },
+     {
+      "produto": "Vinho Tinto Seco Tropical 750ml",
+      "faturamento": 13101.06
+     },
+     {
+      "produto": "Bolo de Fubá Boa Mesa 400g",
+      "faturamento": 12663.78
+     }
+    ]
+   }
+  ],
+  "esperada": "Top 10 produtos por faturamento nos últimos 7 dias",
+  "aceitaveis": [
+   "Top 10 produtos por faturamento nos últimos 7 dias"
+  ],
+  "porque": "dia de pico: os produtos mais vendidos mostram o que puxou a venda"
+ },
+ {
+  "id": "A15",
+  "piloto": "vendas",
+  "rotulo": "Faturamento por loja nos últimos 7 dias · maximo",
+  "consulta": {
+   "id": "principal",
+   "nome": "Faturamento por loja nos últimos 7 dias",
+   "x": "loja",
+   "y": "faturamento",
+   "agenda": {
+    "condicao": {
+     "coluna": "faturamento",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 161015
+    },
+    "aprofundamentos": [
+     "op_rup_forn",
+     "op_fat_dep",
+     "op_perda_loja"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "faturamento"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 01 - Centro",
+    "faturamento": 201268.45
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "faturamento": 163249.98
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "faturamento": 126640.53
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "faturamento": 74239.71
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_rup_forn",
+    "nome": "Ruptura de estoque por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "da Mota Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "itens_em_ruptura": 2
+     },
+     {
+      "fornecedor": "Nunes Silva Ltda. Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     }
+    ]
+   },
+   {
+    "id": "op_fat_dep",
+    "nome": "Faturamento por departamento nos últimos 7 dias",
+    "colunas": [
+     "departamento",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "faturamento": 144271.66
+     },
+     {
+      "departamento": "Bebidas",
+      "faturamento": 113216.58
+     },
+     {
+      "departamento": "Padaria",
+      "faturamento": 77958.99
+     },
+     {
+      "departamento": "Açougue",
+      "faturamento": 53865.67
+     },
+     {
+      "departamento": "Higiene e Perfumaria",
+      "faturamento": 45205.3
+     },
+     {
+      "departamento": "Frios e Laticínios",
+      "faturamento": 41778.79
+     },
+     {
+      "departamento": "Limpeza",
+      "faturamento": 26357.46
+     },
+     {
+      "departamento": "Pet",
+      "faturamento": 21673.61
+     },
+     {
+      "departamento": "Congelados",
+      "faturamento": 21049.35
+     },
+     {
+      "departamento": "Hortifruti",
+      "faturamento": 20021.26
+     }
+    ]
+   },
+   {
+    "id": "op_perda_loja",
+    "nome": "Perdas por loja nos últimos 30 dias",
+    "colunas": [
+     "loja",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "valor_custo": 6516.06
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "valor_custo": 4509.72
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "valor_custo": 3587.27
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "valor_custo": 3558.08
+     }
+    ]
+   }
+  ],
+  "esperada": "Faturamento por departamento nos últimos 7 dias",
+  "aceitaveis": [
+   "Faturamento por departamento nos últimos 7 dias"
+  ],
+  "porque": "loja com faturamento alto: por departamento mostra o que vendeu"
+ },
+ {
+  "id": "A16",
+  "piloto": "ruptura",
+  "rotulo": "Ruptura de estoque por loja · maior_soma",
+  "consulta": {
+   "id": "principal",
+   "nome": "Ruptura de estoque por loja",
+   "x": "loja",
+   "y": "itens_em_ruptura",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens_em_ruptura",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 17
+    },
+    "aprofundamentos": [
+     "op_fat_loja",
+     "op_rup_dep",
+     "op_clientes_cidade"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens_em_ruptura"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens_em_ruptura": 7
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens_em_ruptura": 6
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens_em_ruptura": 5
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens_em_ruptura": 1
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_fat_loja",
+    "nome": "Faturamento por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "faturamento": 201268.45
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "faturamento": 163249.98
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "faturamento": 126640.53
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "faturamento": 74239.71
+     }
+    ]
+   },
+   {
+    "id": "op_rup_dep",
+    "nome": "Ruptura de estoque por departamento",
+    "colunas": [
+     "departamento",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "itens_em_ruptura": 5
+     },
+     {
+      "departamento": "Bebidas",
+      "itens_em_ruptura": 4
+     },
+     {
+      "departamento": "Hortifruti",
+      "itens_em_ruptura": 3
+     },
+     {
+      "departamento": "Congelados",
+      "itens_em_ruptura": 3
+     },
+     {
+      "departamento": "Padaria",
+      "itens_em_ruptura": 2
+     },
+     {
+      "departamento": "Pet",
+      "itens_em_ruptura": 1
+     },
+     {
+      "departamento": "Açougue",
+      "itens_em_ruptura": 1
+     }
+    ]
+   },
+   {
+    "id": "op_clientes_cidade",
+    "nome": "Clientes cadastrados por cidade",
+    "colunas": [
+     "cidade",
+     "clientes"
+    ],
+    "linhas": [
+     {
+      "cidade": "Campinas",
+      "clientes": 966
+     },
+     {
+      "cidade": "Valinhos",
+      "clientes": 534
+     },
+     {
+      "cidade": "Sumaré",
+      "clientes": 516
+     },
+     {
+      "cidade": "Paulínia",
+      "clientes": 499
+     },
+     {
+      "cidade": "Hortolândia",
+      "clientes": 485
+     }
+    ]
+   }
+  ],
+  "esperada": "Ruptura de estoque por departamento",
+  "aceitaveis": [
+   "Ruptura de estoque por departamento"
+  ],
+  "porque": "ruptura acima do limite: por departamento mostra o que está faltando"
+ },
+ {
+  "id": "A17",
+  "piloto": "ruptura",
+  "rotulo": "Ruptura de estoque por loja · maximo",
+  "consulta": {
+   "id": "principal",
+   "nome": "Ruptura de estoque por loja",
+   "x": "loja",
+   "y": "itens_em_ruptura",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens_em_ruptura",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 6
+    },
+    "aprofundamentos": [
+     "op_fat_pag",
+     "op_fat_hora",
+     "op_rup_forn"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens_em_ruptura"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens_em_ruptura": 7
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens_em_ruptura": 6
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens_em_ruptura": 5
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens_em_ruptura": 1
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_fat_pag",
+    "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+    "colunas": [
+     "forma",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "forma": "Cartão de Débito",
+      "valor": 164741.66
+     },
+     {
+      "forma": "Cartão de Crédito",
+      "valor": 151836.51
+     },
+     {
+      "forma": "PIX",
+      "valor": 142405.34
+     },
+     {
+      "forma": "Dinheiro",
+      "valor": 70762.41
+     },
+     {
+      "forma": "Vale-alimentação",
+      "valor": 35652.75
+     }
+    ]
+   },
+   {
+    "id": "op_fat_hora",
+    "nome": "Faturamento por hora do dia nos últimos 7 dias",
+    "colunas": [
+     "hora",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "hora": 7,
+      "faturamento": 16555.59
+     },
+     {
+      "hora": 8,
+      "faturamento": 25155.52
+     },
+     {
+      "hora": 9,
+      "faturamento": 30225.14
+     },
+     {
+      "hora": 10,
+      "faturamento": 40234.4
+     },
+     {
+      "hora": 11,
+      "faturamento": 53153.4
+     },
+     {
+      "hora": 12,
+      "faturamento": 55527.65
+     },
+     {
+      "hora": 13,
+      "faturamento": 50708.99
+     },
+     {
+      "hora": 14,
+      "faturamento": 29987.79
+     },
+     {
+      "hora": 15,
+      "faturamento": 30329.61
+     },
+     {
+      "hora": 16,
+      "faturamento": 26404.44
+     },
+     {
+      "hora": 17,
+      "faturamento": 39219.12
+     },
+     {
+      "hora": 18,
+      "faturamento": 59611.64
+     },
+     {
+      "hora": 19,
+      "faturamento": 52885.01
+     },
+     {
+      "hora": 20,
+      "faturamento": 32542.94
+     },
+     {
+      "hora": 21,
+      "faturamento": 22857.43
+     }
+    ]
+   },
+   {
+    "id": "op_rup_forn",
+    "nome": "Ruptura de estoque por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "da Mota Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "itens_em_ruptura": 2
+     },
+     {
+      "fornecedor": "Nunes Silva Ltda. Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     }
+    ]
+   }
+  ],
+  "esperada": "Ruptura de estoque por fornecedor",
+  "aceitaveis": [
+   "Ruptura de estoque por fornecedor"
+  ],
+  "porque": "loja com muita ruptura: por fornecedor é a única de estoque e aponta quem não entregou"
+ },
+ {
+  "id": "A18",
+  "piloto": "ruptura",
+  "rotulo": "Ruptura de estoque por loja · primeira",
+  "consulta": {
+   "id": "principal",
+   "nome": "Ruptura de estoque por loja",
+   "x": "loja",
+   "y": "itens_em_ruptura",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens_em_ruptura",
+     "agregacao": "primeira",
+     "operador": "maior",
+     "valor": 6
+    },
+    "aprofundamentos": [
+     "op_canc_op",
+     "op_compras_pend",
+     "op_desc_loja"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens_em_ruptura"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens_em_ruptura": 7
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens_em_ruptura": 6
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens_em_ruptura": 5
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens_em_ruptura": 1
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_canc_op",
+    "nome": "Cupons cancelados por operador nos últimos 7 dias",
+    "colunas": [
+     "operador",
+     "cancelados"
+    ],
+    "linhas": [
+     {
+      "operador": "Dra. Maria Fernanda Araújo",
+      "cancelados": 7
+     },
+     {
+      "operador": "Kamilly Brito",
+      "cancelados": 6
+     },
+     {
+      "operador": "Dra. Vitória Carvalho",
+      "cancelados": 5
+     },
+     {
+      "operador": "Sr. Davi Moraes",
+      "cancelados": 5
+     },
+     {
+      "operador": "Davi Câmara",
+      "cancelados": 5
+     },
+     {
+      "operador": "Erick Carvalho",
+      "cancelados": 4
+     },
+     {
+      "operador": "Dr. Benjamin da Mota",
+      "cancelados": 4
+     },
+     {
+      "operador": "Esther Cavalcanti",
+      "cancelados": 3
+     },
+     {
+      "operador": "Dr. Luiz Otávio Aparecida",
+      "cancelados": 3
+     },
+     {
+      "operador": "Alexandre Sá",
+      "cancelados": 3
+     }
+    ]
+   },
+   {
+    "id": "op_compras_pend",
+    "nome": "Compras pendentes por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "pedidos",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "Pires Ltda. Ltda",
+      "pedidos": 9,
+      "valor": 132262.62
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "pedidos": 7,
+      "valor": 67859.06
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "pedidos": 5,
+      "valor": 56402.52
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "pedidos": 5,
+      "valor": 47449.21
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 44306.29
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 39162.18
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "pedidos": 2,
+      "valor": 38701.08
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 37752.45
+     },
+     {
+      "fornecedor": "Rocha Distribuidora Ltda",
+      "pedidos": 4,
+      "valor": 33373.59
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 23051.81
+     }
+    ]
+   },
+   {
+    "id": "op_desc_loja",
+    "nome": "Desconto concedido por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "desconto"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "desconto": 1601.77
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "desconto": 1291.19
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "desconto": 1132.71
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "desconto": 555.51
+     }
+    ]
+   }
+  ],
+  "esperada": "Compras pendentes por fornecedor",
+  "aceitaveis": [
+   "Compras pendentes por fornecedor"
+  ],
+  "porque": "ruptura alta: compras pendentes é a única ligada à reposição"
+ },
+ {
+  "id": "A19",
+  "piloto": "ruptura",
+  "rotulo": "Itens abaixo do estoque mínimo por loja · maior_soma",
+  "consulta": {
+   "id": "principal",
+   "nome": "Itens abaixo do estoque mínimo por loja",
+   "x": "loja",
+   "y": "itens",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 69
+    },
+    "aprofundamentos": [
+     "op_fat_hora",
+     "op_compras_pend",
+     "op_rup_dep"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens": 19
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens": 10
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_fat_hora",
+    "nome": "Faturamento por hora do dia nos últimos 7 dias",
+    "colunas": [
+     "hora",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "hora": 7,
+      "faturamento": 16555.59
+     },
+     {
+      "hora": 8,
+      "faturamento": 25155.52
+     },
+     {
+      "hora": 9,
+      "faturamento": 30225.14
+     },
+     {
+      "hora": 10,
+      "faturamento": 40234.4
+     },
+     {
+      "hora": 11,
+      "faturamento": 53153.4
+     },
+     {
+      "hora": 12,
+      "faturamento": 55527.65
+     },
+     {
+      "hora": 13,
+      "faturamento": 50708.99
+     },
+     {
+      "hora": 14,
+      "faturamento": 29987.79
+     },
+     {
+      "hora": 15,
+      "faturamento": 30329.61
+     },
+     {
+      "hora": 16,
+      "faturamento": 26404.44
+     },
+     {
+      "hora": 17,
+      "faturamento": 39219.12
+     },
+     {
+      "hora": 18,
+      "faturamento": 59611.64
+     },
+     {
+      "hora": 19,
+      "faturamento": 52885.01
+     },
+     {
+      "hora": 20,
+      "faturamento": 32542.94
+     },
+     {
+      "hora": 21,
+      "faturamento": 22857.43
+     }
+    ]
+   },
+   {
+    "id": "op_compras_pend",
+    "nome": "Compras pendentes por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "pedidos",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "Pires Ltda. Ltda",
+      "pedidos": 9,
+      "valor": 132262.62
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "pedidos": 7,
+      "valor": 67859.06
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "pedidos": 5,
+      "valor": 56402.52
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "pedidos": 5,
+      "valor": 47449.21
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 44306.29
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 39162.18
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "pedidos": 2,
+      "valor": 38701.08
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 37752.45
+     },
+     {
+      "fornecedor": "Rocha Distribuidora Ltda",
+      "pedidos": 4,
+      "valor": 33373.59
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 23051.81
+     }
+    ]
+   },
+   {
+    "id": "op_rup_dep",
+    "nome": "Ruptura de estoque por departamento",
+    "colunas": [
+     "departamento",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "itens_em_ruptura": 5
+     },
+     {
+      "departamento": "Bebidas",
+      "itens_em_ruptura": 4
+     },
+     {
+      "departamento": "Hortifruti",
+      "itens_em_ruptura": 3
+     },
+     {
+      "departamento": "Congelados",
+      "itens_em_ruptura": 3
+     },
+     {
+      "departamento": "Padaria",
+      "itens_em_ruptura": 2
+     },
+     {
+      "departamento": "Pet",
+      "itens_em_ruptura": 1
+     },
+     {
+      "departamento": "Açougue",
+      "itens_em_ruptura": 1
+     }
+    ]
+   }
+  ],
+  "esperada": "Compras pendentes por fornecedor",
+  "aceitaveis": [
+   "Compras pendentes por fornecedor",
+   "Ruptura de estoque por departamento"
+  ],
+  "porque": "itens abaixo do mínimo: compras pendentes (reposição) ou ruptura por departamento"
+ },
+ {
+  "id": "A20",
+  "piloto": "ruptura",
+  "rotulo": "Itens abaixo do estoque mínimo por loja · maximo",
+  "consulta": {
+   "id": "principal",
+   "nome": "Itens abaixo do estoque mínimo por loja",
+   "x": "loja",
+   "y": "itens",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 19
+    },
+    "aprofundamentos": [
+     "op_top_prod",
+     "op_fat_pag",
+     "op_rup_forn"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens": 19
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens": 10
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_top_prod",
+    "nome": "Top 10 produtos por faturamento nos últimos 7 dias",
+    "colunas": [
+     "produto",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "produto": "Pão de Queijo",
+      "faturamento": 50253.72
+     },
+     {
+      "produto": "Açúcar Refinado Primor 5kg",
+      "faturamento": 27914.6
+     },
+     {
+      "produto": "Carne Moída Patinho",
+      "faturamento": 24458.24
+     },
+     {
+      "produto": "Picanha Bovina",
+      "faturamento": 20214.04
+     },
+     {
+      "produto": "Desodorante Aerosol Boa Mesa 150ml",
+      "faturamento": 18036.02
+     },
+     {
+      "produto": "Energético Serra Azul 250ml",
+      "faturamento": 14728.89
+     },
+     {
+      "produto": "Leite Condensado Dona Clara 395g",
+      "faturamento": 14382.12
+     },
+     {
+      "produto": "Café Torrado e Moído Estrela do Sul 250g",
+      "faturamento": 13688.99
+     },
+     {
+      "produto": "Vinho Tinto Seco Tropical 750ml",
+      "faturamento": 13101.06
+     },
+     {
+      "produto": "Bolo de Fubá Boa Mesa 400g",
+      "faturamento": 12663.78
+     }
+    ]
+   },
+   {
+    "id": "op_fat_pag",
+    "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+    "colunas": [
+     "forma",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "forma": "Cartão de Débito",
+      "valor": 164741.66
+     },
+     {
+      "forma": "Cartão de Crédito",
+      "valor": 151836.51
+     },
+     {
+      "forma": "PIX",
+      "valor": 142405.34
+     },
+     {
+      "forma": "Dinheiro",
+      "valor": 70762.41
+     },
+     {
+      "forma": "Vale-alimentação",
+      "valor": 35652.75
+     }
+    ]
+   },
+   {
+    "id": "op_rup_forn",
+    "nome": "Ruptura de estoque por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "da Mota Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "itens_em_ruptura": 2
+     },
+     {
+      "fornecedor": "Nunes Silva Ltda. Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     }
+    ]
+   }
+  ],
+  "esperada": "Ruptura de estoque por fornecedor",
+  "aceitaveis": [
+   "Ruptura de estoque por fornecedor"
+  ],
+  "porque": "estoque baixo: por fornecedor é a única de estoque"
+ },
+ {
+  "id": "A21",
+  "piloto": "ruptura",
+  "rotulo": "Produtos curva A em ruptura por loja · maior_soma",
+  "consulta": {
+   "id": "principal",
+   "nome": "Produtos curva A em ruptura por loja",
+   "x": "loja",
+   "y": "itens",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 14
+    },
+    "aprofundamentos": [
+     "op_canc_loja",
+     "op_rupA_prod",
+     "op_fat_loja"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens": 5
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens": 5
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens": 5
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens": 1
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_canc_loja",
+    "nome": "Cupons cancelados por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "cancelados"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "cancelados": 30
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "cancelados": 25
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "cancelados": 11
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "cancelados": 10
+     }
+    ]
+   },
+   {
+    "id": "op_rupA_prod",
+    "nome": "Produtos curva A em ruptura",
+    "colunas": [
+     "loja",
+     "produto"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "produto": "Cerveja Pilsen Boa Mesa 600ml"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Açúcar Refinado Primor 5kg"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Bolo de Fubá Dona Clara 400g"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Cebola"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Sorvete Napolitano Casa Nossa 2L"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Tomate Italiano"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Arroz Tipo 1 Vale Verde 1kg"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Banana Prata"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Batata Pré-frita Estrela do Sul 1kg"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Suco de Uva Integral Bom Grão 1L"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Vinho Tinto Seco Bom Grão 750ml"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Café Torrado e Moído Estrela do Sul 250g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Carne Moída Patinho"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Macarrão Espaguete Tropical 500g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Pão de Forma Do Campo 500g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Suco de Uva Integral Bom Grão 1L"
+     }
+    ]
+   },
+   {
+    "id": "op_fat_loja",
+    "nome": "Faturamento por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "faturamento": 201268.45
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "faturamento": 163249.98
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "faturamento": 126640.53
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "faturamento": 74239.71
+     }
+    ]
+   }
+  ],
+  "esperada": "Produtos curva A em ruptura",
+  "aceitaveis": [
+   "Produtos curva A em ruptura"
+  ],
+  "porque": "curva A em ruptura: a lista dos produtos A em falta abre o alerta"
+ },
+ {
+  "id": "A22",
+  "piloto": "ruptura",
+  "rotulo": "Produtos curva A em ruptura por loja · maximo",
+  "consulta": {
+   "id": "principal",
+   "nome": "Produtos curva A em ruptura por loja",
+   "x": "loja",
+   "y": "itens",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 4
+    },
+    "aprofundamentos": [
+     "op_fat_hora",
+     "op_clientes_cidade",
+     "op_compras_pend"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens": 5
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens": 5
+   },
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens": 5
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens": 1
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_fat_hora",
+    "nome": "Faturamento por hora do dia nos últimos 7 dias",
+    "colunas": [
+     "hora",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "hora": 7,
+      "faturamento": 16555.59
+     },
+     {
+      "hora": 8,
+      "faturamento": 25155.52
+     },
+     {
+      "hora": 9,
+      "faturamento": 30225.14
+     },
+     {
+      "hora": 10,
+      "faturamento": 40234.4
+     },
+     {
+      "hora": 11,
+      "faturamento": 53153.4
+     },
+     {
+      "hora": 12,
+      "faturamento": 55527.65
+     },
+     {
+      "hora": 13,
+      "faturamento": 50708.99
+     },
+     {
+      "hora": 14,
+      "faturamento": 29987.79
+     },
+     {
+      "hora": 15,
+      "faturamento": 30329.61
+     },
+     {
+      "hora": 16,
+      "faturamento": 26404.44
+     },
+     {
+      "hora": 17,
+      "faturamento": 39219.12
+     },
+     {
+      "hora": 18,
+      "faturamento": 59611.64
+     },
+     {
+      "hora": 19,
+      "faturamento": 52885.01
+     },
+     {
+      "hora": 20,
+      "faturamento": 32542.94
+     },
+     {
+      "hora": 21,
+      "faturamento": 22857.43
+     }
+    ]
+   },
+   {
+    "id": "op_clientes_cidade",
+    "nome": "Clientes cadastrados por cidade",
+    "colunas": [
+     "cidade",
+     "clientes"
+    ],
+    "linhas": [
+     {
+      "cidade": "Campinas",
+      "clientes": 966
+     },
+     {
+      "cidade": "Valinhos",
+      "clientes": 534
+     },
+     {
+      "cidade": "Sumaré",
+      "clientes": 516
+     },
+     {
+      "cidade": "Paulínia",
+      "clientes": 499
+     },
+     {
+      "cidade": "Hortolândia",
+      "clientes": 485
+     }
+    ]
+   },
+   {
+    "id": "op_compras_pend",
+    "nome": "Compras pendentes por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "pedidos",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "Pires Ltda. Ltda",
+      "pedidos": 9,
+      "valor": 132262.62
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "pedidos": 7,
+      "valor": 67859.06
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "pedidos": 5,
+      "valor": 56402.52
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "pedidos": 5,
+      "valor": 47449.21
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 44306.29
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 39162.18
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "pedidos": 2,
+      "valor": 38701.08
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 37752.45
+     },
+     {
+      "fornecedor": "Rocha Distribuidora Ltda",
+      "pedidos": 4,
+      "valor": 33373.59
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 23051.81
+     }
+    ]
+   }
+  ],
+  "esperada": "Compras pendentes por fornecedor",
+  "aceitaveis": [
+   "Compras pendentes por fornecedor"
+  ],
+  "porque": "curva A em ruptura: compras pendentes é a única ligada à reposição"
+ },
+ {
+  "id": "A23",
+  "piloto": "ruptura",
+  "rotulo": "Ruptura de estoque por departamento · maior_soma",
+  "consulta": {
+   "id": "principal",
+   "nome": "Ruptura de estoque por departamento",
+   "x": "departamento",
+   "y": "itens_em_ruptura",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens_em_ruptura",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 17
+    },
+    "aprofundamentos": [
+     "op_fat_pag",
+     "op_rup_forn",
+     "op_rup_loja"
+    ]
+   }
+  },
+  "colunas": [
+   "departamento",
+   "itens_em_ruptura"
+  ],
+  "linhas": [
+   {
+    "departamento": "Mercearia",
+    "itens_em_ruptura": 5
+   },
+   {
+    "departamento": "Bebidas",
+    "itens_em_ruptura": 4
+   },
+   {
+    "departamento": "Hortifruti",
+    "itens_em_ruptura": 3
+   },
+   {
+    "departamento": "Congelados",
+    "itens_em_ruptura": 3
+   },
+   {
+    "departamento": "Padaria",
+    "itens_em_ruptura": 2
+   },
+   {
+    "departamento": "Pet",
+    "itens_em_ruptura": 1
+   },
+   {
+    "departamento": "Açougue",
+    "itens_em_ruptura": 1
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_fat_pag",
+    "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+    "colunas": [
+     "forma",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "forma": "Cartão de Débito",
+      "valor": 164741.66
+     },
+     {
+      "forma": "Cartão de Crédito",
+      "valor": 151836.51
+     },
+     {
+      "forma": "PIX",
+      "valor": 142405.34
+     },
+     {
+      "forma": "Dinheiro",
+      "valor": 70762.41
+     },
+     {
+      "forma": "Vale-alimentação",
+      "valor": 35652.75
+     }
+    ]
+   },
+   {
+    "id": "op_rup_forn",
+    "nome": "Ruptura de estoque por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "da Mota Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "itens_em_ruptura": 2
+     },
+     {
+      "fornecedor": "Nunes Silva Ltda. Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     }
+    ]
+   },
+   {
+    "id": "op_rup_loja",
+    "nome": "Ruptura de estoque por loja",
+    "colunas": [
+     "loja",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 04 - Valinhos",
+      "itens_em_ruptura": 7
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "itens_em_ruptura": 6
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "itens_em_ruptura": 5
+     },
+     {
+      "loja": "Loja 01 - Centro",
+      "itens_em_ruptura": 1
+     }
+    ]
+   }
+  ],
+  "esperada": "Ruptura de estoque por fornecedor",
+  "aceitaveis": [
+   "Ruptura de estoque por fornecedor",
+   "Ruptura de estoque por loja"
+  ],
+  "porque": "ruptura por departamento: por fornecedor ou por loja abrem onde falta"
+ },
+ {
+  "id": "A24",
+  "piloto": "ruptura",
+  "rotulo": "Ruptura de estoque por departamento · maximo",
+  "consulta": {
+   "id": "principal",
+   "nome": "Ruptura de estoque por departamento",
+   "x": "departamento",
+   "y": "itens_em_ruptura",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens_em_ruptura",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 4
+    },
+    "aprofundamentos": [
+     "op_desc_loja",
+     "op_clientes_cidade",
+     "op_rupA_prod"
+    ]
+   }
+  },
+  "colunas": [
+   "departamento",
+   "itens_em_ruptura"
+  ],
+  "linhas": [
+   {
+    "departamento": "Mercearia",
+    "itens_em_ruptura": 5
+   },
+   {
+    "departamento": "Bebidas",
+    "itens_em_ruptura": 4
+   },
+   {
+    "departamento": "Hortifruti",
+    "itens_em_ruptura": 3
+   },
+   {
+    "departamento": "Congelados",
+    "itens_em_ruptura": 3
+   },
+   {
+    "departamento": "Padaria",
+    "itens_em_ruptura": 2
+   },
+   {
+    "departamento": "Pet",
+    "itens_em_ruptura": 1
+   },
+   {
+    "departamento": "Açougue",
+    "itens_em_ruptura": 1
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_desc_loja",
+    "nome": "Desconto concedido por loja nos últimos 7 dias",
+    "colunas": [
+     "loja",
+     "desconto"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "desconto": 1601.77
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "desconto": 1291.19
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "desconto": 1132.71
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "desconto": 555.51
+     }
+    ]
+   },
+   {
+    "id": "op_clientes_cidade",
+    "nome": "Clientes cadastrados por cidade",
+    "colunas": [
+     "cidade",
+     "clientes"
+    ],
+    "linhas": [
+     {
+      "cidade": "Campinas",
+      "clientes": 966
+     },
+     {
+      "cidade": "Valinhos",
+      "clientes": 534
+     },
+     {
+      "cidade": "Sumaré",
+      "clientes": 516
+     },
+     {
+      "cidade": "Paulínia",
+      "clientes": 499
+     },
+     {
+      "cidade": "Hortolândia",
+      "clientes": 485
+     }
+    ]
+   },
+   {
+    "id": "op_rupA_prod",
+    "nome": "Produtos curva A em ruptura",
+    "colunas": [
+     "loja",
+     "produto"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "produto": "Cerveja Pilsen Boa Mesa 600ml"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Açúcar Refinado Primor 5kg"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Bolo de Fubá Dona Clara 400g"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Cebola"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Sorvete Napolitano Casa Nossa 2L"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Tomate Italiano"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Arroz Tipo 1 Vale Verde 1kg"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Banana Prata"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Batata Pré-frita Estrela do Sul 1kg"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Suco de Uva Integral Bom Grão 1L"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Vinho Tinto Seco Bom Grão 750ml"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Café Torrado e Moído Estrela do Sul 250g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Carne Moída Patinho"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Macarrão Espaguete Tropical 500g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Pão de Forma Do Campo 500g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Suco de Uva Integral Bom Grão 1L"
+     }
+    ]
+   }
+  ],
+  "esperada": "Produtos curva A em ruptura",
+  "aceitaveis": [
+   "Produtos curva A em ruptura"
+  ],
+  "porque": "departamento com muita ruptura: a lista dos produtos A em falta é a única de estoque"
+ },
+ {
+  "id": "A25",
+  "piloto": "ruptura",
+  "rotulo": "Ruptura de estoque por departamento · primeira",
+  "consulta": {
+   "id": "principal",
+   "nome": "Ruptura de estoque por departamento",
+   "x": "departamento",
+   "y": "itens_em_ruptura",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens_em_ruptura",
+     "agregacao": "primeira",
+     "operador": "maior",
+     "valor": 4
+    },
+    "aprofundamentos": [
+     "op_canc_op",
+     "op_fat_hora",
+     "op_compras_pend"
+    ]
+   }
+  },
+  "colunas": [
+   "departamento",
+   "itens_em_ruptura"
+  ],
+  "linhas": [
+   {
+    "departamento": "Mercearia",
+    "itens_em_ruptura": 5
+   },
+   {
+    "departamento": "Bebidas",
+    "itens_em_ruptura": 4
+   },
+   {
+    "departamento": "Hortifruti",
+    "itens_em_ruptura": 3
+   },
+   {
+    "departamento": "Congelados",
+    "itens_em_ruptura": 3
+   },
+   {
+    "departamento": "Padaria",
+    "itens_em_ruptura": 2
+   },
+   {
+    "departamento": "Pet",
+    "itens_em_ruptura": 1
+   },
+   {
+    "departamento": "Açougue",
+    "itens_em_ruptura": 1
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_canc_op",
+    "nome": "Cupons cancelados por operador nos últimos 7 dias",
+    "colunas": [
+     "operador",
+     "cancelados"
+    ],
+    "linhas": [
+     {
+      "operador": "Dra. Maria Fernanda Araújo",
+      "cancelados": 7
+     },
+     {
+      "operador": "Kamilly Brito",
+      "cancelados": 6
+     },
+     {
+      "operador": "Dra. Vitória Carvalho",
+      "cancelados": 5
+     },
+     {
+      "operador": "Sr. Davi Moraes",
+      "cancelados": 5
+     },
+     {
+      "operador": "Davi Câmara",
+      "cancelados": 5
+     },
+     {
+      "operador": "Erick Carvalho",
+      "cancelados": 4
+     },
+     {
+      "operador": "Dr. Benjamin da Mota",
+      "cancelados": 4
+     },
+     {
+      "operador": "Esther Cavalcanti",
+      "cancelados": 3
+     },
+     {
+      "operador": "Dr. Luiz Otávio Aparecida",
+      "cancelados": 3
+     },
+     {
+      "operador": "Alexandre Sá",
+      "cancelados": 3
+     }
+    ]
+   },
+   {
+    "id": "op_fat_hora",
+    "nome": "Faturamento por hora do dia nos últimos 7 dias",
+    "colunas": [
+     "hora",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "hora": 7,
+      "faturamento": 16555.59
+     },
+     {
+      "hora": 8,
+      "faturamento": 25155.52
+     },
+     {
+      "hora": 9,
+      "faturamento": 30225.14
+     },
+     {
+      "hora": 10,
+      "faturamento": 40234.4
+     },
+     {
+      "hora": 11,
+      "faturamento": 53153.4
+     },
+     {
+      "hora": 12,
+      "faturamento": 55527.65
+     },
+     {
+      "hora": 13,
+      "faturamento": 50708.99
+     },
+     {
+      "hora": 14,
+      "faturamento": 29987.79
+     },
+     {
+      "hora": 15,
+      "faturamento": 30329.61
+     },
+     {
+      "hora": 16,
+      "faturamento": 26404.44
+     },
+     {
+      "hora": 17,
+      "faturamento": 39219.12
+     },
+     {
+      "hora": 18,
+      "faturamento": 59611.64
+     },
+     {
+      "hora": 19,
+      "faturamento": 52885.01
+     },
+     {
+      "hora": 20,
+      "faturamento": 32542.94
+     },
+     {
+      "hora": 21,
+      "faturamento": 22857.43
+     }
+    ]
+   },
+   {
+    "id": "op_compras_pend",
+    "nome": "Compras pendentes por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "pedidos",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "Pires Ltda. Ltda",
+      "pedidos": 9,
+      "valor": 132262.62
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "pedidos": 7,
+      "valor": 67859.06
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "pedidos": 5,
+      "valor": 56402.52
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "pedidos": 5,
+      "valor": 47449.21
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 44306.29
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 39162.18
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "pedidos": 2,
+      "valor": 38701.08
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 37752.45
+     },
+     {
+      "fornecedor": "Rocha Distribuidora Ltda",
+      "pedidos": 4,
+      "valor": 33373.59
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 23051.81
+     }
+    ]
+   }
+  ],
+  "esperada": "Compras pendentes por fornecedor",
+  "aceitaveis": [
+   "Compras pendentes por fornecedor"
+  ],
+  "porque": "ruptura alta: compras pendentes é a única ligada à reposição"
+ },
+ {
+  "id": "A26",
+  "piloto": "ruptura",
+  "rotulo": "Perdas por motivo nos últimos 30 dias · maior_soma",
+  "consulta": {
+   "id": "principal",
+   "nome": "Perdas por motivo nos últimos 30 dias",
+   "x": "motivo",
+   "y": "valor_custo",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor_custo",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 16354
+    },
+    "aprofundamentos": [
+     "op_perda_loja",
+     "op_fat_pag",
+     "op_rup_loja"
+    ]
+   }
+  },
+  "colunas": [
+   "motivo",
+   "valor_custo"
+  ],
+  "linhas": [
+   {
+    "motivo": "avaria",
+    "valor_custo": 7522.36
+   },
+   {
+    "motivo": "vencimento",
+    "valor_custo": 7473.53
+   },
+   {
+    "motivo": "quebra operacional",
+    "valor_custo": 1667.83
+   },
+   {
+    "motivo": "furto",
+    "valor_custo": 1507.41
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_perda_loja",
+    "nome": "Perdas por loja nos últimos 30 dias",
+    "colunas": [
+     "loja",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "valor_custo": 6516.06
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "valor_custo": 4509.72
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "valor_custo": 3587.27
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "valor_custo": 3558.08
+     }
+    ]
+   },
+   {
+    "id": "op_fat_pag",
+    "nome": "Faturamento por forma de pagamento nos últimos 7 dias",
+    "colunas": [
+     "forma",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "forma": "Cartão de Débito",
+      "valor": 164741.66
+     },
+     {
+      "forma": "Cartão de Crédito",
+      "valor": 151836.51
+     },
+     {
+      "forma": "PIX",
+      "valor": 142405.34
+     },
+     {
+      "forma": "Dinheiro",
+      "valor": 70762.41
+     },
+     {
+      "forma": "Vale-alimentação",
+      "valor": 35652.75
+     }
+    ]
+   },
+   {
+    "id": "op_rup_loja",
+    "nome": "Ruptura de estoque por loja",
+    "colunas": [
+     "loja",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 04 - Valinhos",
+      "itens_em_ruptura": 7
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "itens_em_ruptura": 6
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "itens_em_ruptura": 5
+     },
+     {
+      "loja": "Loja 01 - Centro",
+      "itens_em_ruptura": 1
+     }
+    ]
+   }
+  ],
+  "esperada": "Perdas por loja nos últimos 30 dias",
+  "aceitaveis": [
+   "Perdas por loja nos últimos 30 dias"
+  ],
+  "porque": "perdas acima do limite: por loja localiza onde"
+ },
+ {
+  "id": "A27",
+  "piloto": "ruptura",
+  "rotulo": "Perdas por motivo nos últimos 30 dias · maximo",
+  "consulta": {
+   "id": "principal",
+   "nome": "Perdas por motivo nos últimos 30 dias",
+   "x": "motivo",
+   "y": "valor_custo",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor_custo",
+     "agregacao": "maximo",
+     "operador": "maior",
+     "valor": 6018
+    },
+    "aprofundamentos": [
+     "op_clientes_cidade",
+     "op_perda_prod",
+     "op_fat_hora"
+    ]
+   }
+  },
+  "colunas": [
+   "motivo",
+   "valor_custo"
+  ],
+  "linhas": [
+   {
+    "motivo": "avaria",
+    "valor_custo": 7522.36
+   },
+   {
+    "motivo": "vencimento",
+    "valor_custo": 7473.53
+   },
+   {
+    "motivo": "quebra operacional",
+    "valor_custo": 1667.83
+   },
+   {
+    "motivo": "furto",
+    "valor_custo": 1507.41
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_clientes_cidade",
+    "nome": "Clientes cadastrados por cidade",
+    "colunas": [
+     "cidade",
+     "clientes"
+    ],
+    "linhas": [
+     {
+      "cidade": "Campinas",
+      "clientes": 966
+     },
+     {
+      "cidade": "Valinhos",
+      "clientes": 534
+     },
+     {
+      "cidade": "Sumaré",
+      "clientes": 516
+     },
+     {
+      "cidade": "Paulínia",
+      "clientes": 499
+     },
+     {
+      "cidade": "Hortolândia",
+      "clientes": 485
+     }
+    ]
+   },
+   {
+    "id": "op_perda_prod",
+    "nome": "Produtos com mais perda nos últimos 30 dias",
+    "colunas": [
+     "produto",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "produto": "Picanha Bovina",
+      "valor_custo": 1900.77
+     },
+     {
+      "produto": "Carne Moída Patinho",
+      "valor_custo": 1442.26
+     },
+     {
+      "produto": "Presunto Cozido",
+      "valor_custo": 1192.31
+     },
+     {
+      "produto": "Pão de Queijo",
+      "valor_custo": 817.76
+     },
+     {
+      "produto": "Ração Cães Adultos Estrela do Sul 10kg",
+      "valor_custo": 779.8
+     },
+     {
+      "produto": "Linguiça Toscana",
+      "valor_custo": 767.86
+     },
+     {
+      "produto": "Manteiga com Sal Ouro Fino 200g",
+      "valor_custo": 653.48
+     },
+     {
+      "produto": "Filé de Peito de Frango",
+      "valor_custo": 622.08
+     },
+     {
+      "produto": "Costela Bovina",
+      "valor_custo": 608.61
+     },
+     {
+      "produto": "Queijo Mussarela",
+      "valor_custo": 524.6
+     }
+    ]
+   },
+   {
+    "id": "op_fat_hora",
+    "nome": "Faturamento por hora do dia nos últimos 7 dias",
+    "colunas": [
+     "hora",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "hora": 7,
+      "faturamento": 16555.59
+     },
+     {
+      "hora": 8,
+      "faturamento": 25155.52
+     },
+     {
+      "hora": 9,
+      "faturamento": 30225.14
+     },
+     {
+      "hora": 10,
+      "faturamento": 40234.4
+     },
+     {
+      "hora": 11,
+      "faturamento": 53153.4
+     },
+     {
+      "hora": 12,
+      "faturamento": 55527.65
+     },
+     {
+      "hora": 13,
+      "faturamento": 50708.99
+     },
+     {
+      "hora": 14,
+      "faturamento": 29987.79
+     },
+     {
+      "hora": 15,
+      "faturamento": 30329.61
+     },
+     {
+      "hora": 16,
+      "faturamento": 26404.44
+     },
+     {
+      "hora": 17,
+      "faturamento": 39219.12
+     },
+     {
+      "hora": 18,
+      "faturamento": 59611.64
+     },
+     {
+      "hora": 19,
+      "faturamento": 52885.01
+     },
+     {
+      "hora": 20,
+      "faturamento": 32542.94
+     },
+     {
+      "hora": 21,
+      "faturamento": 22857.43
+     }
+    ]
+   }
+  ],
+  "esperada": "Produtos com mais perda nos últimos 30 dias",
+  "aceitaveis": [
+   "Produtos com mais perda nos últimos 30 dias"
+  ],
+  "porque": "motivo de perda alto: produtos com mais perda é a única de perda"
+ },
+ {
+  "id": "A28",
+  "piloto": "ruptura",
+  "rotulo": "Perdas por motivo nos últimos 30 dias · caiu",
+  "consulta": {
+   "id": "principal",
+   "nome": "Perdas por motivo nos últimos 30 dias",
+   "x": "motivo",
+   "y": "valor_custo",
+   "agenda": {
+    "condicao": {
+     "coluna": "valor_custo",
+     "agregacao": "soma",
+     "operador": "caiu",
+     "valor": 0,
+     "base": "anterior"
+    },
+    "aprofundamentos": [
+     "op_top_prod",
+     "op_perda_loja",
+     "op_perda_prod"
+    ]
+   }
+  },
+  "colunas": [
+   "motivo",
+   "valor_custo"
+  ],
+  "linhas": [
+   {
+    "motivo": "avaria",
+    "valor_custo": 7522.36
+   },
+   {
+    "motivo": "vencimento",
+    "valor_custo": 7473.53
+   },
+   {
+    "motivo": "quebra operacional",
+    "valor_custo": 1667.83
+   },
+   {
+    "motivo": "furto",
+    "valor_custo": 1507.41
+   }
+  ],
+  "anteriores": [
+   [
+    {
+     "motivo": "avaria",
+     "valor_custo": 8026.16
+    },
+    {
+     "motivo": "vencimento",
+     "valor_custo": 6813.22
+    },
+    {
+     "motivo": "furto",
+     "valor_custo": 2459.79
+    },
+    {
+     "motivo": "quebra operacional",
+     "valor_custo": 1550.64
+    }
+   ]
+  ],
+  "opcoes": [
+   {
+    "id": "op_top_prod",
+    "nome": "Top 10 produtos por faturamento nos últimos 7 dias",
+    "colunas": [
+     "produto",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "produto": "Pão de Queijo",
+      "faturamento": 50253.72
+     },
+     {
+      "produto": "Açúcar Refinado Primor 5kg",
+      "faturamento": 27914.6
+     },
+     {
+      "produto": "Carne Moída Patinho",
+      "faturamento": 24458.24
+     },
+     {
+      "produto": "Picanha Bovina",
+      "faturamento": 20214.04
+     },
+     {
+      "produto": "Desodorante Aerosol Boa Mesa 150ml",
+      "faturamento": 18036.02
+     },
+     {
+      "produto": "Energético Serra Azul 250ml",
+      "faturamento": 14728.89
+     },
+     {
+      "produto": "Leite Condensado Dona Clara 395g",
+      "faturamento": 14382.12
+     },
+     {
+      "produto": "Café Torrado e Moído Estrela do Sul 250g",
+      "faturamento": 13688.99
+     },
+     {
+      "produto": "Vinho Tinto Seco Tropical 750ml",
+      "faturamento": 13101.06
+     },
+     {
+      "produto": "Bolo de Fubá Boa Mesa 400g",
+      "faturamento": 12663.78
+     }
+    ]
+   },
+   {
+    "id": "op_perda_loja",
+    "nome": "Perdas por loja nos últimos 30 dias",
+    "colunas": [
+     "loja",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "valor_custo": 6516.06
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "valor_custo": 4509.72
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "valor_custo": 3587.27
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "valor_custo": 3558.08
+     }
+    ]
+   },
+   {
+    "id": "op_perda_prod",
+    "nome": "Produtos com mais perda nos últimos 30 dias",
+    "colunas": [
+     "produto",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "produto": "Picanha Bovina",
+      "valor_custo": 1900.77
+     },
+     {
+      "produto": "Carne Moída Patinho",
+      "valor_custo": 1442.26
+     },
+     {
+      "produto": "Presunto Cozido",
+      "valor_custo": 1192.31
+     },
+     {
+      "produto": "Pão de Queijo",
+      "valor_custo": 817.76
+     },
+     {
+      "produto": "Ração Cães Adultos Estrela do Sul 10kg",
+      "valor_custo": 779.8
+     },
+     {
+      "produto": "Linguiça Toscana",
+      "valor_custo": 767.86
+     },
+     {
+      "produto": "Manteiga com Sal Ouro Fino 200g",
+      "valor_custo": 653.48
+     },
+     {
+      "produto": "Filé de Peito de Frango",
+      "valor_custo": 622.08
+     },
+     {
+      "produto": "Costela Bovina",
+      "valor_custo": 608.61
+     },
+     {
+      "produto": "Queijo Mussarela",
+      "valor_custo": 524.6
+     }
+    ]
+   }
+  ],
+  "esperada": "Perdas por loja nos últimos 30 dias",
+  "aceitaveis": [
+   "Perdas por loja nos últimos 30 dias",
+   "Produtos com mais perda nos últimos 30 dias"
+  ],
+  "porque": "perdas mudaram contra o mês anterior: por loja ou por produto abrem a mudança"
+ },
+ {
+  "id": "A29",
+  "piloto": "ruptura",
+  "rotulo": "Ruptura de estoque por loja · maior_soma",
+  "consulta": {
+   "id": "principal",
+   "nome": "Ruptura de estoque por loja",
+   "x": "loja",
+   "y": "itens_em_ruptura",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens_em_ruptura",
+     "agregacao": "soma",
+     "operador": "maior",
+     "valor": 17
+    },
+    "aprofundamentos": [
+     "op_rup_dep",
+     "op_rup_forn",
+     "op_compras_pend"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens_em_ruptura"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens_em_ruptura": 7
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens_em_ruptura": 6
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens_em_ruptura": 5
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens_em_ruptura": 1
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_rup_dep",
+    "nome": "Ruptura de estoque por departamento",
+    "colunas": [
+     "departamento",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "itens_em_ruptura": 5
+     },
+     {
+      "departamento": "Bebidas",
+      "itens_em_ruptura": 4
+     },
+     {
+      "departamento": "Hortifruti",
+      "itens_em_ruptura": 3
+     },
+     {
+      "departamento": "Congelados",
+      "itens_em_ruptura": 3
+     },
+     {
+      "departamento": "Padaria",
+      "itens_em_ruptura": 2
+     },
+     {
+      "departamento": "Pet",
+      "itens_em_ruptura": 1
+     },
+     {
+      "departamento": "Açougue",
+      "itens_em_ruptura": 1
+     }
+    ]
+   },
+   {
+    "id": "op_rup_forn",
+    "nome": "Ruptura de estoque por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "itens_em_ruptura"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "da Mota Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "itens_em_ruptura": 3
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "itens_em_ruptura": 2
+     },
+     {
+      "fornecedor": "Nunes Silva Ltda. Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "itens_em_ruptura": 1
+     }
+    ]
+   },
+   {
+    "id": "op_compras_pend",
+    "nome": "Compras pendentes por fornecedor",
+    "colunas": [
+     "fornecedor",
+     "pedidos",
+     "valor"
+    ],
+    "linhas": [
+     {
+      "fornecedor": "Pires Ltda. Ltda",
+      "pedidos": 9,
+      "valor": 132262.62
+     },
+     {
+      "fornecedor": "Novaes Distribuidora Ltda",
+      "pedidos": 7,
+      "valor": 67859.06
+     },
+     {
+      "fornecedor": "Jesus Alves S.A. S.A.",
+      "pedidos": 5,
+      "valor": 56402.52
+     },
+     {
+      "fornecedor": "Ribeiro Ltda",
+      "pedidos": 5,
+      "valor": 47449.21
+     },
+     {
+      "fornecedor": "Castro Martins - ME Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 44306.29
+     },
+     {
+      "fornecedor": "Campos Distribuidora Ltda",
+      "pedidos": 6,
+      "valor": 39162.18
+     },
+     {
+      "fornecedor": "Nascimento Machado S.A. Ltda",
+      "pedidos": 2,
+      "valor": 38701.08
+     },
+     {
+      "fornecedor": "Cavalcante Jesus - ME Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 37752.45
+     },
+     {
+      "fornecedor": "Rocha Distribuidora Ltda",
+      "pedidos": 4,
+      "valor": 33373.59
+     },
+     {
+      "fornecedor": "das Neves Distribuidora Ltda",
+      "pedidos": 2,
+      "valor": 23051.81
+     }
+    ]
+   }
+  ],
+  "esperada": "Ruptura de estoque por departamento",
+  "aceitaveis": [
+   "Ruptura de estoque por departamento",
+   "Ruptura de estoque por fornecedor"
+  ],
+  "porque": "três de estoque: por departamento ou por fornecedor abrem a ruptura; compras pendentes não diz o que falta"
+ },
+ {
+  "id": "A30",
+  "piloto": "ruptura",
+  "rotulo": "Itens abaixo do estoque mínimo por loja · primeira",
+  "consulta": {
+   "id": "principal",
+   "nome": "Itens abaixo do estoque mínimo por loja",
+   "x": "loja",
+   "y": "itens",
+   "agenda": {
+    "condicao": {
+     "coluna": "itens",
+     "agregacao": "primeira",
+     "operador": "maior",
+     "valor": 19
+    },
+    "aprofundamentos": [
+     "op_rupA_prod",
+     "op_perda_loja",
+     "op_fat_dep"
+    ]
+   }
+  },
+  "colunas": [
+   "loja",
+   "itens"
+  ],
+  "linhas": [
+   {
+    "loja": "Loja 04 - Valinhos",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 03 - Sumaré",
+    "itens": 24
+   },
+   {
+    "loja": "Loja 02 - Taquaral",
+    "itens": 19
+   },
+   {
+    "loja": "Loja 01 - Centro",
+    "itens": 10
+   }
+  ],
+  "anteriores": [],
+  "opcoes": [
+   {
+    "id": "op_rupA_prod",
+    "nome": "Produtos curva A em ruptura",
+    "colunas": [
+     "loja",
+     "produto"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "produto": "Cerveja Pilsen Boa Mesa 600ml"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Açúcar Refinado Primor 5kg"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Bolo de Fubá Dona Clara 400g"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Cebola"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Sorvete Napolitano Casa Nossa 2L"
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "produto": "Tomate Italiano"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Arroz Tipo 1 Vale Verde 1kg"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Banana Prata"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Batata Pré-frita Estrela do Sul 1kg"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Suco de Uva Integral Bom Grão 1L"
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "produto": "Vinho Tinto Seco Bom Grão 750ml"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Café Torrado e Moído Estrela do Sul 250g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Carne Moída Patinho"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Macarrão Espaguete Tropical 500g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Pão de Forma Do Campo 500g"
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "produto": "Suco de Uva Integral Bom Grão 1L"
+     }
+    ]
+   },
+   {
+    "id": "op_perda_loja",
+    "nome": "Perdas por loja nos últimos 30 dias",
+    "colunas": [
+     "loja",
+     "valor_custo"
+    ],
+    "linhas": [
+     {
+      "loja": "Loja 01 - Centro",
+      "valor_custo": 6516.06
+     },
+     {
+      "loja": "Loja 03 - Sumaré",
+      "valor_custo": 4509.72
+     },
+     {
+      "loja": "Loja 02 - Taquaral",
+      "valor_custo": 3587.27
+     },
+     {
+      "loja": "Loja 04 - Valinhos",
+      "valor_custo": 3558.08
+     }
+    ]
+   },
+   {
+    "id": "op_fat_dep",
+    "nome": "Faturamento por departamento nos últimos 7 dias",
+    "colunas": [
+     "departamento",
+     "faturamento"
+    ],
+    "linhas": [
+     {
+      "departamento": "Mercearia",
+      "faturamento": 144271.66
+     },
+     {
+      "departamento": "Bebidas",
+      "faturamento": 113216.58
+     },
+     {
+      "departamento": "Padaria",
+      "faturamento": 77958.99
+     },
+     {
+      "departamento": "Açougue",
+      "faturamento": 53865.67
+     },
+     {
+      "departamento": "Higiene e Perfumaria",
+      "faturamento": 45205.3
+     },
+     {
+      "departamento": "Frios e Laticínios",
+      "faturamento": 41778.79
+     },
+     {
+      "departamento": "Limpeza",
+      "faturamento": 26357.46
+     },
+     {
+      "departamento": "Pet",
+      "faturamento": 21673.61
+     },
+     {
+      "departamento": "Congelados",
+      "faturamento": 21049.35
+     },
+     {
+      "departamento": "Hortifruti",
+      "faturamento": 20021.26
+     }
+    ]
+   }
+  ],
+  "esperada": "Produtos curva A em ruptura",
+  "aceitaveis": [
+   "Produtos curva A em ruptura"
+  ],
+  "porque": "estoque abaixo do mínimo: a lista dos produtos A em falta é a única de estoque"
+ }
+]
