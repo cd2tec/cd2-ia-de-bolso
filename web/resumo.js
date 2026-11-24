@@ -53,14 +53,26 @@ function dados(consulta, resultado, julgamento){
   const todas = (Array.isArray(r.todas) ? r.todas : Array.isArray(r.linhas) ? r.linhas : []).filter(objeto);
   const colunas = (Array.isArray(r.colunas) && r.colunas.length ? r.colunas : todas.length ? Object.keys(todas[0]) : [])
     .filter(c => typeof c === 'string' && c).slice(0, MAX_COLUNAS);
-  return {
-    alerta:limpo(j.texto, 400),
-    colunas,
-    linhas:todas.slice(0, MAX_LINHAS),
-    total:todas.length,
-    julgamento:j,
-    condicao:(consulta && consulta.agenda && consulta.agenda.condicao) || null
-  };
+  const condicao = (consulta && consulta.agenda && consulta.agenda.condicao) || null;
+  let linhas = todas.slice(0, MAX_LINHAS), comDisparo = false;
+  const k = linhaDoDisparo(condicao, todas, j);
+  if(k >= MAX_LINHAS){ linhas = todas.slice(0, MAX_LINHAS - 1).concat([todas[k]]); comDisparo = true; }
+  return { alerta:limpo(j.texto, 400), colunas, linhas, total:todas.length, comDisparo, julgamento:j, condicao };
+}
+
+// Nas regras "o maior valor de" e "o menor valor de", uma linha do resultado é a que disparou o alerta. O pedido
+// leva só as MAX_LINHAS primeiras; se ela estiver depois, entra no lugar da última, para o resumo sair do
+// resultado de verdade (sem ela, o modelo apontava o maior ou o menor entre as linhas que recebeu). Devolve o
+// índice da primeira linha com o valor conferido, ou -1.
+function linhaDoDisparo(c, todas, j){
+  if(!c || (c.agregacao !== 'maximo' && c.agregacao !== 'minimo') || !j.disparou) return -1;
+  if(typeof j.valor !== 'number' || !isFinite(j.valor)) return -1;
+  const nome = String(c.coluna || '').trim().toLowerCase();
+  for(let i = 0; i < todas.length; i++){
+    const col = Object.keys(todas[i]).find(x => x.toLowerCase() === nome);
+    if(col != null && Chart.num(todas[i][col]) === j.valor) return i;
+  }
+  return -1;
 }
 
 const SISTEMA = [
@@ -87,6 +99,13 @@ function baseDe(d){
   return { texto:de + ' = ' + Chart.fmt(j.base), valor:j.base };
 }
 
+// "as 20 primeiras de 30 linhas; " ou "20 de 30 linhas, com a linha que disparou o alerta (a última); ".
+function recorte(d){
+  if(d.total <= d.linhas.length) return '';
+  if(d.comDisparo) return d.linhas.length + ' de ' + d.total + ' linhas, com a linha que disparou o alerta (a última); ';
+  return 'as ' + d.linhas.length + ' primeiras de ' + d.total + ' linhas; ';
+}
+
 function mensagens(consulta, resultado, julgamento){
   const d = dados(consulta, resultado, julgamento), b = baseDe(d);
   const linhas = d.linhas.map(l => d.colunas.map(c => c + ': ' + celula(l[c])).join('; '));
@@ -95,7 +114,7 @@ function mensagens(consulta, resultado, julgamento){
   const user = [
     'Alerta: ' + d.alerta,
     'Base de comparação: ' + (b ? b.texto : 'nenhuma'),
-    'Resultado (' + (d.total > d.linhas.length ? 'as ' + d.linhas.length + ' primeiras de ' + d.total + ' linhas; ' : '') + 'colunas: ' + d.colunas.join(', ') + '):',
+    'Resultado (' + recorte(d) + 'colunas: ' + d.colunas.join(', ') + '):',
     linhas.join('\n')
   ].join('\n');
   return [{ role:'system', content:SISTEMA }, { role:'user', content:user }];

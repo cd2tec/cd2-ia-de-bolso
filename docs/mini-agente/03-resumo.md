@@ -11,7 +11,8 @@ consulta salva roda (SQL aprovado, sem modelo)
    └─ condição conferida pelo código (História 2)
         ├─ não disparou → grava no histórico, sem aviso, sem modelo
         └─ disparou
-             ├─ web/resumo.js monta o pedido: frase do alerta, base de comparação, resultado
+             ├─ web/resumo.js monta o pedido: frase do alerta, base de comparação, resultado (até 20 linhas,
+             │    sempre com a linha que disparou nas regras de maior/menor valor)
              ├─ modelo responde em JSON schema {"linhas": [1 a 3 frases]}, thinking desligado
              ├─ web/resumo.js confere: formato e cada número/data
              │    └─ recusou → nova tentativa com o motivo (no máximo 2 tentativas)
@@ -48,7 +49,15 @@ loja: Loja 01 - Centro; faturamento: 201.268,45
 - Base de comparação: **valor fixo da regra** (maior/menor que), **execução anterior** ou **média das N
   execuções anteriores**; "nenhuma" quando não há.
 - Até 20 linhas e 8 colunas do resultado, com datas em dd/mm/aaaa e números no formato brasileiro. Com mais
-  linhas, o pedido diz "as 20 primeiras de N linhas".
+  linhas, o pedido diz "as 20 primeiras de N linhas". O corte em 20 é nosso, para o pedido não ficar lento em
+  CPU sem placa de vídeo.
+- **Linha que disparou o alerta:** nas regras "o maior valor de" e "o menor valor de", a linha com esse valor
+  vai sempre no pedido. Se ela estiver depois da 20ª, entra no lugar da 20ª e o pedido diz "20 de N linhas,
+  com a linha que disparou o alerta (a última)"; a data e os números dela passam a valer na conferência. Sem
+  isso, o modelo não via a linha e apontava o maior ou o menor entre as 20 que recebeu (medido na bateria:
+  "Faturamento por dia nos últimos 30 dias", menor valor no 30º dia; o resumo dizia que o pior dia era outro).
+  Em "o valor de" a linha conferida é a primeira, que sempre vai; em soma e média o valor sai de todas as
+  linhas e já está no alerta.
 - Temperatura 0, até 300 tokens de saída.
 
 ## Números aceitos no resumo

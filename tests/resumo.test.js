@@ -172,3 +172,36 @@ test('textoFalha: diz quantas tentativas quando foram mais de uma', () => {
   assert.equal(R.textoFalha({ falha:'numero', tentativas:2 }), 'Sem resumo da IA: o resumo citava um número que não estava nos dados (2 tentativas).');
   assert.equal(R.textoFalha({ falha:'modelo', tentativas:1 }), 'Sem resumo da IA: o modelo não respondeu.');
 });
+
+test('linha que disparou depois da 20ª: entra no lugar da última e vale na conferência', () => {
+  // 30 dias; o menor é o último (como no "Faturamento por dia nos últimos 30 dias" da bateria).
+  const dias = Array.from({ length:30 }, (_, i) => ({ data:'2026-11-' + String(i + 1).padStart(2, '0'), faturamento:100000 + i }));
+  dias[29].faturamento = 50862.99;
+  const r = { ok:true, colunas:['data', 'faturamento'], todas:dias };
+  const c = { nome:'x', agenda:{ condicao:{ coluna:'Faturamento', agregacao:'minimo', operador:'menor', valor:55950 } } };
+  const j = C.julgar(c.agenda.condicao, r, []);
+  assert.equal(j.disparou, true);
+  const d = R.dados(c, r, j);
+  assert.equal(d.linhas.length, 20);
+  assert.equal(d.comDisparo, true);
+  assert.deepEqual(d.linhas[19], dias[29]);
+  assert.deepEqual(d.linhas[18], dias[18]);
+  const u = R.mensagens(c, r, j)[1].content;
+  assert.match(u, /Resultado \(20 de 30 linhas, com a linha que disparou o alerta \(a última\); colunas: data, faturamento\):/);
+  assert.match(u, /data: 30\/11\/2026; faturamento: 50\.862,99$/);
+  assert.equal(R.conferir(resp(['O pior dia foi 30/11/2026, com 50.862,99.']), c, r, j).ok, true);
+  assert.equal(R.conferir(resp(['O pior dia foi 25/11/2026.']), c, r, j).ok, false, 'linha que não foi enviada continua fora');
+});
+
+test('linha que disparou: sem mudança quando já está nas 20, em soma/média ou sem disparo', () => {
+  const dias = Array.from({ length:30 }, (_, i) => ({ data:'2026-11-' + String(i + 1).padStart(2, '0'), total:100 + i }));
+  const r = { ok:true, colunas:['data', 'total'], todas:dias };
+  const d = cond => { const c = { agenda:{ condicao:cond } }; return R.dados(c, r, C.julgar(cond, r, [])); };
+  const max = d({ coluna:'total', agregacao:'maximo', operador:'maior', valor:1 }); // o maior é o último
+  assert.equal(max.comDisparo, true); assert.equal(max.linhas[19].total, 129);
+  const min = d({ coluna:'total', agregacao:'minimo', operador:'menor', valor:1000 }); // o menor é o primeiro
+  assert.equal(min.comDisparo, false); assert.deepEqual(min.linhas, dias.slice(0, 20));
+  assert.equal(d({ coluna:'total', agregacao:'soma', operador:'maior', valor:1 }).comDisparo, false);
+  assert.equal(d({ coluna:'total', agregacao:'maximo', operador:'maior', valor:1e9 }).comDisparo, false, 'não disparou');
+  assert.match(R.mensagens({}, r, C.julgar({ coluna:'total', agregacao:'soma', operador:'maior', valor:1 }, r, []))[1].content, /as 20 primeiras de 30 linhas; /);
+});
