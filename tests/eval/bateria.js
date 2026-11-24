@@ -17,6 +17,8 @@
 //   CD2_EVAL_ROTULO=qwen3-dev-1     nome da rodada (vai no relatório)
 //   CD2_EVAL_SAIDA=arquivo.json     grava o relatório completo
 //   CD2_EVAL_SO=01,A03              roda só esses casos
+//   CD2_EVAL_THINKING_ESCOLHA=0     escolha com thinking desligado (o produto liga; variante para comparar
+//                                   modelos com thinking de verdade, como a Qwen3.5)
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -28,6 +30,7 @@ const M = require('./metricas.js');
 const URL = process.env.CD2_EVAL_MODEL_URL || 'http://127.0.0.1:8091/v1/chat/completions';
 const ROTULO = process.env.CD2_EVAL_ROTULO || 'sem-rotulo';
 const SO = (process.env.CD2_EVAL_SO || '').split(',').map(s => s.trim()).filter(Boolean);
+const THINKING_ESCOLHA = process.env.CD2_EVAL_THINKING_ESCOLHA !== '0';
 const DESISTE_MS = 300000; // só para não ficar preso num pedido que não volta; não é critério
 
 async function chamar(p, mensagens, nome, thinking){
@@ -89,7 +92,7 @@ async function casoAprofundamento(c){
   const p = A.pedido(c.consulta, j, ops);
   const esc = { etapa:'escolha', id:c.id, rotulo:c.rotulo, alerta:j && j.texto, esperada:c.esperada, aceitaveis:c.aceitaveis, controle:!!c.controle };
   if(!p){ esc.falha = 'nao_disparou'; esc.tentativas = []; return [esc]; }
-  const t = await tentar(p, 'escolha', true, tx => A.conferir(tx, ops), A.novaTentativa, A.MAX_TENTATIVAS, c.fixaEscolha);
+  const t = await tentar(p, 'escolha', THINKING_ESCOLHA, tx => A.conferir(tx, ops), A.novaTentativa, A.MAX_TENTATIVAS, c.fixaEscolha);
   esc.tentativas = t.tentativas;
   if(t.falha){ esc.falha = t.falha; esc.detalhe = t.detalhe; }
   else esc.escolha = t.conf.nome;
@@ -120,7 +123,13 @@ function ambiente(){
   const cpus = os.cpus();
   return { rotulo:ROTULO, url:URL, quando:new Date().toISOString(), so:os.platform() + ' ' + os.release(),
     cpu:cpus.length ? cpus[0].model : '', nucleos:cpus.length, memoriaGB:Math.round(os.totalmem() / 1073741824 * 10) / 10,
-    node:process.version, threads:process.env.CD2_EVAL_THREADS || null, simulacao:process.env.CD2_EVAL_SIMULACAO || null };
+    node:process.version, thinkingEscolha:THINKING_ESCOLHA, threads:process.env.CD2_EVAL_THREADS || null, simulacao:process.env.CD2_EVAL_SIMULACAO || null };
+}
+
+// Linux: o perfil de energia muda muito a latência (na bateria da História 3 a CPU caiu para 0,4 GHz).
+function energia(){
+  const ler = f => { try{ return fs.readFileSync(f, 'utf8').trim(); }catch(e){ return null; } };
+  return { governador:ler('/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'), perfil:ler('/sys/firmware/acpi/platform_profile') };
 }
 
 async function modeloNoAr(){
@@ -145,6 +154,7 @@ async function main(){
   if(SO.length){ resumos = resumos.filter(c => SO.includes(c.id)); aprofs = aprofs.filter(c => SO.includes(c.id)); }
   const amb = ambiente();
   amb.modelo = await modeloNoAr();
+  amb.energia = energia();
   console.log('Bateria ' + ROTULO + ': ' + resumos.length + ' resumos + ' + aprofs.length + ' aprofundamentos em ' + URL + ' (' + amb.modelo + ')\n');
   const itens = [];
   const ini = Date.now();
@@ -170,7 +180,7 @@ async function main(){
   const e = metricas.escolha, r = metricas.resumoTodos;
   console.log('\nEscolha do aprofundamento: ' + e.acertos + '/' + e.casos + ' (' + e.acertoPct + '%) · estrito ' + e.estritos + ' · no prazo ' + e.acertosNoPrazo
     + ' · latência média ' + s1(e.latencia.media) + ', p90 ' + s1(e.latencia.p90) + ', acima de 15 s: ' + e.latencia.acimaDoPrazo);
-  console.log('Resumo (60): 1ª tentativa sem número inventado ' + r.primeiraSemInventado + '/' + r.primeiraLegiveis + ' · aprovados ' + r.aprovados + '/' + r.casos
+  console.log('Resumo (' + r.casos + '): 1ª tentativa sem número inventado ' + r.primeiraSemInventado + '/' + r.primeiraLegiveis + ' · aprovados ' + r.aprovados + '/' + r.casos
     + ' · no prazo ' + r.aprovadosNoPrazo + ' · latência média ' + s1(r.latencia.media) + ', p90 ' + s1(r.latencia.p90) + ', acima de 25 s: ' + r.latencia.acimaDoPrazo);
   console.log('Frases com maior/menor trocados: ' + r.comFraseTrocada.length + ' · controles: CT05 ' + metricas.controles.CT05_numeroInventadoPego + ', CT06 ' + metricas.controles.CT06_escolhaErradaContada
     + ' · ' + metricas.duracaoMin + ' min');
