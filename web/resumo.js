@@ -9,6 +9,7 @@
 "use strict";
 const isNode = typeof module !== 'undefined' && module.exports;
 const Chart = isNode ? require('./chart.js') : root.CD2Chart;
+const Acao = isNode ? require('./acao.js') : root.CD2Acao;
 
 const MAX_FRASES = 3;
 const MAX_FRASE = 160;     // caracteres por frase
@@ -18,10 +19,15 @@ const MAX_COLUNAS = 8;
 const MAX_CELULA = 60;
 const MAX_TOKENS = 300;
 
+// "acao" (História 5, CIDB-21): a ação que o resumo sugere, presa ao enum de web/acao.js. Só roda depois do
+// clique da pessoa no card; "nenhuma" deixa o card como na História 3.
 const SCHEMA = {
   type:'object',
-  properties:{ linhas:{ type:'array', minItems:1, maxItems:MAX_FRASES, items:{ type:'string', minLength:1, maxLength:MAX_FRASE } } },
-  required:['linhas']
+  properties:{
+    linhas:{ type:'array', minItems:1, maxItems:MAX_FRASES, items:{ type:'string', minLength:1, maxLength:MAX_FRASE } },
+    acao:{ type:'string', enum:Acao.ENUM }
+  },
+  required:['linhas', 'acao']
 };
 
 const objeto = v => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -91,12 +97,13 @@ function linhaDoDisparo(c, todas, j){
 
 const SISTEMA = [
   'Você escreve o resumo de um alerta de uma consulta ao banco de dados de uma empresa.',
-  'Responda só com um objeto JSON {"linhas": ["...", "..."]}: de 1 a 3 frases curtas em português, cada uma com até 140 caracteres.',
+  'Responda só com um objeto JSON {"linhas": ["...", "..."], "acao": "..."}: de 1 a 3 frases curtas em português, cada uma com até 140 caracteres, e uma ação para sugerir.',
   'Regras:',
   '- Use só números e datas do Resultado e da Base de comparação, escritos exatamente como estão. Não calcule nada: nada de somas, diferenças, médias, percentuais ou contagens novas.',
   '- A primeira frase diz o que disparou o alerta.',
   '- As outras destacam o que chama atenção no resultado (o maior, o menor, o que mais mudou).',
-  '- Não dê conselhos, não explique causas e não invente.'
+  '- Não dê conselhos, não explique causas e não invente.',
+  '- Em "acao", sugira uma ação que a pessoa pode aprovar depois de ler o alerta: "copiar_resumo" (copiar este resumo), "rascunho_email" (abrir um rascunho de e-mail com este resumo, sem enviar), "gerar_csv" (baixar o resultado em CSV) ou "nenhuma".'
 ].join('\n');
 
 // Base de comparação da regra, como a CIDB-11 pede ("a partir do resultado atual e da base de comparação"):
@@ -197,9 +204,11 @@ const RE_DATA_BR = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{4}|\d{2}))?\b/g;
 const RE_DATA_ISO = /\b(\d{4})-(\d{2})-(\d{2})\b/g;
 const RE_HORA = /\b\d{1,2}:\d{2}\b/;
 
-// Confere a resposta do modelo. { ok:true, linhas } ou { ok:false, motivo, detalhe }:
+// Confere a resposta do modelo. { ok:true, linhas, acao[, acaoFora] } ou { ok:false, motivo, detalhe }:
 //   formato: não é o JSON pedido (ou frases vazias, longas ou demais);
 //   numero: algum número ou data do resumo não existe nos dados.
+// acao (História 5): um tipo de web/acao.js, ou '' sem sugestão. Fora do enum, a sugestão é descartada
+// (acaoFora diz o que veio) e o resumo continua valendo: a ação nunca derruba o resumo.
 function conferir(texto, consulta, resultado, julgamento, aprofundamento){
   let s = String(texto == null ? '' : texto);
   const k = s.lastIndexOf('</think>'); if(k >= 0) s = s.slice(k + 8);
@@ -218,7 +227,10 @@ function conferir(texto, consulta, resultado, julgamento, aprofundamento){
     const r = conferirFrase(l, p);
     if(!r.ok) return { ok:false, motivo:'numero', detalhe:r.detalhe };
   }
-  return { ok:true, linhas };
+  const a = Acao.lerAcao(o.acao);
+  const out = { ok:true, linhas, acao:a.acao };
+  if(a.fora) out.acaoFora = a.fora;
+  return out;
 }
 
 function conferirFrase(frase, p){
@@ -273,7 +285,7 @@ function novaTentativa(mensagens, resposta, conf){
   const motivo = (conf && conf.detalhe) || (conf && conf.motivo === 'formato' ? 'a resposta não era o JSON pedido' : 'a resposta foi recusada');
   return (Array.isArray(mensagens) ? mensagens : []).concat([
     { role:'assistant', content:String(resposta == null ? '' : resposta).slice(0, 2000) },
-    { role:'user', content:'A resposta anterior foi recusada: ' + motivo + '. Responda de novo só com o objeto JSON {"linhas": [...]}, de 1 a 3 frases, usando só números e datas do Resultado e da Base de comparação, escritos exatamente como estão.' }
+    { role:'user', content:'A resposta anterior foi recusada: ' + motivo + '. Responda de novo só com o objeto JSON {"linhas": [...], "acao": "..."}, de 1 a 3 frases, usando só números e datas do Resultado e da Base de comparação, escritos exatamente como estão.' }
   ]);
 }
 
