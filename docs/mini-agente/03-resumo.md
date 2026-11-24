@@ -71,8 +71,8 @@ loja: Loja 01 - Centro; faturamento: 201.268,45
   de uma regra de variação e qualquer conta nova.
 - Arredondamento: vale só o que o próprio texto mostra ("135.979" para 135.979,13; "384,9 mil"); "135.980"
   não vale.
-- **Limite conhecido:** a conferência garante que cada número existe, não que número e data são da mesma
-  linha (ex. medido: data do pior dia com o valor de outro dia). O critério pede só a existência.
+- **Limite conhecido:** a conferência garante que cada número existe, não o que a frase afirma. O critério
+  pede só a existência. Ver "Evidências e medições".
 
 ## Tentativas e prazo
 
@@ -90,6 +90,49 @@ loja: Loja 01 - Centro; faturamento: 201.268,45
 - **Card do histórico:** bloco "Resumo da IA · números conferidos com o resultado" abaixo de "Avisou: …".
   Sem resumo válido: "Sem resumo da IA: o resumo citava um número que não estava nos dados (2 tentativas)."
 - Não aparece em execução sem disparo, sem condição, em "Rodar agora" nem no chat.
+
+## Evidências e medições
+
+**Na tela (linux-dev, 24/11, "Faturamento nos últimos 7 dias" a cada 5 min, regra "a soma de faturamento for
+maior que 1").** Prints e registros do histórico em `~/work/cd2/evidencias/h3-tela-2026-11-24/`.
+
+| Execução | O que aparece | Critério |
+|---|---|---|
+| 01:55 | "Avisou: A soma de faturamento = 500.659,36, acima de 1." e o bloco "Resumo da IA" com 3 frases; 1ª tentativa, 9,9 s | resumo no card; números conferidos |
+| 01:50 | "Avisou: …" e "Sem resumo da IA: o modelo demorou mais que o prazo." (modelo ocupado logo depois de abrir a IA) | falha não bloqueia o aviso |
+
+O resumo das 01:55:
+
+> Faturamento total acima de 1, com valor de 500.659,36.
+> O dia 22/11/2026 teve o maior faturamento de 51.612,16.
+> O dia 21/11/2026 teve o segundo maior faturamento de 117.479,24.
+
+Todos os números existem no resultado, e a conferência aprovou. Mas a 2ª e a 3ª frases são falsas: 22/11 foi
+o **menor** dia e 21/11, o **maior**, como diz a legenda do gráfico logo abaixo no mesmo card ("Maior valor em
+21/11/2026: 117.479,24").
+
+**Bateria (23/11, 30 casos do erp_pdv, modelo só para a bateria).** Arquivos em
+`~/work/cd2/evidencias/h3-bateria-2026-11-23/`.
+
+| Medida | Resultado |
+|---|---|
+| Aprovados pela conferência (até 2 tentativas) | 30 de 30 (24 na 1ª) |
+| Aprovados com frase falsa (leitura humana contra os dados) | 10 de 30 |
+| 1ª tentativa, casos 01–14 | média 26 s (16 a 49 s) |
+| Prontos em até 25 s, casos 01–14 | 6 de 14 |
+
+- Tipos de frase falsa: maior e menor trocados; "segundo maior" errado; limite da regra lido como valor
+  anterior ("caiu de 2.220", que era o limite); conta nova que passa porque o número aparece em outro lugar
+  ("3 vezes maior", com o "3" de "Loja 03"); tendência sem dado ("subiu", "permaneceu").
+- A mesma bateria comparou o pedido com e sem o nome da consulta: deu o mesmo resultado (com o nome, 9 de 30
+  com frase falsa). Ficou sem o nome.
+- Do caso 15 em diante a CPU caiu para 0,4 GHz (modo de economia) e os tempos não valem; os acertos, sim.
+- CPU de 14 núcleos, não o hardware mínimo do brief (8 GB, sem placa de vídeo): a latência no hardware mínimo
+  ainda precisa ser medida (História 6).
+
+**O que fica para o produto:** a conferência cumpre o critério (nenhum número fora dos dados), mas não impede
+frase falsa com número verdadeiro. Liberar assim (o app já diz "pode errar"), mudar o critério ou segurar a
+liberação é decisão do produto, junto com a História 6, assim como o prazo de 25 s.
 
 ## Dependências
 
