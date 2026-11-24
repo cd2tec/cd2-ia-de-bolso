@@ -45,7 +45,10 @@ type Execucao struct {
 	// não notifica nem conta como novidade.
 	Julgamento *Julgamento `json:"julgamento,omitempty"`
 	// Resumo: só quando a condição disparou (Fase 2). Linhas é o aviso; Falha, por que saiu sem.
-	Resumo *Resumo    `json:"resumo,omitempty"`
+	Resumo *Resumo `json:"resumo,omitempty"`
+	// Aprofundamento: só quando a condição disparou e há consultas vinculadas (Fase 3). Qual foi
+	// escolhida e o resultado dela, ou Falha.
+	Aprofundamento *Aprofundamento `json:"aprofundamento,omitempty"`
 	Motivo string     `json:"motivo,omitempty"` // perdas: fechada | dormindo | outro_banco | anterior
 	De     *time.Time `json:"de,omitempty"`     // perdas: primeiro horário perdido
 	Ate    *time.Time `json:"ate,omitempty"`    // perdas: último horário perdido (= Ref)

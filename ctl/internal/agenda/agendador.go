@@ -51,6 +51,9 @@ type Opcoes struct {
 	// da condição. PrazoResumo: quanto o aviso espera; zero usa PrazoResumo.
 	Resumir     func(ctx context.Context, p PedidoResumo) (string, error)
 	PrazoResumo time.Duration
+	// PrazoEscolha: quanto o aviso espera a escolha do aprofundamento (Fase 3), pelo mesmo Resumir;
+	// zero usa PrazoEscolha.
+	PrazoEscolha time.Duration
 }
 
 type Aviso struct {
@@ -398,33 +401,10 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 	}
 	var res Resultado
 	var valores []string
-	p, err := a.o.Motor.Preparar(c.raw, it.ref, b.Motor)
-	switch {
-	case !pronto:
+	if !pronto {
 		res.Erro = msgNaoPronto
-	case err != nil:
-		res.Erro = err.Error()
-	case p.Erro != "":
-		res.Erro = p.Erro
-	default:
-		valores = p.Valores
-		cctx, cancel := context.WithTimeout(ctx, prazo)
-		texto, err := a.o.Consultar(cctx, p.SQL)
-		cancel()
-		switch {
-		case ctx.Err() != nil:
-			return Execucao{}, ctx.Err() // o ctl está fechando: não grava
-		case errors.Is(err, ErrPrazo) || errors.Is(err, context.DeadlineExceeded):
-			res.Motivo = "timeout_front"
-		case errors.Is(err, ErrSemConexao):
-			res.Erro = msgSemConexao
-		case err != nil:
-			res.Erro = err.Error() // banco fora do ar é execução com erro
-		default:
-			if res, err = a.o.Motor.Resultado(c.raw, texto, valores); err != nil {
-				res = Resultado{Erro: err.Error()}
-			}
-		}
+	} else if res, valores, err = a.consultar(ctx, b, c, it.ref); err != nil {
+		return Execucao{}, err // o ctl está fechando: não grava
 	}
 	// Apagada ou banco trocado enquanto rodava: descarta. Outro erro de leitura (passageiro) não
 	// joga a execução fora: grava com a consulta que já estava em mãos.
@@ -436,15 +416,21 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 	jul := a.julgar(it, c, res) // antes do Anexar: a base é só das execuções anteriores
 	tipo := "agendada"
 	var resumo *Resumo
+	var ap *Aprofundamento
 	if it.manual {
 		tipo = "manual"
 	} else {
-		resumo = a.resumir(ctx, c, res, jul) // só quando a condição disparou
+		// Só quando a condição disparou: o aprofundamento (se houver vinculado) e o resumo com ele.
+		ap = a.aprofundar(ctx, b, c, it.ref, jul)
+		if ctx.Err() != nil {
+			return Execucao{}, ctx.Err()
+		}
+		resumo = a.resumir(ctx, c, res, jul, ap)
 		if ctx.Err() != nil {
 			return Execucao{}, ctx.Err()
 		}
 	}
-	e, err := a.o.Hist.Anexar(it.chave, it.id, Execucao{Tipo: tipo, Ref: it.ref, Em: agoraDe(a.o.Agora()), Valores: valores, Resultado: &res, Julgamento: jul, Resumo: resumo})
+	e, err := a.o.Hist.Anexar(it.chave, it.id, Execucao{Tipo: tipo, Ref: it.ref, Em: agoraDe(a.o.Agora()), Valores: valores, Resultado: &res, Julgamento: jul, Resumo: resumo, Aprofundamento: ap})
 	if err != nil {
 		return e, err
 	}
@@ -461,6 +447,41 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 		a.avisar(c.id, "IA de Bolso · "+c.nome, "Rodou às "+it.ref.In(time.Local).Format("15:04")+" · "+texto)
 	}
 	return e, nil
+}
+
+// consultar roda uma consulta salva como a execução agendada: valores dos períodos em ref (pela agenda,
+// ou os salvos), SQL montado e conferido pelo motor, db_read_only_query e resultadoSalva. Erros do
+// banco e recusas voltam no Resultado; err só quando o ctl está fechando. Serve à consulta agendada e
+// ao aprofundamento (o SQL é o salvo, nunca escrito pelo modelo).
+func (a *Agendador) consultar(ctx context.Context, b notas.Banco, c consulta, ref time.Time) (Resultado, []string, error) {
+	var res Resultado
+	p, err := a.o.Motor.Preparar(c.raw, ref, b.Motor)
+	switch {
+	case err != nil:
+		res.Erro = err.Error()
+		return res, nil, nil
+	case p.Erro != "":
+		res.Erro = p.Erro
+		return res, nil, nil
+	}
+	cctx, cancel := context.WithTimeout(ctx, prazo)
+	texto, err := a.o.Consultar(cctx, p.SQL)
+	cancel()
+	switch {
+	case ctx.Err() != nil:
+		return res, nil, ctx.Err()
+	case errors.Is(err, ErrPrazo) || errors.Is(err, context.DeadlineExceeded):
+		res.Motivo = "timeout_front"
+	case errors.Is(err, ErrSemConexao):
+		res.Erro = msgSemConexao
+	case err != nil:
+		res.Erro = err.Error() // banco fora do ar é execução com erro
+	default:
+		if res, err = a.o.Motor.Resultado(c.raw, texto, p.Valores); err != nil {
+			res = Resultado{Erro: err.Error()}
+		}
+	}
+	return res, p.Valores, nil
 }
 
 // julgar confere a condição da consulta (web/condicao.js). Sem condição, ou se a conferência
