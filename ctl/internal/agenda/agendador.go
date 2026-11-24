@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -46,6 +47,10 @@ type Opcoes struct {
 	Motor     *Motor
 	Hist      *Historico
 	Tick      time.Duration // 30 s em produção
+	// Resumir chama o modelo para o resumo do alerta (Fase 2). nil: sem resumo, o aviso é o texto
+	// da condição. PrazoResumo: quanto o aviso espera; zero usa PrazoResumo.
+	Resumir     func(ctx context.Context, p PedidoResumo) (string, error)
+	PrazoResumo time.Duration
 }
 
 type Aviso struct {
@@ -430,10 +435,16 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 	}
 	jul := a.julgar(it, c, res) // antes do Anexar: a base é só das execuções anteriores
 	tipo := "agendada"
+	var resumo *Resumo
 	if it.manual {
 		tipo = "manual"
+	} else {
+		resumo = a.resumir(ctx, c, res, jul) // só quando a condição disparou
+		if ctx.Err() != nil {
+			return Execucao{}, ctx.Err()
+		}
 	}
-	e, err := a.o.Hist.Anexar(it.chave, it.id, Execucao{Tipo: tipo, Ref: it.ref, Em: agoraDe(a.o.Agora()), Valores: valores, Resultado: &res, Julgamento: jul})
+	e, err := a.o.Hist.Anexar(it.chave, it.id, Execucao{Tipo: tipo, Ref: it.ref, Em: agoraDe(a.o.Agora()), Valores: valores, Resultado: &res, Julgamento: jul, Resumo: resumo})
 	if err != nil {
 		return e, err
 	}
@@ -443,7 +454,11 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 		}
 	}
 	if !it.manual && (jul == nil || jul.Aviso) {
-		a.avisar(c.id, "IA de Bolso · "+c.nome, "Rodou às "+it.ref.In(time.Local).Format("15:04")+" · "+textoDoAviso(res, jul))
+		texto := textoDoAviso(res, jul)
+		if resumo != nil && len(resumo.Linhas) > 0 {
+			texto = strings.Join(resumo.Linhas, "\n")
+		}
+		a.avisar(c.id, "IA de Bolso · "+c.nome, "Rodou às "+it.ref.In(time.Local).Format("15:04")+" · "+texto)
 	}
 	return e, nil
 }

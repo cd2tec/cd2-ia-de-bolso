@@ -1,0 +1,207 @@
+'use strict';
+// Testes do resumo do alerta (web/resumo.js): o pedido ao modelo e a conferência dos números.
+// Rodar: node --test
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const R = require('../web/resumo.js');
+const C = require('../web/condicao.js');
+
+// Faturamento por dia, como a consulta salva do erp_pdv devolve.
+const linhas = [
+  { data:'2026-10-30', faturamento:105032.38 },
+  { data:'2026-10-31', faturamento:135979.13 },
+  { data:'2026-11-01', faturamento:103797.68 },
+  { data:'2026-11-22', faturamento:40112.08 }
+];
+const soma = linhas.reduce((a, l) => a + l.faturamento, 0); // 384.921,27
+const consulta = { id:'c1', nome:'Faturamento nos últimos 30 dias',
+  agenda:{ condicao:{ coluna:'faturamento', agregacao:'soma', operador:'maior', valor:1 } } };
+const resultado = { ok:true, colunas:['data', 'faturamento'], todas:linhas, linhas };
+const jul = C.julgar(consulta.agenda.condicao, resultado, []);
+const resp = frases => JSON.stringify({ linhas:frases });
+
+test('pedido só quando a condição disparou e vai avisar', () => {
+  assert.equal(jul.disparou, true);
+  const p = R.pedido(consulta, resultado, jul);
+  assert.ok(p);
+  assert.deepEqual(p.schema, R.SCHEMA);
+  assert.equal(p.mensagens.length, 2);
+  assert.equal(R.pedido(consulta, resultado, null), null, 'sem condição: sem resumo');
+  assert.equal(R.pedido(consulta, resultado, Object.assign({}, jul, { disparou:false, aviso:false })), null);
+  assert.equal(R.pedido(consulta, resultado, Object.assign({}, jul, { disparou:false, aviso:true })), null, 'aviso de erro: sem resumo');
+  assert.equal(R.pedido(consulta, { ok:false, motivo:'sql' }, jul), null);
+});
+
+test('mensagens: frase do alerta, base e linhas no formato brasileiro; sem o nome da consulta', () => {
+  const u = R.mensagens(consulta, resultado, jul)[1].content;
+  assert.doesNotMatch(u, /Faturamento nos últimos 30 dias|Consulta:/);
+  assert.match(u, /^Alerta: /);
+  assert.match(u, /Alerta: A soma de faturamento = 384\.921,27, acima de 1\./);
+  assert.match(u, /Base de comparação: valor fixo da regra = 1\n/);
+  assert.match(u, /Resultado \(colunas: data, faturamento\):\ndata: 30\/10\/2026; faturamento: 105\.032,38/);
+  assert.match(u, /data: 31\/10\/2026; faturamento: 135\.979,13/);
+});
+
+test('mensagens: corta em 20 linhas e diz quantas eram', () => {
+  const muitas = Array.from({ length:30 }, (_, i) => ({ loja:'Loja ' + (i + 1), total:i }));
+  const r = { ok:true, colunas:['loja', 'total'], todas:muitas };
+  const u = R.mensagens({ nome:'x' }, r, { texto:'t', disparou:true, aviso:true })[1].content;
+  assert.match(u, /Resultado \(as 20 primeiras de 30 linhas; colunas: loja, total\):/);
+  assert.match(u, /Base de comparação: nenhuma/);
+  assert.equal(u.split('\n').filter(l => l.startsWith('loja:')).length, 20);
+});
+
+test('conferir: resumo com números e datas dos dados passa', () => {
+  const r = R.conferir(resp([
+    'A soma de faturamento chegou a 384.921,27, acima do limite de 1.',
+    'O melhor dia foi 31/10/2026, com 135.979,13.',
+    'O pior dia foi 22/11, com 40.112,08.'
+  ]), consulta, resultado, jul);
+  assert.deepEqual(r, { ok:true, linhas:[
+    'A soma de faturamento chegou a 384.921,27, acima do limite de 1.',
+    'O melhor dia foi 31/10/2026, com 135.979,13.',
+    'O pior dia foi 22/11, com 40.112,08.'
+  ] });
+});
+
+test('conferir: arredondamento que o texto mostra vale (135.979 e 384,9 mil)', () => {
+  assert.equal(R.conferir(resp(['O melhor dia teve 135.979.']), consulta, resultado, jul).ok, true);
+  assert.equal(R.conferir(resp(['O mês somou 384,9 mil.']), consulta, resultado, jul).ok, true);
+  assert.equal(R.conferir(resp(['O mês somou 0,38 milhão.']), consulta, resultado, jul).ok, true);
+});
+
+test('conferir: número inventado descarta o resumo inteiro', () => {
+  const r = R.conferir(resp(['A soma foi 384.921,27.', 'Isso é 12% acima do mês passado.']), consulta, resultado, jul);
+  assert.equal(r.ok, false); assert.equal(r.motivo, 'numero'); assert.match(r.detalhe, /12/);
+  assert.equal(R.conferir(resp(['O melhor dia teve 135.980.']), consulta, resultado, jul).ok, false, 'arredondou errado');
+  assert.equal(R.conferir(resp(['A soma foi 386 mil.']), consulta, resultado, jul).ok, false, 'arredondou demais');
+  assert.equal(R.conferir(resp(['Média diária de 96.230,32.']), consulta, resultado, jul).ok, false, 'calculou a média');
+});
+
+test('conferir: data ou horário que não está nos dados descarta', () => {
+  const r = R.conferir(resp(['O melhor dia foi 15/10/2026.']), consulta, resultado, jul);
+  assert.equal(r.ok, false); assert.equal(r.motivo, 'numero'); assert.match(r.detalhe, /15\/10\/2026/);
+  assert.equal(R.conferir(resp(['O melhor dia foi 31/10/2025.']), consulta, resultado, jul).ok, false, 'ano errado');
+  assert.equal(R.conferir(resp(['Rodou às 13:00.']), consulta, resultado, jul).ok, false);
+});
+
+test('conferir: números do resultado (inclusive em texto) e da base valem; do título, não', () => {
+  const c = { nome:'Produto com mais saída nos últimos 7 dias',
+    agenda:{ condicao:{ coluna:'quantidade', agregacao:'primeira', operador:'menor', valor:2500 } } };
+  const r = { ok:true, colunas:['produto', 'quantidade'], todas:[{ produto:'Cerveja Pilsen Do Campo 350ml', quantidade:2053 }] };
+  const j = C.julgar(c.agenda.condicao, r, []);
+  const ok = R.conferir(resp(['A Cerveja Pilsen Do Campo 350ml saiu 2.053 vezes, abaixo de 2.500.']), c, r, j);
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  const titulo = R.conferir(resp(['Nos últimos 7 dias, a quantidade foi 2.053.']), c, r, j);
+  assert.equal(titulo.ok, false); assert.match(titulo.detalhe, /número 7 /);
+});
+
+test('conferir: variação e base vêm do julgamento', () => {
+  const c = { nome:'Vendas', agenda:{ condicao:{ coluna:'total', agregacao:'primeira', operador:'caiu', valor:10, base:'anterior' } } };
+  const r = { ok:true, colunas:['total'], todas:[{ total:80 }] };
+  const j = C.julgar(c.agenda.condicao, r, [[{ total:100 }]]);
+  assert.equal(j.disparou, true);
+  assert.match(R.mensagens(c, r, j)[1].content, /Base de comparação: execução anterior = 100\n/);
+  assert.equal(R.conferir(resp(['O total caiu 20% (de 100 para 80) em relação à execução anterior.']), c, r, j).ok, true);
+  // O limite de uma regra de variação é um percentual da regra, não a base: não entra.
+  assert.equal(R.conferir(resp(['O total caiu 20%, mais que o limite de 10%.']), c, r, j).ok, false);
+  assert.equal(R.conferir(resp(['O total caiu 25%.']), c, r, j).ok, false);
+});
+
+test('conferir: formato errado', () => {
+  const f = t => R.conferir(t, consulta, resultado, jul);
+  assert.equal(f('não é json').motivo, 'formato');
+  assert.equal(f('{"texto":"x"}').motivo, 'formato');
+  assert.equal(f(resp([])).motivo, 'formato');
+  assert.equal(f(resp(['a', 'b', 'c', 'd'])).motivo, 'formato');
+  assert.equal(f(resp(['a'.repeat(R.MAX_FRASE + 1)])).motivo, 'formato');
+  assert.equal(f(resp(['ok', 3])).motivo, 'formato');
+  assert.equal(f('<think>pensando</think>' + resp(['Sem números aqui.'])).ok, true);
+  assert.equal(f('Claro! ' + resp(['Sem números aqui.']) + ' Pronto.').ok, true);
+});
+
+test('celula: data, número e texto', () => {
+  assert.equal(R.celula('2026-10-31'), '31/10/2026');
+  assert.equal(R.celula('2026-10-31T00:00:00Z'), '31/10/2026');
+  assert.equal(R.celula(135979.13), '135.979,13');
+  assert.equal(R.celula('135979.13'), '135.979,13');
+  assert.equal(R.celula('7891000100103'), '7891000100103', 'código em texto fica como está');
+  assert.equal(R.celula(null), '');
+});
+
+test('textoAviso: uma frase por linha', () => {
+  assert.equal(R.textoAviso(['a', 'b']), 'a\nb');
+  assert.equal(R.textoAviso(null), '');
+});
+
+test('soma de conferência bate com o julgamento', () => {
+  assert.ok(Math.abs(jul.valor - soma) < 1e-6);
+});
+
+test('textoFalha: por que saiu sem resumo; vazio quando teve', () => {
+  assert.equal(R.textoFalha({ falha:'numero', ms:10 }), 'Sem resumo da IA: o resumo citava um número que não estava nos dados.');
+  assert.equal(R.textoFalha({ falha:'prazo' }), 'Sem resumo da IA: o modelo demorou mais que o prazo.');
+  assert.equal(R.textoFalha({ linhas:['ok'], ms:10 }), '');
+  assert.equal(R.textoFalha(null), '');
+});
+
+test('baseDe: valor fixo, execução anterior, média das N; nenhuma sem base', () => {
+  const r = { ok:true, colunas:['total'], todas:[{ total:80 }] };
+  const b = (cond, ants) => R.baseDe(R.dados({ agenda:{ condicao:cond } }, r, C.julgar(cond, r, ants)));
+  assert.deepEqual(b({ coluna:'total', agregacao:'primeira', operador:'maior', valor:50 }, []), { texto:'valor fixo da regra = 50', valor:50 });
+  assert.deepEqual(b({ coluna:'total', agregacao:'primeira', operador:'caiu', valor:10, base:'anterior' }, [[{ total:100 }]]),
+    { texto:'execução anterior = 100', valor:100 });
+  assert.deepEqual(b({ coluna:'total', agregacao:'primeira', operador:'caiu', valor:10, base:'media', n:3 }, [[{ total:100 }], [{ total:120 }], [{ total:140 }]]),
+    { texto:'média das 3 execuções anteriores = 120', valor:120 });
+  assert.equal(b({ coluna:'total', agregacao:'primeira', operador:'caiu', valor:10, base:'anterior' }, []), null, 'sem anterior');
+  assert.equal(R.baseDe(R.dados({}, r, null)), null, 'sem condição');
+});
+
+test('novaTentativa: a resposta recusada e o motivo; limite de 2', () => {
+  assert.equal(R.MAX_TENTATIVAS, 2);
+  const m = [{ role:'system', content:'s' }, { role:'user', content:'u' }];
+  const n = R.novaTentativa(m, '{"linhas":["x 12%"]}', { ok:false, motivo:'numero', detalhe:'número 12 não está nos dados' });
+  assert.equal(n.length, 4);
+  assert.deepEqual(n[2], { role:'assistant', content:'{"linhas":["x 12%"]}' });
+  assert.match(n[3].content, /^A resposta anterior foi recusada: número 12 não está nos dados\. Responda de novo/);
+  assert.equal(m.length, 2, 'não altera as mensagens originais');
+  assert.match(R.novaTentativa(m, 'oi', { ok:false, motivo:'formato' })[3].content, /a resposta não era o JSON pedido/);
+});
+
+test('textoFalha: diz quantas tentativas quando foram mais de uma', () => {
+  assert.equal(R.textoFalha({ falha:'numero', tentativas:2 }), 'Sem resumo da IA: o resumo citava um número que não estava nos dados (2 tentativas).');
+  assert.equal(R.textoFalha({ falha:'modelo', tentativas:1 }), 'Sem resumo da IA: o modelo não respondeu.');
+});
+
+test('linha que disparou depois da 20ª: entra no lugar da última e vale na conferência', () => {
+  // 30 dias; o menor é o último (como no "Faturamento por dia nos últimos 30 dias" da bateria).
+  const dias = Array.from({ length:30 }, (_, i) => ({ data:'2026-11-' + String(i + 1).padStart(2, '0'), faturamento:100000 + i }));
+  dias[29].faturamento = 50862.99;
+  const r = { ok:true, colunas:['data', 'faturamento'], todas:dias };
+  const c = { nome:'x', agenda:{ condicao:{ coluna:'Faturamento', agregacao:'minimo', operador:'menor', valor:55950 } } };
+  const j = C.julgar(c.agenda.condicao, r, []);
+  assert.equal(j.disparou, true);
+  const d = R.dados(c, r, j);
+  assert.equal(d.linhas.length, 20);
+  assert.equal(d.comDisparo, true);
+  assert.deepEqual(d.linhas[19], dias[29]);
+  assert.deepEqual(d.linhas[18], dias[18]);
+  const u = R.mensagens(c, r, j)[1].content;
+  assert.match(u, /Resultado \(20 de 30 linhas, com a linha que disparou o alerta \(a última\); colunas: data, faturamento\):/);
+  assert.match(u, /data: 30\/11\/2026; faturamento: 50\.862,99$/);
+  assert.equal(R.conferir(resp(['O pior dia foi 30/11/2026, com 50.862,99.']), c, r, j).ok, true);
+  assert.equal(R.conferir(resp(['O pior dia foi 25/11/2026.']), c, r, j).ok, false, 'linha que não foi enviada continua fora');
+});
+
+test('linha que disparou: sem mudança quando já está nas 20, em soma/média ou sem disparo', () => {
+  const dias = Array.from({ length:30 }, (_, i) => ({ data:'2026-11-' + String(i + 1).padStart(2, '0'), total:100 + i }));
+  const r = { ok:true, colunas:['data', 'total'], todas:dias };
+  const d = cond => { const c = { agenda:{ condicao:cond } }; return R.dados(c, r, C.julgar(cond, r, [])); };
+  const max = d({ coluna:'total', agregacao:'maximo', operador:'maior', valor:1 }); // o maior é o último
+  assert.equal(max.comDisparo, true); assert.equal(max.linhas[19].total, 129);
+  const min = d({ coluna:'total', agregacao:'minimo', operador:'menor', valor:1000 }); // o menor é o primeiro
+  assert.equal(min.comDisparo, false); assert.deepEqual(min.linhas, dias.slice(0, 20));
+  assert.equal(d({ coluna:'total', agregacao:'soma', operador:'maior', valor:1 }).comDisparo, false);
+  assert.equal(d({ coluna:'total', agregacao:'maximo', operador:'maior', valor:1e9 }).comDisparo, false, 'não disparou');
+  assert.match(R.mensagens({}, r, C.julgar({ coluna:'total', agregacao:'soma', operador:'maior', valor:1 }, r, []))[1].content, /as 20 primeiras de 30 linhas; /);
+});

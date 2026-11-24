@@ -569,6 +569,9 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
 .agd__cond[hidden],.agd__cond [hidden]{display:none}
 .answer .hist__julg{margin:0 0 var(--space-2);font:600 12px/18px var(--font-sans);color:var(--ink-muted)}
 .answer .hist__julg--disparou{color:var(--ink)}
+.answer .hist__resumo{margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);border-left:3px solid var(--ink-brand);border-radius:var(--radius-sm);background:var(--tint)}
+.answer .hist__resumo p{margin:0;font:400 14px/22px var(--font-sans);color:var(--ink)}
+.answer .hist__resumo .hist__resumo-t{margin:0 0 var(--space-1);font:600 11px/16px var(--font-sans);color:var(--ink-muted)}
 .answer .valores{margin:0 0 var(--space-2);font:600 13px/20px var(--font-sans);color:var(--ink-muted)}
 .answer .acts{flex-wrap:wrap}
 #salvar{width:min(660px,92vw)}
@@ -1113,6 +1116,7 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
 <script src="entendimento.js?v=0.22.1"></script>
 <script src="agenda.js?v=0.22.1"></script>
 <script src="condicao.js?v=0.22.1"></script>
+<script src="resumo.js?v=0.22.1"></script>
 <script src="ask.js?v=0.22.1"></script>
 <script src="report.js?v=0.22.1"></script>
 <script src="demo.js?v=0.22.1"></script>
@@ -2958,6 +2962,19 @@ function linhaJulgamento(e){
   const p = document.createElement('p'); p.className = 'hist__julg' + (e.julgamento.disparou ? ' hist__julg--disparou' : ''); p.textContent = t;
   return p;
 }
+// Resumo da IA da execução que disparou (Fase 2): as frases, ou por que saiu sem. null sem resumo.
+function blocoResumo(e){
+  const r = e && e.resumo;
+  if(!r) return null;
+  if(Array.isArray(r.linhas) && r.linhas.length){
+    const d = document.createElement('div'); d.className = 'hist__resumo';
+    const t = document.createElement('p'); t.className = 'hist__resumo-t'; t.textContent = 'Resumo da IA · números conferidos com o resultado'; d.appendChild(t);
+    r.linhas.forEach(l => { const p = document.createElement('p'); p.textContent = String(l); d.appendChild(p); });
+    return d;
+  }
+  const f = CD2Resumo.textoFalha(r);
+  return f ? linhaHistorico(f) : null;
+}
 function cardExecucao(e, aberta){
   const it = document.createElement('div'); it.className = 'hist__it'; it.dataset.seq = String(e.seq);
   const c = consultaDoHistorico() || {};
@@ -2971,6 +2988,7 @@ function cardExecucao(e, aberta){
   const h3 = document.createElement('h3'); h3.textContent = nome; marcaNovo(h3, e); card.appendChild(h3);
   card.appendChild(linhaHistorico(CD2Agenda.textoExecucao(e) + (valores ? ' · ' + valores : '')));
   const lj = linhaJulgamento(e); if(lj) card.appendChild(lj);
+  const br = blocoResumo(e); if(br) card.appendChild(br);
   const acts = document.createElement('div'); acts.className = 'acts';
   if(erro){
     const p = document.createElement('p'); p.className = 'hist__msg'; mostrarErro(p, erro); card.appendChild(p);
@@ -2994,6 +3012,7 @@ function abrirResultado(it, e){
     marcaNovo(h3, e);
     const m = linhaHistorico(CD2Agenda.textoExecucao(e)); h3.after(m);
     const lj = linhaJulgamento(e); if(lj) m.after(lj);
+    const br = blocoResumo(e); if(br) (lj || m).after(br);
   }
   it.appendChild(body);
 }
