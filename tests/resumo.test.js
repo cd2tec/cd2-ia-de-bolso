@@ -32,9 +32,10 @@ test('pedido só quando a condição disparou e vai avisar', () => {
   assert.equal(R.pedido(consulta, { ok:false, motivo:'sql' }, jul), null);
 });
 
-test('mensagens: título, frase do alerta e linhas no formato brasileiro', () => {
+test('mensagens: frase do alerta, base e linhas no formato brasileiro; sem o nome da consulta', () => {
   const u = R.mensagens(consulta, resultado, jul)[1].content;
-  assert.match(u, /Consulta: Faturamento nos últimos 30 dias/);
+  assert.doesNotMatch(u, /Faturamento nos últimos 30 dias|Consulta:/);
+  assert.match(u, /^Alerta: /);
   assert.match(u, /Alerta: A soma de faturamento = 384\.921,27, acima de 1\./);
   assert.match(u, /Base de comparação: valor fixo da regra = 1\n/);
   assert.match(u, /Resultado \(colunas: data, faturamento\):\ndata: 30\/10\/2026; faturamento: 105\.032,38/);

@@ -11,7 +11,7 @@ consulta salva roda (SQL aprovado, sem modelo)
    └─ condição conferida pelo código (História 2)
         ├─ não disparou → grava no histórico, sem aviso, sem modelo
         └─ disparou
-             ├─ web/resumo.js monta o pedido: título, frase do alerta, base de comparação, resultado
+             ├─ web/resumo.js monta o pedido: frase do alerta, base de comparação, resultado
              ├─ modelo responde em JSON schema {"linhas": [1 a 3 frases]}, thinking desligado
              ├─ web/resumo.js confere: formato e cada número/data
              │    └─ recusou → nova tentativa com o motivo (no máximo 2 tentativas)
@@ -34,7 +34,6 @@ consulta salva roda (SQL aprovado, sem modelo)
 ## O que vai para o modelo
 
 ```
-Consulta: Faturamento por loja nos últimos 7 dias
 Alerta: A soma de faturamento caiu 15,5% (669.372,83 para 565.398,67) em relação à execução anterior.
 Base de comparação: execução anterior = 669.372,83
 Resultado (colunas: loja, faturamento):
@@ -42,6 +41,10 @@ loja: Loja 01 - Centro; faturamento: 201.268,45
 …
 ```
 
+- **Sem o nome da consulta:** o resumo sai "a partir do resultado atual e da base de comparação". O nome
+  traz números que não são do resultado ("últimos **7** dias"): no teste, o modelo os copiava e a conferência
+  recusava o resumo. Na bateria (30 casos), tirar o nome ou mantê-lo aceitando os números dele deu o mesmo
+  resultado; ficou a versão sem o nome, que não abre exceção na conferência.
 - Base de comparação: **valor fixo da regra** (maior/menor que), **execução anterior** ou **média das N
   execuções anteriores**; "nenhuma" quando não há.
 - Até 20 linhas e 8 colunas do resultado, com datas em dd/mm/aaaa e números no formato brasileiro. Com mais

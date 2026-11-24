@@ -54,7 +54,6 @@ function dados(consulta, resultado, julgamento){
   const colunas = (Array.isArray(r.colunas) && r.colunas.length ? r.colunas : todas.length ? Object.keys(todas[0]) : [])
     .filter(c => typeof c === 'string' && c).slice(0, MAX_COLUNAS);
   return {
-    titulo:limpo((consulta && consulta.nome) || r.titulo || '', 120),
     alerta:limpo(j.texto, 400),
     colunas,
     linhas:todas.slice(0, MAX_LINHAS),
@@ -91,8 +90,9 @@ function baseDe(d){
 function mensagens(consulta, resultado, julgamento){
   const d = dados(consulta, resultado, julgamento), b = baseDe(d);
   const linhas = d.linhas.map(l => d.colunas.map(c => c + ': ' + celula(l[c])).join('; '));
+  // Sem o nome da consulta: o resumo sai "a partir do resultado atual e da base de comparação" (CIDB-11). O nome
+  // traz números que não são do resultado ("últimos 7 dias"); o modelo os copiava e a conferência recusava.
   const user = [
-    'Consulta: ' + d.titulo,
     'Alerta: ' + d.alerta,
     'Base de comparação: ' + (b ? b.texto : 'nenhuma'),
     'Resultado (' + (d.total > d.linhas.length ? 'as ' + d.linhas.length + ' primeiras de ' + d.total + ' linhas; ' : '') + 'colunas: ' + d.colunas.join(', ') + '):',
