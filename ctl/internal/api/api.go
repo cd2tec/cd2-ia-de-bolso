@@ -189,7 +189,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.entendimentoRota(w, r)
-	case "/agenda/historico", "/agenda/rodar", "/agenda/visto", "/agenda/novidades":
+	case "/agenda/historico", "/agenda/rodar", "/agenda/visto", "/agenda/novidades", "/agenda/acao":
 		if s.agenda == nil {
 			fail(w, http.StatusNotFound, "rota não encontrada")
 			return

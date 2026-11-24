@@ -18,8 +18,12 @@ const PrazoResumo = 25 * time.Second
 
 // Resumo é o que ficou do resumo de uma execução que disparou. Linhas quando o modelo respondeu e
 // a conferência passou; senão Falha: "prazo" | "modelo" | "formato" | "numero". Ms: quanto levou.
+// Acao (História 5): a ação que o resumo sugeriu (enum de web/acao.js), que só roda com o clique da
+// pessoa no card; AcaoFora: o que o modelo pôs fora do enum (descartado, a execução segue sem ação).
 type Resumo struct {
 	Linhas     []string `json:"linhas,omitempty"`
+	Acao       string   `json:"acao,omitempty"`
+	AcaoFora   string   `json:"acao_fora,omitempty"`
 	Falha      string   `json:"falha,omitempty"`
 	Detalhe    string   `json:"detalhe,omitempty"`
 	Tentativas int      `json:"tentativas"`
@@ -122,7 +126,7 @@ func (a *Agendador) resumir(ctx context.Context, c consulta, res Resultado, j *J
 			return r
 		}
 		if conf.Ok {
-			r.Linhas, r.Falha, r.Detalhe = conf.Linhas, "", ""
+			r.Linhas, r.Acao, r.AcaoFora, r.Falha, r.Detalhe = conf.Linhas, conf.Acao, conf.AcaoFora, "", ""
 			return r
 		}
 		r.Falha, r.Detalhe = conf.Motivo, conf.Detalhe

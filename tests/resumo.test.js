@@ -61,7 +61,7 @@ test('conferir: resumo com números e datas dos dados passa', () => {
     'A soma de faturamento chegou a 384.921,27, acima do limite de 1.',
     'O melhor dia foi 31/10/2026, com 135.979,13.',
     'O pior dia foi 22/11, com 40.112,08.'
-  ] });
+  ], acao:'' }, 'sem "acao" na resposta: sem ação sugerida (História 5)');
 });
 
 test('conferir: arredondamento que o texto mostra vale (135.979 e 384,9 mil)', () => {
