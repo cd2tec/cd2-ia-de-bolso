@@ -224,7 +224,10 @@ func TestPrazoDaEscolhaNaoBloqueia(t *testing.T) {
 // H4-CT07: a condição não dispara: nem modelo nem aprofundamento.
 func TestSemDisparoSemAprofundamento(t *testing.T) {
 	f, sqls := ambienteAprof(t, []string{"loja", "dep"}, nil)
-	f.consultar = func(_ context.Context, sql string) (string, error) { *sqls = append(*sqls, sql); return linhasCom(100), nil }
+	f.consultar = func(_ context.Context, sql string) (string, error) {
+		*sqls = append(*sqls, sql)
+		return linhasCom(100), nil
+	}
 	a := novoAgendador(t, f)
 	m := &modeloFalso{}
 	m.ligar(t, a, fixo(escolha("Faturamento por loja")), "x")

@@ -49,12 +49,12 @@ type Execucao struct {
 	// Aprofundamento: só quando a condição disparou e há consultas vinculadas (Fase 3). Qual foi
 	// escolhida e o resultado dela, ou Falha.
 	Aprofundamento *Aprofundamento `json:"aprofundamento,omitempty"`
-	Motivo string     `json:"motivo,omitempty"` // perdas: fechada | dormindo | outro_banco | anterior
-	De     *time.Time `json:"de,omitempty"`     // perdas: primeiro horário perdido
-	Ate    *time.Time `json:"ate,omitempty"`    // perdas: último horário perdido (= Ref)
-	N      int        `json:"n,omitempty"`      // perdas: quantos horários
-	Rodada *time.Time `json:"rodada,omitempty"` // perdas: preenchido na leitura a partir do estado
-	Novo   bool       `json:"novo"`             // preenchido na leitura: agendada/perda com Seq > visto
+	Motivo         string          `json:"motivo,omitempty"` // perdas: fechada | dormindo | outro_banco | anterior
+	De             *time.Time      `json:"de,omitempty"`     // perdas: primeiro horário perdido
+	Ate            *time.Time      `json:"ate,omitempty"`    // perdas: último horário perdido (= Ref)
+	N              int             `json:"n,omitempty"`      // perdas: quantos horários
+	Rodada         *time.Time      `json:"rodada,omitempty"` // perdas: preenchido na leitura a partir do estado
+	Novo           bool            `json:"novo"`             // preenchido na leitura: agendada/perda com Seq > visto
 }
 
 // esquema v1. execucoes.json é a Execucao sem Rodada e Novo (e sem Linhas quando igual a Todas);
