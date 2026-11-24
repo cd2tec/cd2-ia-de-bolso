@@ -567,6 +567,15 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
 .agd__cond select#agCColSel{max-width:16em}
 .agd__cond input.agd__num{width:6em}
 .agd__cond[hidden],.agd__cond [hidden]{display:none}
+.agd__aprof{margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--line-soft)}
+.agd__aprof-t{margin:0 0 var(--space-1);font:600 13px/18px var(--font-sans)}
+.agd__aprof-l{display:flex;flex-direction:column;gap:var(--space-1);margin:var(--space-2) 0 0}
+.agd__aprof-l .agd__chk{overflow-wrap:anywhere}
+.agd__aprof-l input:disabled+span{color:var(--ink-muted)}
+.answer .hist__aprof{margin:0 0 var(--space-2)}
+.answer .hist__aprof summary{cursor:pointer;font:600 12px/18px var(--font-sans);color:var(--ink)}
+.answer .hist__aprof table{margin:var(--space-1) 0 0;border-collapse:collapse;font:400 13px/18px var(--font-sans)}
+.answer .hist__aprof th,.answer .hist__aprof td{padding:2px var(--space-2) 2px 0;text-align:left;border-bottom:1px solid var(--line-soft)}
 .answer .hist__julg{margin:0 0 var(--space-2);font:600 12px/18px var(--font-sans);color:var(--ink-muted)}
 .answer .hist__julg--disparou{color:var(--ink)}
 .answer .hist__resumo{margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);border-left:3px solid var(--ink-brand);border-radius:var(--radius-sm);background:var(--tint)}
@@ -1023,6 +1032,13 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
       </div>
       <p class="hint" id="agCUltimo" aria-live="polite" hidden></p>
       <p class="hint">A regra é conferida pelo código, com o número que a consulta trouxe. Sempre grava no histórico; o aviso só sai quando a regra bate.</p>
+      <div class="agd__aprof" id="agAprof">
+        <p class="agd__aprof-t">Aprofundar quando a regra bater (opcional)</p>
+        <p class="hint">Marque até 3 consultas salvas. Quando a regra bater, a IA escolhe uma delas, ela roda como está salva e o resultado entra no resumo.</p>
+        <div class="agd__aprof-l" id="agAprofLista"></div>
+        <p class="hint" id="agAprofVazia" hidden>Não há outra consulta salva para aprofundar.</p>
+        <p class="hint" id="agAprofLimite" aria-live="polite" hidden></p>
+      </div>
     </div>
   </fieldset>
   <p class="agd__resumo" id="agResumo" aria-live="polite"></p>
@@ -1117,6 +1133,7 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
 <script src="agenda.js?v=0.22.1"></script>
 <script src="condicao.js?v=0.22.1"></script>
 <script src="resumo.js?v=0.22.1"></script>
+<script src="aprofundar.js?v=0.22.1"></script>
 <script src="ask.js?v=0.22.1"></script>
 <script src="report.js?v=0.22.1"></script>
 <script src="demo.js?v=0.22.1"></script>
@@ -2962,6 +2979,29 @@ function linhaJulgamento(e){
   const p = document.createElement('p'); p.className = 'hist__julg' + (e.julgamento.disparou ? ' hist__julg--disparou' : ''); p.textContent = t;
   return p;
 }
+// Aprofundamento da execução que disparou (Fase 3): qual consulta a IA escolheu e o resultado dela
+// (recolhido), ou por que não houve. null sem aprofundamento.
+function blocoAprofundamento(e){
+  const a = e && e.aprofundamento, t = CD2Aprofundar.textoAprofundamento(a);
+  if(!t) return null;
+  if(a.falha) return linhaHistorico(t);
+  const d = document.createElement('details'); d.className = 'hist__aprof';
+  const s = document.createElement('summary'); s.textContent = t; d.appendChild(s);
+  const r = a.resultado || {}, todas = Array.isArray(r.todas) ? r.todas : Array.isArray(r.linhas) ? r.linhas : [];
+  const cols = Array.isArray(r.colunas) && r.colunas.length ? r.colunas : todas.length ? Object.keys(todas[0]) : [];
+  if(!r.ok || !todas.length){ d.appendChild(linhaHistorico('A consulta não trouxe nenhuma linha.')); return d; }
+  const tb = document.createElement('table'), hr = document.createElement('tr');
+  cols.forEach(k => { const th = document.createElement('th'); th.scope = 'col'; th.textContent = k; hr.appendChild(th); });
+  tb.appendChild(hr);
+  todas.slice(0, CD2Resumo.MAX_LINHAS_APROF).forEach(l => {
+    const tr = document.createElement('tr');
+    cols.forEach(k => { const td = document.createElement('td'); td.textContent = CD2Resumo.celula(l[k]); tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+  d.appendChild(tb);
+  if(todas.length > CD2Resumo.MAX_LINHAS_APROF) d.appendChild(linhaHistorico('As ' + CD2Resumo.MAX_LINHAS_APROF + ' primeiras de ' + todas.length + ' linhas, as mesmas que foram para o resumo.'));
+  return d;
+}
 // Resumo da IA da execução que disparou (Fase 2): as frases, ou por que saiu sem. null sem resumo.
 function blocoResumo(e){
   const r = e && e.resumo;
@@ -2988,6 +3028,7 @@ function cardExecucao(e, aberta){
   const h3 = document.createElement('h3'); h3.textContent = nome; marcaNovo(h3, e); card.appendChild(h3);
   card.appendChild(linhaHistorico(CD2Agenda.textoExecucao(e) + (valores ? ' · ' + valores : '')));
   const lj = linhaJulgamento(e); if(lj) card.appendChild(lj);
+  const ba = blocoAprofundamento(e); if(ba) card.appendChild(ba);
   const br = blocoResumo(e); if(br) card.appendChild(br);
   const acts = document.createElement('div'); acts.className = 'acts';
   if(erro){
@@ -3012,7 +3053,8 @@ function abrirResultado(it, e){
     marcaNovo(h3, e);
     const m = linhaHistorico(CD2Agenda.textoExecucao(e)); h3.after(m);
     const lj = linhaJulgamento(e); if(lj) m.after(lj);
-    const br = blocoResumo(e); if(br) (lj || m).after(br);
+    const ba = blocoAprofundamento(e); if(ba) (lj || m).after(ba);
+    const br = blocoResumo(e); if(br) (ba || lj || m).after(br);
   }
   it.appendChild(body);
 }
@@ -3181,6 +3223,7 @@ function abrirAgendar(c){
   // última execução do histórico, que chega depois e repinta.
   ag.ultimoRes = ultimosResultados.get(c.id) || (ea === 'demo' ? CD2Demo.amostra(c.id, new Date()) : null);
   ag.t.cond = CD2Condicao.tela(c.agenda && c.agenda.condicao, '');
+  ag.t.aprof = CD2Aprofundar.ids(c);
   prepararColunasAgendar(true);
   if(!ag.ultimoRes && ea === 'instalada') buscarUltimaExecucao(c, ag.gen);
   $('#agTitulo').textContent = '⏰ Agendar "' + String(c.nome || '') + '"';
@@ -3237,7 +3280,7 @@ function pintarAgendar(){
   document.querySelectorAll('#agendar input[name=agAviso]').forEach(r => { r.checked = r.value === (k.ligado ? 'condicao' : 'sempre'); });
   $('#agCAgreg').value = k.agregacao; $('#agCColuna').value = k.coluna; $('#agCColSel').value = k.coluna; $('#agCOp').value = k.operador;
   $('#agCValor').value = k.valor; $('#agCBase').value = k.base; $('#agCN').value = k.n;
-  mostrarCamposAgendar(); pintarParamsAgendar(); atualizarResumoAgendar();
+  mostrarCamposAgendar(); pintarParamsAgendar(); pintarAprofAgendar(); atualizarResumoAgendar();
 }
 // Mostra só os campos da frequência escolhida.
 function mostrarCamposAgendar(){
@@ -3264,6 +3307,34 @@ function mostrarCamposAgendar(){
   const u = k.ligado ? CD2Condicao.textoUltimo(k, ag.ultimoRes) : '';
   $('#agCUltimo').textContent = u; $('#agCUltimo').hidden = !u;
 }
+// Aprofundamentos (Fase 3): as outras consultas salvas como caixas; com 3 marcadas, as demais ficam
+// travadas e o limite aparece. Uma vinculada que foi apagada aparece marcada, para poder desmarcar.
+function pintarAprofAgendar(){
+  const c = ag.consulta || {}, box = $('#agAprofLista'), marcadas = ag.t.aprof || [];
+  const outras = consultasDaBarra().filter(x => x && x.id && x.id !== c.id);
+  const apagadas = marcadas.filter(id => !outras.some(x => x.id === id));
+  box.innerHTML = '';
+  const cheio = marcadas.length >= CD2Aprofundar.MAX;
+  const item = (id, nome) => {
+    const l = document.createElement('label'); l.className = 'agd__chk';
+    const i = document.createElement('input'); i.type = 'checkbox'; i.dataset.aprof = id;
+    i.checked = marcadas.indexOf(id) >= 0; i.disabled = cheio && !i.checked;
+    const s = document.createElement('span'); s.textContent = nome;
+    l.append(i, s); box.appendChild(l);
+  };
+  outras.forEach(x => item(x.id, String(x.nome || 'Sem nome')));
+  apagadas.forEach(id => item(id, '(consulta apagada)'));
+  $('#agAprofVazia').hidden = outras.length > 0 || apagadas.length > 0;
+  const lim = $('#agAprofLimite');
+  lim.textContent = cheio ? 'Limite de ' + CD2Aprofundar.MAX + ' aprofundamentos: desmarque uma para escolher outra.' : '';
+  lim.hidden = !cheio;
+}
+function mudouAprof(el){
+  const l = (ag.t.aprof || []).filter(x => x !== el.dataset.aprof);
+  if(el.checked && l.length < CD2Aprofundar.MAX) l.push(el.dataset.aprof);
+  ag.t.aprof = l;
+  pintarAprofAgendar();
+}
 // A agenda da janela com a condição (agenda.condicao só quando "Só quando…").
 function agendaDaJanela(){
   const r = CD2Agenda.agendaDaTela(ag.t);
@@ -3271,6 +3342,11 @@ function agendaDaJanela(){
   const rc = CD2Condicao.daTela(ag.t.cond);
   if(!rc.ok) return rc;
   if(rc.condicao) r.agenda.condicao = rc.condicao;
+  // Aprofundamentos só com condição: com "Toda vez que rodar" a lista fica escondida e não é gravada.
+  const aps = rc.condicao ? (ag.t.aprof || []) : [];
+  const va = CD2Aprofundar.validar(aps, !!rc.condicao, consultasDaBarra(), ag.consulta && ag.consulta.id);
+  if(!va.ok) return va;
+  if(aps.length) r.agenda.aprofundamentos = aps.slice();
   return r;
 }
 function atualizarResumoAgendar(){
@@ -3377,6 +3453,7 @@ function mudouAgendar(e){
   else if(el.id === 'agInicio') t.inicio = el.value;
   else if(el.id === 'agLigado') t.ligado = el.checked;
   else if(el.dataset && el.dataset.dia != null) t.dias[+el.dataset.dia] = el.checked;
+  else if(el.dataset && el.dataset.aprof != null){ if(e.type === 'change') mudouAprof(el); }
   else if(el.name === 'agAviso') t.cond.ligado = el.value === 'condicao';
   else if(el.id === 'agCAgreg') t.cond.agregacao = el.value;
   else if(el.id === 'agCColuna' || el.id === 'agCColSel') t.cond.coluna = el.value;

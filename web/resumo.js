@@ -13,6 +13,7 @@ const Chart = isNode ? require('./chart.js') : root.CD2Chart;
 const MAX_FRASES = 3;
 const MAX_FRASE = 160;     // caracteres por frase
 const MAX_LINHAS = 20;     // linhas do resultado enviadas ao modelo
+const MAX_LINHAS_APROF = 10; // linhas do aprofundamento (História 4), para o pedido não crescer demais
 const MAX_COLUNAS = 8;
 const MAX_CELULA = 60;
 const MAX_TOKENS = 300;
@@ -48,7 +49,7 @@ function celula(v){
 
 // ---- o que vai para o modelo ----
 // Os dados do resumo: o recorte do resultado que o modelo vê e a conferência usa.
-function dados(consulta, resultado, julgamento){
+function dados(consulta, resultado, julgamento, aprofundamento){
   const r = resultado || {}, j = julgamento || {};
   const todas = (Array.isArray(r.todas) ? r.todas : Array.isArray(r.linhas) ? r.linhas : []).filter(objeto);
   const colunas = (Array.isArray(r.colunas) && r.colunas.length ? r.colunas : todas.length ? Object.keys(todas[0]) : [])
@@ -57,7 +58,20 @@ function dados(consulta, resultado, julgamento){
   let linhas = todas.slice(0, MAX_LINHAS), comDisparo = false;
   const k = linhaDoDisparo(condicao, todas, j);
   if(k >= MAX_LINHAS){ linhas = todas.slice(0, MAX_LINHAS - 1).concat([todas[k]]); comDisparo = true; }
-  return { alerta:limpo(j.texto, 400), colunas, linhas, total:todas.length, comDisparo, julgamento:j, condicao };
+  return { alerta:limpo(j.texto, 400), colunas, linhas, total:todas.length, comDisparo, julgamento:j, condicao,
+    aprof:recorteAprof(aprofundamento) };
+}
+
+// O resultado do aprofundamento (História 4) que entra no pedido e na conferência: { colunas, linhas, total },
+// ou null sem aprofundamento (o pedido fica igual ao da História 3). aprofundamento: { resultado } com o
+// retorno da consulta escolhida.
+function recorteAprof(a){
+  const r = objeto(a) && objeto(a.resultado) && a.resultado.ok ? a.resultado : null;
+  if(!r) return null;
+  const todas = (Array.isArray(r.todas) ? r.todas : Array.isArray(r.linhas) ? r.linhas : []).filter(objeto);
+  const colunas = (Array.isArray(r.colunas) && r.colunas.length ? r.colunas : todas.length ? Object.keys(todas[0]) : [])
+    .filter(c => typeof c === 'string' && c).slice(0, MAX_COLUNAS);
+  return { colunas, linhas:todas.slice(0, MAX_LINHAS_APROF), total:todas.length };
 }
 
 // Nas regras "o maior valor de" e "o menor valor de", uma linha do resultado é a que disparou o alerta. O pedido
@@ -106,8 +120,8 @@ function recorte(d){
   return 'as ' + d.linhas.length + ' primeiras de ' + d.total + ' linhas; ';
 }
 
-function mensagens(consulta, resultado, julgamento){
-  const d = dados(consulta, resultado, julgamento), b = baseDe(d);
+function mensagens(consulta, resultado, julgamento, aprofundamento){
+  const d = dados(consulta, resultado, julgamento, aprofundamento), b = baseDe(d);
   const linhas = d.linhas.map(l => d.colunas.map(c => c + ': ' + celula(l[c])).join('; '));
   // Sem o nome da consulta: o resumo sai "a partir do resultado atual e da base de comparação" (CIDB-11). O nome
   // traz números que não são do resultado ("últimos 7 dias"); o modelo os copiava e a conferência recusava.
@@ -116,15 +130,23 @@ function mensagens(consulta, resultado, julgamento){
     'Base de comparação: ' + (b ? b.texto : 'nenhuma'),
     'Resultado (' + recorte(d) + 'colunas: ' + d.colunas.join(', ') + '):',
     linhas.join('\n')
-  ].join('\n');
-  return [{ role:'system', content:SISTEMA }, { role:'user', content:user }];
+  ];
+  // História 4: o resultado da consulta de aprofundamento, sem o nome dela (pelo mesmo motivo do nome acima).
+  const a = d.aprof;
+  if(a){
+    const corte = a.total > a.linhas.length ? 'as ' + a.linhas.length + ' primeiras de ' + a.total + ' linhas; ' : '';
+    user.push('Aprofundamento (resultado de outra consulta, para explicar o alerta; ' + corte + 'colunas: ' + a.colunas.join(', ') + '):',
+      a.linhas.length ? a.linhas.map(l => a.colunas.map(c => c + ': ' + celula(l[c])).join('; ')).join('\n') : '(nenhuma linha)',
+      'Use também o Aprofundamento para explicar o alerta; os números e datas dele também valem, escritos exatamente como estão.');
+  }
+  return [{ role:'system', content:SISTEMA }, { role:'user', content:user.join('\n') }];
 }
 
 // Pedido ao modelo, só quando a condição disparou e vai avisar. Fora disso, null: não há resumo.
-function pedido(consulta, resultado, julgamento){
+function pedido(consulta, resultado, julgamento, aprofundamento){
   const j = julgamento;
   if(!objeto(j) || !j.disparou || !j.aviso || !resultado || !resultado.ok) return null;
-  return { mensagens:mensagens(consulta, resultado, j), schema:SCHEMA, maxTokens:MAX_TOKENS };
+  return { mensagens:mensagens(consulta, resultado, j, aprofundamento), schema:SCHEMA, maxTokens:MAX_TOKENS };
 }
 
 // ---- conferência ----
@@ -139,15 +161,19 @@ function numerosDoTexto(t){
 // "Loja 04", também são do resultado) e o valor da base. Mais dois números que o código tira do resultado e
 // da base e que já estão no aviso de hoje: o valor conferido (a soma, o maior...) e a variação %. (Leitura
 // nossa do critério, a confirmar com o produto.) Título, nomes de coluna e contagens não entram.
-function permitidos(consulta, resultado, julgamento){
-  const d = dados(consulta, resultado, julgamento), nums = [], datas = [];
+function permitidos(consulta, resultado, julgamento, aprofundamento){
+  const d = dados(consulta, resultado, julgamento, aprofundamento), nums = [], datas = [];
   const add = v => { if(typeof v === 'number' && isFinite(v)) nums.push(Math.abs(v)); };
-  for(const l of d.linhas){
-    for(const c of d.colunas){
-      const v = l[c], dt = dataDe(v);
-      if(dt){ datas.push(dt); continue; }
-      const n = Chart.num(v);
-      if(n != null) add(n); else numerosDoTexto(v).forEach(add);
+  // As células do resultado e, na História 4, as do aprofundamento enviadas no pedido.
+  const blocos = [[d.linhas, d.colunas]].concat(d.aprof ? [[d.aprof.linhas, d.aprof.colunas]] : []);
+  for(const [ls, cs] of blocos){
+    for(const l of ls){
+      for(const c of cs){
+        const v = l[c], dt = dataDe(v);
+        if(dt){ datas.push(dt); continue; }
+        const n = Chart.num(v);
+        if(n != null) add(n); else numerosDoTexto(v).forEach(add);
+      }
     }
   }
   const b = baseDe(d), j = d.julgamento;
@@ -174,7 +200,7 @@ const RE_HORA = /\b\d{1,2}:\d{2}\b/;
 // Confere a resposta do modelo. { ok:true, linhas } ou { ok:false, motivo, detalhe }:
 //   formato: não é o JSON pedido (ou frases vazias, longas ou demais);
 //   numero: algum número ou data do resumo não existe nos dados.
-function conferir(texto, consulta, resultado, julgamento){
+function conferir(texto, consulta, resultado, julgamento, aprofundamento){
   let s = String(texto == null ? '' : texto);
   const k = s.lastIndexOf('</think>'); if(k >= 0) s = s.slice(k + 8);
   let o = null;
@@ -187,7 +213,7 @@ function conferir(texto, consulta, resultado, julgamento){
   if(!linhas.length || linhas.length > MAX_FRASES || linhas.length !== o.linhas.length) return { ok:false, motivo:'formato', detalhe:'de 1 a ' + MAX_FRASES + ' frases' };
   if(linhas.some(l => l.length > MAX_FRASE)) return { ok:false, motivo:'formato', detalhe:'frase com mais de ' + MAX_FRASE + ' caracteres' };
 
-  const p = permitidos(consulta, resultado, julgamento);
+  const p = permitidos(consulta, resultado, julgamento, aprofundamento);
   for(const l of linhas){
     const r = conferirFrase(l, p);
     if(!r.ok) return { ok:false, motivo:'numero', detalhe:r.detalhe };
@@ -254,6 +280,6 @@ function novaTentativa(mensagens, resposta, conf){
 // Texto do aviso com o resumo: as frases, uma por linha.
 function textoAviso(linhas){ return (Array.isArray(linhas) ? linhas : []).join('\n'); }
 
-const api = { SCHEMA, MAX_TENTATIVAS, MAX_FRASES, MAX_FRASE, MAX_LINHAS, MAX_TOKENS, dados, baseDe, mensagens, pedido, permitidos, conferir, novaTentativa, textoAviso, textoFalha, celula };
+const api = { SCHEMA, MAX_TENTATIVAS, MAX_FRASES, MAX_FRASE, MAX_LINHAS, MAX_LINHAS_APROF, MAX_TOKENS, dados, baseDe, mensagens, pedido, permitidos, conferir, novaTentativa, textoAviso, textoFalha, celula };
 if(isNode) module.exports = api; else root.CD2Resumo = api;
 })(typeof window !== 'undefined' ? window : globalThis);
