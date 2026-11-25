@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=IA de Bolso
+Comment=CD2 IA de Bolso: a IA do pen drive
+Exec=ia-de-bolso
+Icon=ia-de-bolso
+Categories=Office;
+Terminal=false
+StartupWMClass=ia-de-bolso

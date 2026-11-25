@@ -678,6 +678,9 @@ func TestCaminhosPorPlataforma(t *testing.T) {
 		{"/Volumes/CD2", "darwin", "arm64", "/Users/g/Library/Caches/cd2-harness", caminhosExe{
 			MotorOrigem: "/Volumes/CD2/bin/llamafile", Motor: "/Users/g/Library/Caches/cd2-harness/llamafile",
 			CtlOrigem: "/Volumes/CD2/bin/ctl/darwin-arm64/cd2-ctl", Ctl: "/Users/g/Library/Caches/cd2-harness/cd2-ctl"}},
+		{"/media/g/CD2", "linux", "amd64", "/home/g/.cache/cd2-harness", caminhosExe{
+			MotorOrigem: "/media/g/CD2/bin/llamafile", Motor: "/home/g/.cache/cd2-harness/llamafile",
+			CtlOrigem: "/media/g/CD2/bin/ctl/linux-amd64/cd2-ctl", Ctl: "/home/g/.cache/cd2-harness/cd2-ctl"}},
 	}
 	for _, c := range casos {
 		if got := caminhos(c.raiz, c.goos, c.goarch, c.cache); got != c.esperado {

@@ -126,3 +126,16 @@ func TestComAgenda(t *testing.T) {
 		t.Fatalf("ComAgenda sem ? = %q", got)
 	}
 }
+
+func TestLinuxJanelaDeAplicativo(t *testing.T) {
+	n, a := Comando("linux", "U", so("/snap/bin/chromium", "/usr/bin/brave-browser"), nil, "")
+	if n != "/snap/bin/chromium" || !reflect.DeepEqual(a, []string{"--app=U", "--start-maximized"}) {
+		t.Fatalf("linux: %q %q", n, a)
+	}
+	if n, _ := Comando("linux", "U", so("/usr/bin/chromium", "/usr/bin/google-chrome"), nil, ""); n != "/usr/bin/google-chrome" {
+		t.Fatalf("esperava o Chrome, veio %q", n)
+	}
+	if n, a := Comando("linux", "U", so(), nil, ""); n != "xdg-open" || !reflect.DeepEqual(a, []string{"U"}) {
+		t.Fatalf("sem navegador: %q %q", n, a)
+	}
+}

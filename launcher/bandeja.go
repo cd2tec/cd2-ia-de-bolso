@@ -127,7 +127,7 @@ func (a *App) itensDoMenu(e sessao.Estado) []item {
 	case o == origem.Instalada:
 		return itensBandejaInstalada(e, ligado)
 	}
-	return itensBandeja(e, o == origem.Pendrive)
+	return itensBandeja(e, o == origem.Pendrive && instalavel)
 }
 
 // iconeDoEstado escolhe o desenho: o cérebro só fica cheio e acordado em

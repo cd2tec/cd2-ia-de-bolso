@@ -83,6 +83,7 @@ func criarZip(t *testing.T, comLancador bool) []byte {
 		add("IA de Bolso.app/Contents/MacOS/IA de Bolso", "macho", 0o644)
 		add("IA de Bolso.app/Contents/Info.plist", "plist", 0o644)
 		add("IA de Bolso.app/Contents/._lixo", "no", 0o644)
+		add("IA de Bolso.AppImage", "appimage", 0o755)
 	}
 	if err := zw.Close(); err != nil {
 		t.Fatal(err)
@@ -480,6 +481,19 @@ func TestArrumarLancadoresComLancador(t *testing.T) {
 	}
 }
 
+func TestArrumarLancadoresSoLinuxScriptVaiParaCore(t *testing.T) {
+	stage := stageCom(t, "IA de Bolso.AppImage", "ia-de-bolso.sh", "INICIAR-CD2-Windows.bat")
+	if err := arrumarLancadores(stage); err != nil {
+		t.Fatal(err)
+	}
+	if existe(filepath.Join(stage, "ia-de-bolso.sh")) || !existe(filepath.Join(stage, "core", "ia-de-bolso.sh")) {
+		t.Error("ia-de-bolso.sh deveria estar só em core/")
+	}
+	if !existe(filepath.Join(stage, "INICIAR-CD2-Windows.bat")) {
+		t.Error(".bat deveria ficar na raiz (sem o .exe)")
+	}
+}
+
 func TestArrumarLancadoresSoWindowsBatVaiParaCore(t *testing.T) {
 	stage := stageCom(t, "IA de Bolso.exe", "INICIAR-CD2-Windows.bat")
 	if err := arrumarLancadores(stage); err != nil {
@@ -540,13 +554,14 @@ func TestExtrairLevaOLancador(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []string{"IA de Bolso.exe", "IA de Bolso.app/Contents/MacOS/IA de Bolso", "IA de Bolso.app/Contents/Info.plist", "core/INICIAR-CD2-Windows.bat", "core/INICIAR-CD2-Mac.command"} {
+	for _, f := range []string{"IA de Bolso.exe", "IA de Bolso.app/Contents/MacOS/IA de Bolso", "IA de Bolso.app/Contents/Info.plist", "core/INICIAR-CD2-Windows.bat", "core/INICIAR-CD2-Mac.command",
+		"IA de Bolso.AppImage", "core/ia-de-bolso.sh"} {
 		if !existe(filepath.Join(stage, filepath.FromSlash(f))) {
 			t.Errorf("faltou %s", f)
 		}
 	}
-	if existe(filepath.Join(stage, "INICIAR-CD2-Windows.bat")) || existe(filepath.Join(stage, "INICIAR-CD2-Mac.command")) {
-		t.Error("o .bat e o .command ficam só em core/")
+	if existe(filepath.Join(stage, "INICIAR-CD2-Windows.bat")) || existe(filepath.Join(stage, "INICIAR-CD2-Mac.command")) || existe(filepath.Join(stage, "ia-de-bolso.sh")) {
+		t.Error("o .bat, o .command e o ia-de-bolso.sh ficam só em core/")
 	}
 	if existe(filepath.Join(stage, "IA de Bolso.app", "Contents", "._lixo")) {
 		t.Error("lixo ._ entrou no stage")
@@ -580,7 +595,7 @@ func TestChecksumsComLancador(t *testing.T) {
 	for _, c := range caminhos {
 		tem[c] = true
 	}
-	for _, c := range []string{"IA de Bolso.exe", "IA de Bolso.app/Contents/MacOS/IA de Bolso"} {
+	for _, c := range []string{"IA de Bolso.exe", "IA de Bolso.app/Contents/MacOS/IA de Bolso", "IA de Bolso.AppImage"} {
 		if !tem[c] {
 			t.Errorf("CHECKSUMS sem %q: %v", c, caminhos)
 		}

@@ -282,3 +282,14 @@ func TestInfoTrazOWorkerDoBuild(t *testing.T) {
 		t.Fatalf("Info = %+v, queria Worker %q e Sandbox %v", i, ambiente.Worker, ambiente.Sandbox)
 	}
 }
+
+func TestInfoDizSeInstala(t *testing.T) {
+	antes := instalavel
+	t.Cleanup(func() { instalavel = antes })
+	for _, pode := range []bool{true, false} {
+		instalavel = func(string) bool { return pode }
+		if i := novo(t, nil).Info(); i.Instalavel != pode {
+			t.Errorf("instalavel=%v: Info = %+v", pode, i)
+		}
+	}
+}

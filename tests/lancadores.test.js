@@ -104,3 +104,25 @@ test('INICIAR-CD2-Windows.bat acha o start-windows.ps1 em core\\ ou ao lado', ()
   assert.match(bat, /%~dp0core\\start-windows\.ps1/);
   assert.match(bat, /if not exist "%CD2_PS1%" set "CD2_PS1=%~dp0start-windows\.ps1"/);
 });
+
+test('lancadores.sh com a AppImage: o ia-de-bolso.sh vai para core/', () => {
+  const s = tmp();
+  for (const f of ['IA de Bolso.AppImage', 'ia-de-bolso.sh', 'INICIAR-CD2-Windows.bat']) touch(s, f);
+  arrumar(s); arrumar(s);
+  assert.ok(!existe(s, 'ia-de-bolso.sh'));
+  assert.ok(existe(s, 'core/ia-de-bolso.sh'));
+  assert.ok(existe(s, 'IA de Bolso.AppImage'));
+  assert.ok(existe(s, 'INICIAR-CD2-Windows.bat'), 'sem o .exe, o .bat fica na raiz');
+});
+
+test('ia-de-bolso.sh roda de core/ e da raiz', () => {
+  const orig = fs.readFileSync(path.join(ROOT, 'ia-de-bolso.sh'), 'utf8');
+  const monta = () => { const s = tmp(); touch(s, 'core/start-unix.sh', 'echo "start:$0"\n'); return s; };
+  const roda = (stage, onde) => execFileSync('sh', [path.join(stage, onde, 'ia-de-bolso.sh')], { encoding: 'utf8', env: { PATH: process.env.PATH } });
+  const raiz = monta();
+  touch(raiz, 'ia-de-bolso.sh', orig);
+  assert.equal(roda(raiz, '.').trim(), 'start:core/start-unix.sh');
+  const emCore = monta();
+  touch(emCore, 'core/ia-de-bolso.sh', orig);
+  assert.equal(roda(emCore, 'core').trim(), 'start:core/start-unix.sh');
+});

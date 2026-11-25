@@ -1,6 +1,6 @@
 # ZIP da IA de Bolso para download fácil: a cada push no main, compila o lançador (IA de Bolso.exe
-# no Windows e IA de Bolso.app no Mac), monta cd2tech-iadebolso.zip (pasta cd2tech-iadebolso, fins
-# de linha do .gitattributes, sem testes nem specs, com os dois lançadores dentro) e troca o arquivo da
+# no Windows, IA de Bolso.app no Mac e IA de Bolso.AppImage no Linux), monta cd2tech-iadebolso.zip
+# (pasta cd2tech-iadebolso, fins de linha do .gitattributes, sem testes nem specs, com os três lançadores dentro) e troca o arquivo da
 # release fixa "iadebolso" e publica o manifesto.json (versões, URLs e SHA-256) que o instalador
 # desktop lê. O link de download nunca muda. A release não vira "latest", para não
 # disputar com as releases do cd2-ctl.
@@ -92,8 +92,31 @@ jobs:
           path: launcher/build/bin/IA de Bolso.exe
           if-no-files-found: error
 
+  # Lançador do Linux: a mesma base do Windows e do Mac, numa AppImage (IA de Bolso.AppImage). Compila no
+  # Ubuntu 22.04 para rodar dali em diante (glibc). Usa go build direto, como o launcher/build-linux.sh.
+  lancador-linux:
+    needs: guarda-chave
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+          cache: false
+      - name: Dependências do Wails no Linux (GTK e WebKitGTK 4.1)
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+      - name: Ferramentas da AppImage (versões e SHA-256 fixos)
+        run: sh .github/scripts/ferramentas-appimage.sh
+      - name: Compilar e montar a AppImage
+        run: sh launcher/build-linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lancador-linux
+          path: launcher/build/bin/IA de Bolso.AppImage
+          if-no-files-found: error
+
   zip:
-    needs: [guarda-chave, lancador-mac, lancador-windows]
+    needs: [guarda-chave, lancador-mac, lancador-windows, lancador-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -111,12 +134,19 @@ jobs:
         with:
           name: lancador-windows
           path: lancador-windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: lancador-linux
+          path: lancador-linux
       - name: Pôr os lançadores no ZIP
         run: |
           unzip -q lancador-mac/lancador-mac.zip -d cd2tech-iadebolso/
           cp "lancador-windows/IA de Bolso.exe" cd2tech-iadebolso/
-          zip -qry cd2tech-iadebolso.zip "cd2tech-iadebolso/IA de Bolso.app" "cd2tech-iadebolso/IA de Bolso.exe"
+          # O artefato perde a permissão de execução; o zip guarda a 0755 da AppImage.
+          cp "lancador-linux/IA de Bolso.AppImage" cd2tech-iadebolso/ && chmod 755 "cd2tech-iadebolso/IA de Bolso.AppImage"
+          zip -qry cd2tech-iadebolso.zip "cd2tech-iadebolso/IA de Bolso.app" "cd2tech-iadebolso/IA de Bolso.exe" "cd2tech-iadebolso/IA de Bolso.AppImage"
           LISTA="$(unzip -l cd2tech-iadebolso.zip)"
+          printf '%s\n' "$LISTA" | grep -F "cd2tech-iadebolso/IA de Bolso.AppImage" >/dev/null || { echo "Faltou a IA de Bolso.AppImage no ZIP."; exit 1; }
           printf '%s\n' "$LISTA" | grep -F "cd2tech-iadebolso/IA de Bolso.exe" >/dev/null || { echo "Faltou o IA de Bolso.exe no ZIP."; exit 1; }
           printf '%s\n' "$LISTA" | grep -F "cd2tech-iadebolso/IA de Bolso.app/Contents/MacOS/IA de Bolso" >/dev/null || { echo "Faltou o executável do IA de Bolso.app no ZIP."; exit 1; }
           printf '%s\n' "$LISTA" | tail -1
@@ -172,7 +202,7 @@ jobs:
           VERSAO="$(tr -d ' \r\n' < VERSION)"
           if ! gh release view iadebolso -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create iadebolso --latest=false --title "IA de Bolso" \
-              --notes "Baixe o instalador (CD2-IA-de-Bolso-Windows.exe ou CD2-IA-de-Bolso-Mac.dmg), abra, espete um pen drive de 16 GB e siga as quatro telas. Prefere o jeito técnico? Baixe cd2tech-iadebolso.zip, extraia e dê dois cliques em GRAVAR-PENDRIVE-Windows.bat. Para usar o pen drive pronto, dê dois cliques em IA de Bolso no pen drive. Passo a passo: https://cd2tec.github.io/cd2-ia-de-bolso/#pendrive" \
+              --notes "Baixe o instalador (CD2-IA-de-Bolso-Windows.exe, CD2-IA-de-Bolso-Mac.dmg ou CD2-IA-de-Bolso-Linux.AppImage), abra, espete um pen drive de 16 GB e siga as quatro telas. Prefere o jeito técnico? Baixe cd2tech-iadebolso.zip, extraia e dê dois cliques em GRAVAR-PENDRIVE-Windows.bat. Para usar o pen drive pronto, dê dois cliques em IA de Bolso no pen drive. Passo a passo: https://cd2tec.github.io/cd2-ia-de-bolso/#pendrive" \
               -R "$GITHUB_REPOSITORY"
           fi
           gh release upload iadebolso cd2tech-iadebolso.zip --clobber -R "$GITHUB_REPOSITORY"
@@ -264,3 +294,31 @@ jobs:
         with:
           name: instalador-windows
           path: installer/build/bin/CD2-IA-de-Bolso-Windows.exe
+
+  # Instalador do Linux (só grava o pen drive: no Linux não há a instalação no computador).
+  instalador-linux:
+    needs: zip
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+          cache: false
+      - name: Dependências do Wails no Linux (GTK e WebKitGTK 4.1)
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+      - name: Ferramentas da AppImage (versões e SHA-256 fixos)
+        run: sh .github/scripts/ferramentas-appimage.sh
+      - name: Compilar e montar a AppImage
+        run: sh installer/build-linux.sh
+      - name: Publicar na release iadebolso
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload iadebolso installer/build/bin/CD2-IA-de-Bolso-Linux.AppImage --clobber -R "$GITHUB_REPOSITORY"
+      - name: Guardar a AppImage como artefato (fora do main)
+        if: github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: instalador-linux
+          path: installer/build/bin/CD2-IA-de-Bolso-Linux.AppImage

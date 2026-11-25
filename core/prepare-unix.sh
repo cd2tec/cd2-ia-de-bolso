@@ -173,9 +173,11 @@ echo "== Checksums (anote para conferir depois)"
 LAUNCHERS=""
 [ -f "$ROOT/IA de Bolso.app/Contents/MacOS/IA de Bolso" ] && LAUNCHERS="app"
 [ -f "$ROOT/IA de Bolso.exe" ] && LAUNCHERS="$LAUNCHERS exe"
+[ -f "$ROOT/IA de Bolso.AppImage" ] && LAUNCHERS="$LAUNCHERS linux"
 set --
 case "$LAUNCHERS" in *app*) set -- "$@" "IA de Bolso.app/Contents/MacOS/IA de Bolso" ;; esac
 case "$LAUNCHERS" in *exe*) set -- "$@" "IA de Bolso.exe" ;; esac
+case "$LAUNCHERS" in *linux*) set -- "$@" "IA de Bolso.AppImage" ;; esac
 ( cd "$ROOT" && $SUM "$@" bin/llamafile "models/$MODEL_FILE" $(ls bin/toolbox/*/toolbox bin/toolbox/*/toolbox.exe bin/ctl/*/cd2-ctl bin/ctl/*/cd2-ctl.exe 2>/dev/null) | tee CHECKSUMS.sha256 )
 echo ""
 echo "Pronto. Pen drive preparado em: $ROOT"

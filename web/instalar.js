@@ -28,8 +28,10 @@ function normalizar(chave){
   return 'CD2-' + corpo;
 }
 
+// instalavel === false: o sistema não tem a instalação no computador (Linux); sem o campo (cd2-ctl
+// antigo), vale como antes.
 function telaInicial(status){
-  if(!status || status.origem !== 'pendrive') return null;
+  if(!status || status.origem !== 'pendrive' || status.instalavel === false) return null;
   return status.temChave ? 'reinstalar' : 'compra';
 }
 

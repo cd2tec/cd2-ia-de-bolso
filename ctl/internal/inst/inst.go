@@ -51,6 +51,9 @@ type Info struct {
 	Codigo    string `json:"codigo"`
 	TemChave  bool   `json:"temChave"`
 	Instalada bool   `json:"instalada"`
+	// Instalavel diz se este sistema tem a instalação no computador (no Linux,
+	// não): sem ela a tela não convida a instalar.
+	Instalavel bool `json:"instalavel"`
 	// Worker é para onde o modal manda a compra; Sandbox marca o build de teste.
 	Worker  string `json:"worker"`
 	Sandbox bool   `json:"sandbox,omitempty"`
@@ -87,6 +90,7 @@ var (
 	lancadorExiste = func(p string) bool { _, err := os.Stat(p); return err == nil }
 	iniciar        = iniciarDestacado
 	detectar       = origem.Detectar
+	instalavel     = sistema.Instalavel
 	destinoFn      = func() string {
 		home, _ := os.UserHomeDir()
 		return sistema.Destino(runtime.GOOS, os.Getenv, home)
@@ -122,12 +126,13 @@ func (b *Backend) Info() Info {
 		cod, org = "", string(origem.Desconhecida)
 	}
 	return Info{
-		Origem:    org,
-		Codigo:    cod,
-		TemChave:  valida(b.cache),
-		Instalada: lancadorExiste(b.lancador()),
-		Worker:    ambiente.Worker,
-		Sandbox:   ambiente.Sandbox,
+		Origem:     org,
+		Codigo:     cod,
+		TemChave:   valida(b.cache),
+		Instalada:  lancadorExiste(b.lancador()),
+		Instalavel: instalavel(runtime.GOOS),
+		Worker:     ambiente.Worker,
+		Sandbox:    ambiente.Sandbox,
 	}
 }
 

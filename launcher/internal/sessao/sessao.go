@@ -443,8 +443,9 @@ type caminhosExe struct {
 }
 
 // caminhos escolhe os executáveis por plataforma, com o separador do goos
-// informado. No Mac o motor e o cd2-ctl rodam de uma cópia no cache (pen
-// drive exFAT não guarda permissão de execução); no Windows, do pen drive.
+// informado. No Mac e no Linux o motor e o cd2-ctl rodam de uma cópia no
+// cache (pen drive exFAT não guarda permissão de execução e pode montar sem
+// exec); no Windows, do pen drive.
 func caminhos(raiz, goos, goarch, pastaCache string) caminhosExe {
 	ctlOrigem := ctl.Caminho(raiz, goos, goarch)
 	if goos == "windows" {
@@ -506,7 +507,7 @@ func DepsReais(raiz string) Deps {
 			if !existe(exes.CtlOrigem) {
 				ctlExe = ""
 			}
-			if goos != "darwin" {
+			if goos == "windows" {
 				return exes.Motor, ctlExe, nil
 			}
 			if _, err := cache.Preparar(exes.MotorOrigem, exes.Motor); err != nil {

@@ -52,7 +52,7 @@ func LerChecksums(caminho string) ([]Linha, error) {
 func GerarChecksums(stage, modeloNome string) error {
 	var caminhos []string
 	// Os lançadores da raiz entram só se estiverem na cópia.
-	for _, l := range []string{nomeLancadorWin, exeLancadorMac} {
+	for _, l := range []string{nomeLancadorWin, exeLancadorMac, nomeLancadorLinux} {
 		if st, err := os.Stat(filepath.Join(stage, filepath.FromSlash(l))); err == nil && st.Mode().IsRegular() {
 			caminhos = append(caminhos, l)
 		}

@@ -195,3 +195,12 @@ func iniciarSolto(exe string, args ...string) error {
 
 // AbrirInstalar é o convite: abre a conversa já com o modal de instalação.
 func (a *App) AbrirInstalar() error { return a.s.AbrirInstalar() }
+
+// instalavel diz se este sistema tem a instalação no computador. Sem ela
+// (Linux), nem a janelinha nem o ícone convidam a instalar. Variável para os
+// testes trocarem.
+var instalavel = sistema.Instalavel(runtime.GOOS)
+
+// temIcone diz se o ícone da bandeja está à vista. No Windows e no Mac ele
+// sempre está; o Linux troca por uma conferência no DBus (bandeja_linux.go).
+var temIcone = func() bool { return true }

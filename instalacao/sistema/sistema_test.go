@@ -480,3 +480,11 @@ func TestRodarCortaComandoTravado(t *testing.T) {
 		t.Errorf("demorou %v para cortar", time.Since(inicio))
 	}
 }
+
+func TestInstalavel(t *testing.T) {
+	for goos, quer := range map[string]bool{"windows": true, "darwin": true, "linux": false, "freebsd": false} {
+		if got := Instalavel(goos); got != quer {
+			t.Errorf("Instalavel(%q) = %v, quer %v", goos, got, quer)
+		}
+	}
+}

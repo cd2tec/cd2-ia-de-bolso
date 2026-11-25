@@ -18,6 +18,7 @@ function backendWails(){
     cancelar: () => A.Cancelar(),
     ouvir: (nome, fn) => window.runtime.EventsOn(nome, fn),
     comInstalar: () => A.IniciouComInstalar(),
+    podeInstalar: () => A.PodeInstalarAqui(),
     escolherInstalar: () => A.EscolherInstalar(),
     info: () => A.InfoInstalar(),
     pagar: () => A.IrParaPagamento(),
@@ -86,6 +87,7 @@ function backendDemo(){
     },
     ouvir: (nome, fn) => { (ouvintes[nome] = ouvintes[nome] || []).push(fn); },
     comInstalar: () => Promise.resolve(modo === 'reaberta'),
+    podeInstalar: () => Promise.resolve(modo !== 'linux'),
     escolherInstalar: () => esperar(200, modo === 'bloqueio'
       ? 'Abra o instalador de novo sem ser como administrador (clique duplo normal) para instalar neste computador.' : ''),
     info: () => esperar(1200, {
@@ -134,7 +136,11 @@ const telas = {
       + '<small>A IA passa a morar aqui e abre sem precisar de pen drive.</small></button>'
       + '</div>'
       + '<p class="nota" id="avisoPendrive" role="status" hidden>' + esc(F.TEXTOS.semAdmin) + '</p>',
-    atualizar: e => { $('avisoPendrive').hidden = !e.avisoPendrive; },
+    atualizar: e => {
+      $('avisoPendrive').hidden = !e.avisoPendrive;
+      // Sem a instalação no computador (Linux), só o cartão do pen drive.
+      document.querySelector('[data-acao="escolherInstalar"]').hidden = !!e.soPendrive;
+    },
   },
   preparando: {
     montar: () => '<h1 tabindex="-1">Conferindo este computador...</h1>'
@@ -592,7 +598,10 @@ async function iniciar(){
   // Reaberta com --instalar (Windows, sem administrador): vai direto para instalar e não formata.
   let reaberta = false;
   try { reaberta = !!(await backend.comInstalar()); } catch(_){ reaberta = false; }
-  estado = F.inicial({ semAdmin: reaberta });
+  // Sem a instalação no computador neste sistema (Linux), a escolha fica só com o pen drive.
+  let soPendrive = false;
+  try { soPendrive = !(await backend.podeInstalar()); } catch(_){ soPendrive = false; }
+  estado = F.inicial({ semAdmin: reaberta, soPendrive });
   desenhar();
   if(reaberta) escolherInstalar();
 }
