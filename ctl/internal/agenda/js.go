@@ -19,14 +19,14 @@ import (
 var intlJS string
 
 // modulos são os arquivos de web/, na ordem em que um só pode exigir os anteriores.
-var modulos = []string{"chart", "catalog", "notas", "toolbox", "consultas", "ask", "agenda", "condicao", "resumo", "aprofundar"}
+var modulos = []string{"chart", "catalog", "notas", "toolbox", "consultas", "ask", "agenda", "condicao", "acao", "resumo", "aprofundar"}
 
 // cola liga o Go aos mesmos prepararSalva e resultadoSalva que o rodarSalva (ask.js) usa antes e
 // depois do runSql, e aos horários da agenda. Tudo entra e sai como JSON; datas em ms Unix.
 // Sem tela, o motivo da recusa vai em erro: o texto do guardSql, ou o erro que o banco devolveu.
 const cola = `(function(g){
 "use strict";
-const Ask = g.__mod['./ask.js'], Tb = g.__mod['./toolbox.js'], Ag = g.__mod['./agenda.js'], Cond = g.__mod['./condicao.js'], Res = g.__mod['./resumo.js'], Ap = g.__mod['./aprofundar.js'];
+const Ask = g.__mod['./ask.js'], Tb = g.__mod['./toolbox.js'], Ag = g.__mod['./agenda.js'], Cond = g.__mod['./condicao.js'], Res = g.__mod['./resumo.js'], Ap = g.__mod['./aprofundar.js'], Acao = g.__mod['./acao.js'];
 g.__cd2 = {
   horarios(cj, de, ate){
     const c = JSON.parse(cj), a = c && c.agenda;
@@ -68,6 +68,7 @@ g.__cd2 = {
   aprofDeNovo(mj, texto, confj){
     return JSON.stringify({ mensagens:Ap.novaTentativa(JSON.parse(mj), texto, JSON.parse(confj)), max:Ap.MAX_TENTATIVAS });
   },
+  acaoAviso(t){ return JSON.stringify(Acao.textoAviso(t)); },
   resumoDeNovo(mj, texto, confj){
     return JSON.stringify({ mensagens:Res.novaTentativa(JSON.parse(mj), texto, JSON.parse(confj)), max:Res.MAX_TENTATIVAS });
   }
@@ -150,12 +151,15 @@ type Escolha struct {
 }
 
 // Conferencia é o que web/resumo.js (conferir) decidiu sobre a resposta do modelo: Linhas quando
-// Ok; senão Motivo ("formato" | "numero") e Detalhe.
+// Ok; senão Motivo ("formato" | "numero") e Detalhe. Acao (História 5): a ação sugerida, um tipo do
+// enum de web/acao.js, ou vazio; AcaoFora: o que veio fora do enum (a sugestão foi descartada).
 type Conferencia struct {
-	Ok      bool     `json:"ok"`
-	Linhas  []string `json:"linhas,omitempty"`
-	Motivo  string   `json:"motivo,omitempty"`
-	Detalhe string   `json:"detalhe,omitempty"`
+	Ok       bool     `json:"ok"`
+	Linhas   []string `json:"linhas,omitempty"`
+	Acao     string   `json:"acao,omitempty"`
+	AcaoFora string   `json:"acaoFora,omitempty"`
+	Motivo   string   `json:"motivo,omitempty"`
+	Detalhe  string   `json:"detalhe,omitempty"`
 }
 
 // MaxBase é quantas execuções anteriores o agendador lê para a base da condição (o MAX_N do JS).
@@ -410,6 +414,13 @@ func (m *Motor) AprofDeNovo(mensagens []map[string]string, texto string, e Escol
 		return nil, 0, err
 	}
 	return out.Mensagens, out.Max, nil
+}
+
+// AcaoAviso é a linha da notificação com a ação sugerida (textoAviso de web/acao.js); vazio sem ação.
+func (m *Motor) AcaoAviso(tipo string) (string, error) {
+	var t string
+	err := m.chamar(&t, "acaoAviso", tipo)
+	return t, err
 }
 
 // ResumoDeNovo monta as mensagens da tentativa seguinte (a resposta recusada e o motivo) e diz o limite

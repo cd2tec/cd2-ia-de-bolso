@@ -19,6 +19,8 @@ type agendaFalsa struct {
 	apagou  []string
 	viu     []string
 	perda   int64
+	auditou []string // evento:acao:detalhe
+	audErr  error
 }
 
 func (a *agendaFalsa) Ligado() bool { return a.ligado }
@@ -41,6 +43,13 @@ func (a *agendaFalsa) RodarAgora(ctx context.Context, b notas.Banco, id string, 
 }
 func (a *agendaFalsa) Avisos(desde int64) ([]agenda.Aviso, int64) {
 	return []agenda.Aviso{{Seq: 5, ConsultaId: "c1", Titulo: "t", Texto: "x"}}, 5
+}
+func (a *agendaFalsa) Auditar(chave, id string, seq int64, em time.Time, evento, acao, detalhe string) ([]agenda.EventoAcao, error) {
+	if a.audErr != nil {
+		return nil, a.audErr
+	}
+	a.auditou = append(a.auditou, evento+":"+acao+":"+detalhe)
+	return []agenda.EventoAcao{{Evento: "proposta", Acao: acao}, {Evento: evento, Acao: acao, Por: "maria", Detalhe: detalhe}}, nil
 }
 func (a *agendaFalsa) Novidades(b notas.Banco) []agenda.Novidade {
 	return []agenda.Novidade{{ConsultaId: "c1", Nome: "Vendas", N: 2}}
@@ -180,5 +189,49 @@ func TestConsultaIdInvalido400(t *testing.T) {
 	// ErrId do histórico também vira 400
 	if w := do(h, "GET", "/agenda/historico?chave="+chaveOk+"&consulta=ruim", "", nil); w.Code != 400 {
 		t.Errorf("ErrId: %d", w.Code)
+	}
+}
+
+// História 5: POST /agenda/acao grava a decisão e o resultado; os erros da auditoria viram 404/409/400.
+func TestAcaoGravaNaAuditoria(t *testing.T) {
+	ag := &agendaFalsa{}
+	h := newAgenda(t, comBanco, ag)
+	corpo := func(evento, detalhe string) string {
+		return `{"chave":"` + chaveOk + `","consulta":"c1","seq":4,"em":"2026-11-24T10:30:00Z","evento":"` + evento + `","acao":"gerar_csv","detalhe":"` + detalhe + `"}`
+	}
+	w := do(h, "POST", "/agenda/acao", corpo("aprovada", ""), nil)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"evento":"aprovada"`) || !strings.Contains(w.Body.String(), `"por":"maria"`) {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+	if w := do(h, "POST", "/agenda/acao", corpo("falhou", "o resultado não tem linhas"), nil); w.Code != 200 {
+		t.Fatalf("falhou: %d %s", w.Code, w.Body)
+	}
+	if strings.Join(ag.auditou, "|") != "aprovada:gerar_csv:|falhou:gerar_csv:o resultado não tem linhas" {
+		t.Errorf("%v", ag.auditou)
+	}
+	if w := do(h, "GET", "/agenda/acao", "", nil); w.Code != 405 {
+		t.Errorf("GET: %d", w.Code)
+	}
+	if w := do(h, "POST", "/agenda/acao", `{"chave":"`+chaveOk+`","consulta":"c1","seq":0,"evento":"aprovada","acao":"gerar_csv"}`, nil); w.Code != 400 {
+		t.Errorf("sem execução: %d", w.Code)
+	}
+	if w := do(h, "POST", "/agenda/acao", `{"chave":"outra","consulta":"c1","seq":4,"em":"2026-11-24T10:30:00Z","evento":"aprovada","acao":"gerar_csv"}`, nil); w.Code != 409 {
+		t.Errorf("banco trocado: %d", w.Code)
+	}
+	casos := []struct {
+		err  error
+		code int
+		msg  string
+	}{
+		{agenda.ErrSemProposta, 404, "Essa execução não tem essa ação sugerida."},
+		{agenda.ErrDecidida, 409, "Essa ação já foi aprovada ou recusada."},
+		{agenda.ErrSemAprovacao, 409, "Essa ação não foi aprovada."},
+		{agenda.ErrEvento, 400, "evento: inválido"},
+	}
+	for _, c := range casos {
+		ag.audErr = c.err
+		if w := do(h, "POST", "/agenda/acao", corpo("aprovada", ""), nil); w.Code != c.code || erro(w) != c.msg {
+			t.Errorf("%v: %d %s", c.err, w.Code, w.Body)
+		}
 	}
 }
