@@ -443,6 +443,13 @@ func (a *Agendador) rodar(ctx context.Context, it item) (Execucao, error) {
 		texto := textoDoAviso(res, jul)
 		if resumo != nil && len(resumo.Linhas) > 0 {
 			texto = strings.Join(resumo.Linhas, "\n")
+			// História 5: a ação sugerida vai na frente (o balão do Windows corta o fim). A notificação
+			// não tem botões: aprovar ou recusar é no card do histórico, que o clique na notificação abre.
+			if resumo.Acao != "" {
+				if l, err := a.o.Motor.AcaoAviso(resumo.Acao); err == nil && l != "" {
+					texto = l + "\n" + texto
+				}
+			}
 		}
 		a.avisar(c.id, "IA de Bolso · "+c.nome, "Rodou às "+it.ref.In(time.Local).Format("15:04")+" · "+texto)
 	}

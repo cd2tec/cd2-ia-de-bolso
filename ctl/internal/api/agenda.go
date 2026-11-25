@@ -23,6 +23,9 @@ type Agenda interface {
 	RodarAgora(ctx context.Context, b notas.Banco, id string, perdaSeq int64) (agenda.Execucao, error)
 	Avisos(desde int64) ([]agenda.Aviso, int64)
 	Novidades(b notas.Banco) []agenda.Novidade
+	// Auditar registra a decisão (aprovada | recusada) ou o resultado (executada | falhou) da ação
+	// sugerida pela execução seq que rodou em em (História 5).
+	Auditar(chave, id string, seq int64, em time.Time, evento, acao, detalhe string) ([]agenda.EventoAcao, error)
 }
 
 // TempoRodar é quanto POST /agenda/rodar espera a consulta antes do 504.
@@ -62,6 +65,12 @@ func (s *server) agendaRota(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.agendaNovidades(w, r)
+	case "/agenda/acao":
+		if r.Method != http.MethodPost {
+			notAllowed(w, "POST")
+			return
+		}
+		s.agendaAcao(w, r)
 	default:
 		fail(w, http.StatusNotFound, "rota não encontrada")
 	}
@@ -99,6 +108,14 @@ func agendaErro(w http.ResponseWriter, err error, msgGenerica string) {
 		fail(w, http.StatusConflict, msgBancoMudou)
 	case errors.Is(err, agenda.ErrParado):
 		fail(w, http.StatusServiceUnavailable, "O agendamento está parando.")
+	case errors.Is(err, agenda.ErrSemProposta):
+		fail(w, http.StatusNotFound, "Essa execução não tem essa ação sugerida.")
+	case errors.Is(err, agenda.ErrDecidida):
+		fail(w, http.StatusConflict, "Essa ação já foi aprovada ou recusada.")
+	case errors.Is(err, agenda.ErrSemAprovacao):
+		fail(w, http.StatusConflict, "Essa ação não foi aprovada.")
+	case errors.Is(err, agenda.ErrEvento):
+		fail(w, http.StatusBadRequest, "evento: inválido")
 	case errors.Is(err, context.DeadlineExceeded):
 		fail(w, http.StatusGatewayTimeout, "A consulta demorou demais.")
 	default:
@@ -246,4 +263,38 @@ func (s *server) agendaNovidades(w http.ResponseWriter, r *http.Request) {
 		Total     int               `json:"total"`
 		Agenda    bool              `json:"agenda"`
 	}{avisos, ultimo, nov, total, s.agenda.Ligado()})
+}
+
+// agendaAcao grava na auditoria a decisão da pessoa sobre a ação sugerida (aprovada | recusada) ou o
+// resultado da ação aprovada (executada | falhou, com o erro em detalhe). A página só executa a ação
+// depois que a aprovação foi gravada aqui (História 5: nenhuma ação sem confirmação registrada).
+func (s *server) agendaAcao(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Chave    string    `json:"chave"`
+		Consulta string    `json:"consulta"`
+		Seq      int64     `json:"seq"`
+		Em       time.Time `json:"em"`
+		Evento   string    `json:"evento"`
+		Acao     string    `json:"acao"`
+		Detalhe  string    `json:"detalhe"`
+	}
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	b, ok := s.agendaAlvo(w, in.Chave, in.Consulta)
+	if !ok {
+		return
+	}
+	if in.Seq <= 0 || in.Em.IsZero() {
+		fail(w, http.StatusBadRequest, "execução: inválida")
+		return
+	}
+	evs, err := s.agenda.Auditar(notas.Chave(b), in.Consulta, in.Seq, in.Em, in.Evento, in.Acao, in.Detalhe)
+	if err != nil {
+		agendaErro(w, err, "Não consegui gravar na auditoria.")
+		return
+	}
+	writeJSON(w, http.StatusOK, struct {
+		Auditoria []agenda.EventoAcao `json:"auditoria"`
+	}{evs})
 }

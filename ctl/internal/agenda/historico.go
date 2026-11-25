@@ -23,7 +23,7 @@ var ErrId = errors.New("agenda: id inválido")
 
 const (
 	maxPagina     = 50 // maior n aceito em Pagina
-	versaoEsquema = 1  // PRAGMA user_version do historico.sqlite
+	versaoEsquema = 2  // PRAGMA user_version do historico.sqlite (2: tabela auditoria, História 5)
 	arqHistorico  = "historico.sqlite"
 )
 
@@ -49,12 +49,15 @@ type Execucao struct {
 	// Aprofundamento: só quando a condição disparou e há consultas vinculadas (Fase 3). Qual foi
 	// escolhida e o resultado dela, ou Falha.
 	Aprofundamento *Aprofundamento `json:"aprofundamento,omitempty"`
-	Motivo         string          `json:"motivo,omitempty"` // perdas: fechada | dormindo | outro_banco | anterior
-	De             *time.Time      `json:"de,omitempty"`     // perdas: primeiro horário perdido
-	Ate            *time.Time      `json:"ate,omitempty"`    // perdas: último horário perdido (= Ref)
-	N              int             `json:"n,omitempty"`      // perdas: quantos horários
-	Rodada         *time.Time      `json:"rodada,omitempty"` // perdas: preenchido na leitura a partir do estado
-	Novo           bool            `json:"novo"`             // preenchido na leitura: agendada/perda com Seq > visto
+	// Auditoria: os eventos da ação sugerida pelo resumo (História 5), preenchidos na leitura quando
+	// Resumo.Acao não é vazio. Não vão para o JSON da execução no banco (ficam na tabela auditoria).
+	Auditoria []EventoAcao `json:"auditoria,omitempty"`
+	Motivo    string       `json:"motivo,omitempty"` // perdas: fechada | dormindo | outro_banco | anterior
+	De        *time.Time   `json:"de,omitempty"`     // perdas: primeiro horário perdido
+	Ate       *time.Time   `json:"ate,omitempty"`    // perdas: último horário perdido (= Ref)
+	N         int          `json:"n,omitempty"`      // perdas: quantos horários
+	Rodada    *time.Time   `json:"rodada,omitempty"` // perdas: preenchido na leitura a partir do estado
+	Novo      bool         `json:"novo"`             // preenchido na leitura: agendada/perda com Seq > visto
 }
 
 // esquema v1. execucoes.json é a Execucao sem Rodada e Novo (e sem Linhas quando igual a Todas);
@@ -172,7 +175,8 @@ func preparar(db *sql.DB) error {
 	if v >= versaoEsquema {
 		return nil
 	}
-	if _, err := tx.Exec(esquema); err != nil {
+	// Tudo com IF NOT EXISTS: o banco da versão 1 só ganha a auditoria.
+	if _, err := tx.Exec(esquema + esquemaAuditoria); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, versaoEsquema)); err != nil {
@@ -284,7 +288,7 @@ func (h *Historico) Anexar(chave, id string, e Execucao) (Execucao, error) {
 		return e, err
 	}
 	defer h.mu.Unlock()
-	e.Rodada, e.Novo = nil, false
+	e.Rodada, e.Novo, e.Auditoria = nil, false, nil
 	tx, err := db.Begin()
 	if err != nil {
 		return e, err
@@ -308,7 +312,16 @@ func (h *Historico) Anexar(chave, id string, e Execucao) (Execucao, error) {
 		chave, id, e.Seq, e.Tipo, string(linha)); err != nil {
 		return e, err
 	}
-	return e, tx.Commit()
+	if err := proposta(tx, chave, id, e); err != nil {
+		return e, err
+	}
+	if err := tx.Commit(); err != nil {
+		return e, err
+	}
+	if e.Resumo != nil && e.Resumo.Acao != "" {
+		e.Auditoria = []EventoAcao{{Evento: "proposta", Acao: e.Resumo.Acao, Em: e.Em, Por: porIA}}
+	}
+	return e, nil
 }
 
 // Pagina devolve até n execuções (no máximo 50), da mais nova para a mais velha, começando
@@ -361,6 +374,14 @@ func (h *Historico) Pagina(chave, id string, antes int64, n int) (itens []Execuc
 	}
 	if err := rows.Err(); err != nil {
 		return nil, false, err
+	}
+	rows.Close() // uma conexão só: a auditoria lê depois
+	for i := range itens {
+		if r := itens[i].Resumo; r != nil && r.Acao != "" {
+			if itens[i].Auditoria, err = eventos(db, chave, id, itens[i].Seq, emAud(itens[i].Em)); err != nil {
+				return nil, false, err
+			}
+		}
 	}
 	return itens, mais, nil
 }
