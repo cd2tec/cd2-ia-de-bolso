@@ -749,3 +749,11 @@ func TestProprioPenDrive(t *testing.T) {
 		t.Fatalf("apagou: %v", a.sis.copia())
 	}
 }
+
+// O padrão é o manifesto da release do site: só o build da homologação troca
+// (zip-iadebolso.yml, -ldflags -X ...gravar.URLManifesto=...iadebolso-homolog...).
+func TestURLManifestoPadraoEhOSite(t *testing.T) {
+	if URLManifesto != "https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/manifesto.json" {
+		t.Fatalf("URLManifesto = %q", URLManifesto)
+	}
+}

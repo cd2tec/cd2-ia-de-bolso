@@ -19,8 +19,10 @@ import (
 	"github.com/cd2tec/cd2-ia-de-bolso/installer/internal/preparo"
 )
 
-// URLManifesto é onde o manifesto.json é publicado.
-const URLManifesto = "https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/manifesto.json"
+// URLManifesto é onde o manifesto.json é publicado. É variável para o build da
+// homologação trocar pelo da release iadebolso-homolog (-ldflags -X); o padrão é
+// o da release iadebolso, a do site.
+var URLManifesto = "https://github.com/cd2tec/cd2-ia-de-bolso/releases/download/iadebolso/manifesto.json"
 
 // rotuloDisco é o rótulo do volume gravado, o mesmo dos scripts.
 const rotuloDisco = "CD2"

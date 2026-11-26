@@ -28,6 +28,15 @@ Escolhido o pen drive, siga as quatro telas:
 
 O instalador esconde discos acima de 256 GB, discos de boot e discos do Time Machine, para ninguém apagar o que não devia. Se o seu pen drive cair nesses casos, o caminho é o script, descrito abaixo.
 
+### Versão de homologação
+
+Cada push na branch `homolog` publica a pré-release **`iadebolso-homolog`** (Releases do repositório, marcada
+como pré-release). Ela traz o ZIP, o `manifesto.json` e os instaladores (`CD2-IA-de-Bolso-Windows.exe`,
+`CD2-IA-de-Bolso-Mac.dmg`) compilados para ler o manifesto dela: o instalador baixado dali grava o pen drive
+com o código da `homolog`. O da release `iadebolso` (o do site) continua gravando o da `main`. Os dois
+guardam os downloads na mesma pasta de cache e se distinguem pelo SHA-256: trocar de um para o outro baixa
+o ZIP de novo.
+
 ## O jeito de um clique
 
 | Sistema | O que fazer |

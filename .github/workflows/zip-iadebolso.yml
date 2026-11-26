@@ -3,17 +3,27 @@
 # (pasta cd2tech-iadebolso, fins de linha do .gitattributes, sem testes nem specs, com os três lançadores dentro) e troca o arquivo da
 # release fixa "iadebolso" e publica o manifesto.json (versões, URLs e SHA-256) que o instalador
 # desktop lê. O link de download nunca muda. A release não vira "latest", para não
-# disputar com as releases do cd2-ctl.
+# disputar com as releases do cd2-ctl. A cada push na homolog, o mesmo vai para a pré-release
+# "iadebolso-homolog", com instaladores que leem o manifesto dela (ver env abaixo).
 name: zip iadebolso
 on:
   push:
-    branches: [main]
+    branches: [main, homolog]
   workflow_dispatch:
 permissions:
   contents: write
+# Uma fila por branch: um push na homolog não cancela uma publicação da main.
 concurrency:
-  group: zip-iadebolso
+  group: zip-iadebolso-${{ github.ref_name }}
   cancel-in-progress: true
+# Dois canais. A main publica na release "iadebolso" (a do site); a homolog, na pré-release
+# "iadebolso-homolog", com manifesto próprio. Os instaladores de cada canal leem o manifesto
+# do seu canal (URL_MANIFESTO), então o instalador da homolog grava o código da homolog.
+# Outras branches (workflow_dispatch) não publicam: os arquivos sobem como artefato.
+env:
+  RELEASE: ${{ github.ref == 'refs/heads/homolog' && 'iadebolso-homolog' || 'iadebolso' }}
+  PUBLICA: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/homolog' }}
+  URL_MANIFESTO: https://github.com/${{ github.repository }}/releases/download/${{ github.ref == 'refs/heads/homolog' && 'iadebolso-homolog' || 'iadebolso' }}/manifesto.json
 jobs:
   # Guarda de release: o ZIP do pen drive nunca sai com a chave pública PROVISÓRIA do vetor de teste
   # (a privada dela está no repositório). Falha até a chave de produção entrar em instalacao/chave/publica.go.
@@ -188,18 +198,30 @@ jobs:
             -prepare-windows ../core/prepare-windows.ps1 \
             -version-file ../VERSION \
             -zip ../cd2tech-iadebolso.zip \
-            -zip-url "https://github.com/${{ github.repository }}/releases/download/iadebolso/cd2tech-iadebolso.zip" \
+            -zip-url "https://github.com/${{ github.repository }}/releases/download/$RELEASE/cd2tech-iadebolso.zip" \
             -llamafile-sha256 "$LLAMAFILE_SHA256" \
             -llamafile-bytes "$LLAMAFILE_BYTES" \
             -modelo-bytes "$MODELO_BYTES") > manifesto.json
           cat manifesto.json
-      # Só o main publica na release pública. Em outro branch (workflow_dispatch) os arquivos sobem como artefato.
-      - name: Publicar na release iadebolso
-        if: github.ref == 'refs/heads/main'
+      # A main publica na release iadebolso; a homolog, na pré-release iadebolso-homolog. Em outra branch
+      # (workflow_dispatch) os arquivos sobem como artefato.
+      - name: Publicar na release do canal
+        if: env.PUBLICA == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSAO="$(tr -d ' \r\n' < VERSION)"
+          if [ "$RELEASE" = iadebolso-homolog ]; then
+            if ! gh release view "$RELEASE" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release create "$RELEASE" --prerelease --latest=false --target "$GITHUB_SHA" --title "IA de Bolso (homologação)" \
+                --notes "Homologação: gerada a cada push na branch homolog. O instalador daqui grava o pen drive com o código da homolog. Não é a versão do site." \
+                -R "$GITHUB_REPOSITORY"
+            fi
+            gh release upload "$RELEASE" cd2tech-iadebolso.zip --clobber -R "$GITHUB_REPOSITORY"
+            gh release edit "$RELEASE" --title "IA de Bolso $VERSAO (homologação, ${GITHUB_SHA:0:7})" --prerelease --latest=false -R "$GITHUB_REPOSITORY"
+            gh release upload "$RELEASE" manifesto.json --clobber -R "$GITHUB_REPOSITORY"
+            exit 0
+          fi
           if ! gh release view iadebolso -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create iadebolso --latest=false --title "IA de Bolso" \
               --notes "Baixe o instalador (CD2-IA-de-Bolso-Windows.exe, CD2-IA-de-Bolso-Mac.dmg ou CD2-IA-de-Bolso-Linux.AppImage), abra, espete um pen drive de 16 GB e siga as quatro telas. Prefere o jeito técnico? Baixe cd2tech-iadebolso.zip, extraia e dê dois cliques em GRAVAR-PENDRIVE-Windows.bat. Para usar o pen drive pronto, dê dois cliques em IA de Bolso no pen drive. Passo a passo: https://cd2tec.github.io/cd2-ia-de-bolso/#pendrive" \
@@ -209,8 +231,8 @@ jobs:
           gh release edit iadebolso --title "IA de Bolso $VERSAO" --latest=false -R "$GITHUB_REPOSITORY"
           # O manifesto sobe depois do ZIP, em sequência: ele nunca aponta para o SHA de um ZIP que ainda não está lá.
           gh release upload iadebolso manifesto.json --clobber -R "$GITHUB_REPOSITORY"
-      - name: Guardar o ZIP e o manifesto como artefato (fora do main)
-        if: github.ref != 'refs/heads/main'
+      - name: Guardar o ZIP e o manifesto como artefato (fora da main e da homolog)
+        if: env.PUBLICA != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: zip-e-manifesto
@@ -218,7 +240,8 @@ jobs:
             cd2tech-iadebolso.zip
             manifesto.json
 
-  # Instaladores desktop (Wails). Rodam depois do job zip, que garante a release iadebolso.
+  # Instaladores desktop (Wails). Rodam depois do job zip, que garante a release do canal. Cada instalador
+  # sai com o URL_MANIFESTO do canal (gravar.URLManifesto).
   # O CLI do Wails 2.10.1 não compila com o Go mais novo ("package context without types"),
   # por isso o Go fica fixado em 1.23.x nestes dois jobs.
   instalador-mac:
@@ -236,7 +259,7 @@ jobs:
         working-directory: installer
         run: |
           VERSAO="$(tr -d ' \r\n' < ../VERSION)"
-          wails build -clean -trimpath -platform darwin/universal -ldflags "-X main.versao=$VERSAO"
+          wails build -clean -trimpath -platform darwin/universal -ldflags "-X main.versao=$VERSAO -X github.com/cd2tec/cd2-ia-de-bolso/installer/internal/gravar.URLManifesto=$URL_MANIFESTO"
       - name: Assinar e notarizar o app e o dmg (Developer ID, ou ad hoc sem os secrets)
         working-directory: installer/build/bin
         env:
@@ -251,13 +274,13 @@ jobs:
           bash "$GITHUB_WORKSPACE/.github/scripts/assinar-mac.sh" app "CD2 IA de Bolso.app"
           hdiutil create -volname "CD2 IA de Bolso" -srcfolder "CD2 IA de Bolso.app" -ov -format UDZO CD2-IA-de-Bolso-Mac.dmg
           bash "$GITHUB_WORKSPACE/.github/scripts/assinar-mac.sh" dmg CD2-IA-de-Bolso-Mac.dmg
-      - name: Publicar na release iadebolso
-        if: github.ref == 'refs/heads/main'
+      - name: Publicar na release do canal
+        if: env.PUBLICA == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload iadebolso installer/build/bin/CD2-IA-de-Bolso-Mac.dmg --clobber -R "$GITHUB_REPOSITORY"
+        run: gh release upload "$RELEASE" installer/build/bin/CD2-IA-de-Bolso-Mac.dmg --clobber -R "$GITHUB_REPOSITORY"
       - name: Guardar o dmg como artefato (fora do main)
-        if: github.ref != 'refs/heads/main'
+        if: env.PUBLICA != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: instalador-mac
@@ -281,15 +304,15 @@ jobs:
         working-directory: installer
         run: |
           VERSAO="$(tr -d ' \r\n' < ../VERSION)"
-          wails build -clean -trimpath -platform windows/amd64 -webview2 embed -ldflags "-X main.versao=$VERSAO"
+          wails build -clean -trimpath -platform windows/amd64 -webview2 embed -ldflags "-X main.versao=$VERSAO -X github.com/cd2tec/cd2-ia-de-bolso/installer/internal/gravar.URLManifesto=$URL_MANIFESTO"
           mv build/bin/CD2-IA-de-Bolso.exe build/bin/CD2-IA-de-Bolso-Windows.exe
-      - name: Publicar na release iadebolso
-        if: github.ref == 'refs/heads/main'
+      - name: Publicar na release do canal
+        if: env.PUBLICA == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload iadebolso installer/build/bin/CD2-IA-de-Bolso-Windows.exe --clobber -R "$GITHUB_REPOSITORY"
+        run: gh release upload "$RELEASE" installer/build/bin/CD2-IA-de-Bolso-Windows.exe --clobber -R "$GITHUB_REPOSITORY"
       - name: Guardar o exe como artefato (fora do main)
-        if: github.ref != 'refs/heads/main'
+        if: env.PUBLICA != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: instalador-windows
