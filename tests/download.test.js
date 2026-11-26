@@ -15,9 +15,21 @@ test('README usa o link do cd2tech-iadebolso.zip; nem README nem site usam o ZIP
 
 test('workflow monta o ZIP com a pasta cd2tech-iadebolso e publica na release iadebolso', () => {
   const w = ler('.github/workflows/zip-iadebolso.yml');
-  assert.match(w, /branches: \[main\]/);
+  // main publica na release do site; homolog, na pré-release iadebolso-homolog (nunca na do site).
+  assert.match(w, /branches: \[main, homolog\]/);
+  assert.match(w, /RELEASE: \$\{\{ github\.ref == 'refs\/heads\/homolog' && 'iadebolso-homolog' \|\| 'iadebolso' \}\}/);
   assert.match(w, /--prefix=cd2tech-iadebolso\//);
   assert.match(w, /-o cd2tech-iadebolso\.zip/);
   assert.match(w, /gh release upload iadebolso cd2tech-iadebolso\.zip --clobber/);
   assert.match(w, /--latest=false/);
+});
+
+test('homolog publica numa pré-release própria, com instaladores que leem o manifesto dela', () => {
+  const w = ler('.github/workflows/zip-iadebolso.yml');
+  assert.match(w, /gh release create "\$RELEASE" --prerelease --latest=false/);
+  assert.match(w, /URL_MANIFESTO: https:\/\/github\.com\/\$\{\{ github\.repository \}\}\/releases\/download\/\$\{\{ github\.ref == 'refs\/heads\/homolog' && 'iadebolso-homolog' \|\| 'iadebolso' \}\}\/manifesto\.json/);
+  // Os dois instaladores (Mac e Windows) saem com o manifesto do canal.
+  assert.equal((w.match(/gravar\.URLManifesto=\$URL_MANIFESTO/g) || []).length, 2);
+  // Só main e homolog publicam; o resto vira artefato.
+  assert.match(w, /PUBLICA: \$\{\{ github\.ref == 'refs\/heads\/main' \|\| github\.ref == 'refs\/heads\/homolog' \}\}/);
 });
