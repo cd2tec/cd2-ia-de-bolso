@@ -42,10 +42,10 @@ No Mac, o passo 4 é dar dois cliques em `GRAVAR-PENDRIVE-Mac.command`; no Linux
 raiz do pen drive (CD2)/
   IA de Bolso.exe             <- duplo clique no Windows (o lançador)
   IA de Bolso.app             <- duplo clique no Mac (o lançador)
-  ia-de-bolso.sh              <- no Linux: sh ia-de-bolso.sh
+  IA de Bolso.AppImage        <- duplo clique no Linux (o lançador)
   web/                        <- a interface (index.html, config.json e fontes Manrope)
   core/                       <- scripts de preparo, de gravação e de inicialização
-                                 (aqui fica também INICIAR-CD2-Mac.command, o plano B do Mac)
+                                 (aqui ficam também INICIAR-CD2-Mac.command e ia-de-bolso.sh, os planos B do Mac e do Linux)
   bin/    (criado no preparo) <- llamafile
   bin/toolbox/ (criado no preparo) <- MCP Toolbox, um por sistema
   bin/ctl/ (criado no preparo) <- cd2-ctl, o controle do banco, um por sistema
@@ -100,13 +100,15 @@ Depois de gravado, o pen drive **não precisa de internet**. Só o modo Archeo M
 |---|---|
 | Windows | duplo clique em `IA de Bolso.exe` |
 | Mac | duplo clique em `IA de Bolso.app` |
-| Linux | `sh ia-de-bolso.sh` |
+| Linux (Ubuntu, Debian) | duplo clique em `IA de Bolso.AppImage` |
 
-A **IA de Bolso** (o lançador) abre uma janelinha com um robô carregando o modelo e uma barra de progresso de verdade. Por trás, ela escolhe uma porta livre, sobe o servidor só em `127.0.0.1` (não fica exposto na rede) e tenta GPU, caindo para CPU sozinha. Quando a IA acorda, a conversa abre como janela de aplicativo no navegador (Edge ou Chrome no Windows; Chrome, Edge ou Brave no Mac).
+A **IA de Bolso** (o lançador) abre uma janelinha com um robô carregando o modelo e uma barra de progresso de verdade. Por trás, ela escolhe uma porta livre, sobe o servidor só em `127.0.0.1` (não fica exposto na rede) e tenta GPU, caindo para CPU sozinha. Quando a IA acorda, a conversa abre como janela de aplicativo no navegador (Edge ou Chrome no Windows; Chrome, Edge ou Brave no Mac; Chrome, Edge, Chromium ou Brave no Linux, ou o navegador padrão).
 
-Fechar a janelinha **não** encerra a IA: ela continua acordada no ícone perto do relógio (Windows) ou na barra de menus (Mac), e dali dá para trazer a janelinha de volta ou abrir outra janela da conversa. Para encerrar, use **Colocar a IA para dormir**, na janelinha ou no menu do ícone. Quando a IA dorme, a conversa mostra uma faixa avisando. Só depois de "Boa noite! Pode tirar o pen drive." é seguro ejetar. Há uma IA por computador: abrir o lançador de novo traz a janelinha da que já está rodando.
+Fechar a janelinha **não** encerra a IA: ela continua acordada no ícone perto do relógio (Windows), na barra de menus (Mac) ou na bandeja do sistema (Linux; no GNOME sem a extensão AppIndicator, como no Debian, não há ícone e fechar a janelinha põe a IA para dormir), e dali dá para trazer a janelinha de volta ou abrir outra janela da conversa. Para encerrar, use **Colocar a IA para dormir**, na janelinha ou no menu do ícone. Quando a IA dorme, a conversa mostra uma faixa avisando. Só depois de "Boa noite! Pode tirar o pen drive." é seguro ejetar. Há uma IA por computador: abrir o lançador de novo traz a janelinha da que já está rodando.
 
-**Plano B técnico.** O `INICIAR-CD2-Windows.bat` e o `INICIAR-CD2-Mac.command` ficam em `core/`. Os dois fazem a mesma coisa pelo terminal (para encerrar: ENTER na janela do Windows, Ctrl+C ou fechar o terminal no Mac). Se o pen drive foi gravado sem o lançador de um sistema, o INICIAR dele fica na raiz. No Linux não há lançador: use `sh ia-de-bolso.sh`.
+**Plano B técnico.** O `INICIAR-CD2-Windows.bat`, o `INICIAR-CD2-Mac.command` e o `ia-de-bolso.sh` ficam em `core/`. Os três fazem a mesma coisa pelo terminal (para encerrar: ENTER na janela do Windows, Ctrl+C ou fechar o terminal no Mac e no Linux; no Linux, `sh core/ia-de-bolso.sh`). Se o pen drive foi gravado sem o lançador de um sistema, o INICIAR dele fica na raiz.
+
+**Linux.** A IA roda só pelo pen drive: no Linux não há a instalação no computador, e os agendamentos (que são da versão instalada) ficam indisponíveis. A `IA de Bolso.AppImage` usa a WebKitGTK 4.1 do sistema (Ubuntu 22.04 em diante e Debian 12 com área de trabalho já têm). Detalhes em [docs/linux.md](docs/linux.md).
 
 Windows e Mac modernos **não executam nada automaticamente** ao plugar o pen drive. O "plugou e abriu" é, na prática, um duplo clique. Por isso o lançador fica na raiz, com nome grande e visível; o resto fica nas subpastas.
 

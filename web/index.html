@@ -1063,7 +1063,8 @@ button.destaque:disabled{background:var(--disabled-bg);border-color:transparent;
 <dialog id="convAgenda" aria-labelledby="caTitulo">
   <h2 id="caTitulo">⏰ Agendamento é da versão instalada</h2>
   <p>Deixe a IA de Bolso rodar suas consultas sozinha: flash de vendas no pico, ruptura de estoque toda manhã. O resultado chega como notificação e fica guardado no histórico.</p>
-  <p class="hint">Funciona com a IA de Bolso instalada neste computador. Suas notas e consultas salvas continuam aqui.</p>
+  <p class="hint" id="caHint">Funciona com a IA de Bolso instalada neste computador. Suas notas e consultas salvas continuam aqui.</p>
+  <p class="hint" id="caSoPendrive" hidden>Neste sistema a IA de Bolso roda só pelo pen drive, então o agendamento ainda não está disponível. Suas notas e consultas salvas continuam aqui.</p>
   <div class="row">
     <button id="caAgoraNao">Agora não</button>
     <button class="primary" id="caInstalar">Instalar no computador</button>
@@ -3300,7 +3301,12 @@ function abrirHistoricoPedido(){
   }catch(e){}
   if(consultasSalvas().some(c => c.id === id)) abrirHistorico(id);
 }
-function abrirConviteAgenda(){ $('#convAgenda').showModal(); }
+function abrirConviteAgenda(){
+  // Sem a instalação no computador (Linux), o convite só explica: não há o que instalar.
+  const soPendrive = !!(inst.status && inst.status.instalavel === false);
+  $('#caHint').hidden = soPendrive; $('#caSoPendrive').hidden = !soPendrive; $('#caInstalar').hidden = soPendrive;
+  $('#convAgenda').showModal();
+}
 // De onde a IA abriu, para o "⏰ Agendar…": 'instalada', 'pendrive' (o convite), 'carregando' (o
 // /instalacao ainda não respondeu) ou 'indisponivel' (sem cd2-ctl, ou ele não respondeu).
 function estadoAgendar(){

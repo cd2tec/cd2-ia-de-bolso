@@ -3,9 +3,9 @@
 # So define a funcao; carregar este arquivo nao faz nada.
 #
 # Com o lancador de um sistema na copia ("IA de Bolso.app" no Mac, "IA de Bolso.exe" no
-# Windows), o INICIAR dele sai da raiz e vai para core/, como plano B pelo terminal: a raiz
-# fica so com o lancador. Sem o lancador, o INICIAR continua na raiz. O ia-de-bolso.sh
-# (Linux, que nao tem lancador) nunca se move.
+# Windows, "IA de Bolso.AppImage" no Linux), o INICIAR dele (.command, .bat ou ia-de-bolso.sh)
+# sai da raiz e vai para core/, como plano B pelo terminal: a raiz fica so com o lancador. Sem o
+# lancador, o INICIAR continua na raiz.
 arrumar_lancadores() {
   _al_stage="$1"
   if [ -d "$_al_stage/IA de Bolso.app" ] && [ -f "$_al_stage/INICIAR-CD2-Mac.command" ]; then
@@ -13,6 +13,9 @@ arrumar_lancadores() {
   fi
   if [ -f "$_al_stage/IA de Bolso.exe" ] && [ -f "$_al_stage/INICIAR-CD2-Windows.bat" ]; then
     mkdir -p "$_al_stage/core" && mv -f "$_al_stage/INICIAR-CD2-Windows.bat" "$_al_stage/core/INICIAR-CD2-Windows.bat" || return 1
+  fi
+  if [ -f "$_al_stage/IA de Bolso.AppImage" ] && [ -f "$_al_stage/ia-de-bolso.sh" ]; then
+    mkdir -p "$_al_stage/core" && mv -f "$_al_stage/ia-de-bolso.sh" "$_al_stage/core/ia-de-bolso.sh" || return 1
   fi
   return 0
 }

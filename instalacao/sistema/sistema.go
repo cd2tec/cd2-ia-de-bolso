@@ -118,6 +118,10 @@ func Lancador(destino, goos string) string {
 	return destino + "/" + nomeLancador
 }
 
+// Instalavel diz se a instalação no computador existe no goos informado. No
+// Linux a IA roda só do pen drive: o convite para instalar não aparece.
+func Instalavel(goos string) bool { return goos == "windows" || goos == "darwin" }
+
 // Do devolve o Sistema do goos informado.
 func Do(goos string) Sistema {
 	switch goos {

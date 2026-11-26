@@ -64,6 +64,13 @@ func candidatosWindows(env func(string) string) []string {
 	return cands
 }
 
+// navegadoresLinux, em ordem de preferência: os da família do Chrome abrem a
+// conversa como janela de aplicativo. O Chromium do Ubuntu vem pelo snap.
+var navegadoresLinux = []string{
+	"/usr/bin/google-chrome-stable", "/usr/bin/google-chrome", "/usr/bin/microsoft-edge",
+	"/usr/bin/chromium", "/usr/bin/chromium-browser", "/snap/bin/chromium", "/usr/bin/brave-browser",
+}
+
 // Comando monta o comando que abre a url. tela é "L,A" (área útil, só no Mac)
 // ou vazio. Sem navegador conhecido devolve o abridor padrão do sistema.
 func Comando(goos string, url string, existe func(string) bool, env func(string) string, tela string) (string, []string) {
@@ -87,6 +94,12 @@ func Comando(goos string, url string, existe func(string) bool, env func(string)
 			}
 		}
 		return "open", []string{url}
+	case "linux":
+		for _, exe := range navegadoresLinux {
+			if existe(exe) {
+				return exe, []string{"--app=" + url, "--start-maximized"}
+			}
+		}
 	}
 	return "xdg-open", []string{url}
 }

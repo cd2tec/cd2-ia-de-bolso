@@ -31,6 +31,8 @@ func Caminho(raiz, goos, goarch string) string {
 	sep, nome, plat := "/", "cd2-ctl", "darwin-amd64"
 	if goos == "windows" {
 		sep, nome, plat = `\`, "cd2-ctl.exe", "windows-amd64"
+	} else if goos == "linux" {
+		plat = "linux-" + goarch
 	} else if goarch == "arm64" {
 		plat = "darwin-arm64"
 	}

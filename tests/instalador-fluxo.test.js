@@ -535,3 +535,12 @@ test('o HTML tem os textos exatos e nenhum emoji ou travessão', () => {
   assert.doesNotMatch(tudo, /\p{Extended_Pictographic}/u, 'sem emoji');
   assert.match(html, /<script src="fluxo\.js"><\/script>\s*<script src="mascote\.js"><\/script>\s*<script src="tela\.js"><\/script>/);
 });
+
+test('soPendrive (Linux): a escolha não vai para instalar; o pen drive segue igual', () => {
+  const e = F.inicial({ soPendrive: true });
+  assert.equal(e.soPendrive, true);
+  assert.equal(F.passo(e, { tipo: 'escolherInstalar' }).tela, 'escolha');
+  assert.equal(F.passo(e, { tipo: 'escolherInstalar', info: { temChave: false } }).tela, 'escolha');
+  assert.equal(F.passo(e, { tipo: 'escolherPendrive' }).tela, 'plugue');
+  assert.equal(F.inicial().soPendrive, false);
+});

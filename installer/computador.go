@@ -92,6 +92,10 @@ func urlCompra(worker, codigo string, porta int) string {
 		"&porta=" + strconv.Itoa(porta) + "&de=instalador"
 }
 
+// PodeInstalarAqui diz se este sistema tem a instalação no computador. No
+// Linux não tem: a primeira tela mostra só a criação do pen drive.
+func (a *App) PodeInstalarAqui() bool { return sistema.Instalavel(goruntime.GOOS) }
+
 // IniciouComInstalar diz se o instalador abriu com --instalar, ou seja, se
 // foi reaberto sem administrador para seguir direto para a instalação.
 func (a *App) IniciouComInstalar() bool { return a.comInstalar }

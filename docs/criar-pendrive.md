@@ -65,7 +65,7 @@ As cópias do checksum ficam na mesma pasta, uma por gravação, com data e hora
 CD2/   (a raiz do pen drive)
   IA de Bolso.exe        (o lançador do Windows)
   IA de Bolso.app        (o lançador do Mac)
-  ia-de-bolso.sh         (no Linux: sh ia-de-bolso.sh)
+  IA de Bolso.AppImage   (o lançador do Linux; o ia-de-bolso.sh fica em core/)
   README.md  LICENSE  VERSION
   CHECKSUMS.sha256
   bin/llamafile          ~350 MB
@@ -90,7 +90,7 @@ Os scripts de gravação (`GRAVAR-*`, `gravar-*` e `core/make-usb-*`) e a pasta 
 ## Teste de fumaça (faça no primeiro pen drive, antes de duplicar)
 
 1. Tire e plugue de novo o pen drive.
-2. Dê dois cliques em `IA de Bolso` (`.exe` no Windows, `.app` no Mac). No Linux, `sh ia-de-bolso.sh`.
+2. Dê dois cliques em `IA de Bolso` (`.exe` no Windows, `.app` no Mac, `.AppImage` no Linux).
 3. Espere a janela abrir e mande uma pergunta qualquer. Na primeira vez, o modelo leva de 20 a 90 segundos para carregar; o robô da janelinha mostra quanto do modelo já foi lido do pen drive.
 4. Se for usar banco: Configurações, modo MCP Nativo para Banco de dados, preencha a conexão e clique em Salvar e conectar. A lista com motor, versão e tabelas tem de aparecer.
 5. Clique em **Colocar a IA para dormir**, espere "Boa noite! Pode tirar o pen drive." e ejete com segurança.

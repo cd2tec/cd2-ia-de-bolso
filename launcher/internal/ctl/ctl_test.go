@@ -43,6 +43,8 @@ func TestCaminhoPorPlataforma(t *testing.T) {
 		{"/V/CD2", "darwin", "arm64", "/V/CD2/bin/ctl/darwin-arm64/cd2-ctl"},
 		{"/V/CD2", "darwin", "amd64", "/V/CD2/bin/ctl/darwin-amd64/cd2-ctl"},
 		{"/V/CD2", "darwin", "386", "/V/CD2/bin/ctl/darwin-amd64/cd2-ctl"},
+		{"/media/g/CD2", "linux", "amd64", "/media/g/CD2/bin/ctl/linux-amd64/cd2-ctl"},
+		{"/media/g/CD2", "linux", "arm64", "/media/g/CD2/bin/ctl/linux-arm64/cd2-ctl"},
 	}
 	for _, c := range casos {
 		got := Caminho(c.raiz, c.goos, c.goarch)

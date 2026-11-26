@@ -146,7 +146,7 @@ func (a *App) telaEspecial() (estadoTela, bool) {
 	case a.perguntando:
 		return estadoTela{Fase: faseDesinstalar}, true
 	case a.trancada:
-		return estadoTela{Fase: faseTrancada}, true
+		return estadoTela{Fase: faseTrancada, SoPendrive: !instalavel}, true
 	}
 	return estadoTela{}, false
 }

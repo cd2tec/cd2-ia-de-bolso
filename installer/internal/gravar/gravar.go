@@ -91,6 +91,14 @@ func PastaCache() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if runtime.GOOS == "linux" {
+		// A mesma do make-usb-unix.sh: ${XDG_CACHE_HOME:-~/.cache}.
+		base := os.Getenv("XDG_CACHE_HOME")
+		if base == "" {
+			base = filepath.Join(home, ".cache")
+		}
+		return filepath.Join(base, "cd2-harness", "usb"), nil
+	}
 	return filepath.Join(home, "Library", "Caches", "cd2-harness", "usb"), nil
 }
 

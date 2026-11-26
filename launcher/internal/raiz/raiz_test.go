@@ -28,3 +28,13 @@ func TestRaizWindowsSubpasta(t *testing.T) {
 		t.Fatalf("raiz = %q, err = %v", r, err)
 	}
 }
+
+func TestRaizLinuxAppImage(t *testing.T) {
+	r, err := DoExecutavel("/media/g/CD2/IA de Bolso.AppImage", "linux")
+	if err != nil || r != "/media/g/CD2" {
+		t.Fatalf("raiz = %q, err = %v", r, err)
+	}
+	if _, err := DoExecutavel("IA de Bolso.AppImage", "linux"); err == nil {
+		t.Fatal("caminho relativo deveria dar erro")
+	}
+}

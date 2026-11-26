@@ -69,6 +69,9 @@ type estadoTela struct {
 	Erro         string `json:"erro"`
 	Pendrive     bool   `json:"pendrive"`
 	SemNavegador bool   `json:"semNavegador"`
+	// SoPendrive: o sistema não tem a instalação no computador (Linux). Na
+	// Trancada, a tela só manda abrir pelo pen drive.
+	SoPendrive bool `json:"soPendrive,omitempty"`
 }
 
 var nomesFase = map[sessao.Fase]string{
@@ -84,7 +87,7 @@ func paraTela(e sessao.Estado, pendrive, semNavegador bool) estadoTela {
 // telaDe é o estado como a tela recebe, com a origem, o --inicio e a falha
 // de abrir a instalada.
 func (a *App) telaDe(e sessao.Estado) estadoTela {
-	t := paraTela(a.comDormiu(e), a.pendrive(), a.semNavegador)
+	t := paraTela(a.comDormiu(e), a.pendrive() && instalavel, a.semNavegador)
 	carregando := e.Fase == sessao.Lendo || e.Fase == sessao.Subindo
 	a.mu.Lock()
 	// O aviso do acordar com o computador nunca toma a linha do carregamento.
@@ -210,9 +213,11 @@ func (a *App) iniciar(ctx context.Context) {
 }
 
 // antesDeFechar é todo pedido de saída que não veio do Dormiu (Cmd+Q, logout,
-// o X da janela no Windows). A IA dorme antes; a saída de verdade vem pelo
+// o X da janela no Windows e no Linux). A IA dorme antes; a saída de verdade vem pelo
 // aoMudar, 3 s depois do Dormiu. No Windows o X só esconde, menos com o erro
-// na tela: aí vale o Fechar, sem o balão de "Continuo acordada". Trancada
+// na tela: aí vale o Fechar, sem o balão de "Continuo acordada". No Linux sem
+// ícone na bandeja (temIcone), o X também vale o Fechar: escondida e sem
+// ícone, não haveria como chamar a IA de volta. Trancada
 // não há IA para dormir: a saída vale na hora.
 func (a *App) antesDeFechar(ctx context.Context) (impedir bool) {
 	a.mu.Lock()
@@ -222,7 +227,7 @@ func (a *App) antesDeFechar(ctx context.Context) (impedir bool) {
 		return false
 	}
 	if escondePeloAntesDeFechar {
-		if fecharVaiDormir(a.s.Atual().Fase) {
+		if fecharVaiDormir(a.s.Atual().Fase) || !temIcone() {
 			a.Fechar()
 		} else {
 			a.esconder()

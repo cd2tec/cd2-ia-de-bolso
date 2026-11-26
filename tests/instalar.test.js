@@ -208,3 +208,9 @@ test('medidorProgresso: média desde o início, sem estimativa nos primeiros 3 s
   parado({ feitos: 1 * GB, total: 2 * GB }, 0);
   assert.equal(parado({ feitos: 1 * GB, total: 2 * GB }, 10000), 'copiando ... 1,0 de 2,0 GB');
 });
+
+test('telaInicial: sem a instalação no sistema (Linux), o pen drive não convida', () => {
+  assert.equal(I.telaInicial({ origem: 'pendrive', instalavel: false }), null);
+  assert.equal(I.telaInicial({ origem: 'pendrive', instalavel: true }), 'compra');
+  assert.equal(I.telaInicial({ origem: 'pendrive' }), 'compra');
+});

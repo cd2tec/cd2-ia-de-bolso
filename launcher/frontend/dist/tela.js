@@ -31,6 +31,9 @@ const T_TRANCADA = 'Esta cópia não foi instalada neste computador';
 const L_TRANCADA = 'Para me usar daqui, instale pelo pen drive. Se você já pagou por este computador, cole a sua chave.';
 const L_INSTALAR = 'Espete o pen drive da IA de Bolso e abra o lançador de lá. A instalação é feita por ele.';
 const T_COLAR = 'Cole a sua chave aqui:';
+// Sem a instalação no computador (Linux), a cópia fora do pen drive só manda abrir pelo pen drive (a confirmar).
+const T_SO_PENDRIVE = 'Neste computador eu rodo só pelo pen drive';
+const L_SO_PENDRIVE = 'Espete o pen drive da IA de Bolso e abra a IA de Bolso.AppImage de lá.';
 const CENA_TRISTE = { rosto: 'sono', nivel: 0 };
 
 // A pergunta do "Desinstalar..." (a fase vem do Go: do ícone ou do --desinstalar) e a despedida depois dela.
@@ -67,6 +70,7 @@ function render(estado, modo, msg){
     case 'Erro':
       return { titulo: e.erro || 'Algo deu errado.', linha: '', piadaLista: null, botoes: [B_REGISTROS, B_FECHAR] };
     case 'Trancada':
+      if(e.soPendrive) return { titulo: T_SO_PENDRIVE, linha: L_SO_PENDRIVE, piadaLista: null, botoes: [B_FECHAR], cena: CENA_TRISTE };
       if(modo === 'colar') return { titulo: T_COLAR, linha: msg || '', piadaLista: null, botoes: [B_LIBERAR, B_VOLTAR],
         campo: true, cena: CENA_TRISTE };
       return { titulo: T_TRANCADA, linha: modo === 'instalar' ? L_INSTALAR : L_TRANCADA, piadaLista: null,

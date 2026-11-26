@@ -1,8 +1,8 @@
-//go:build !darwin && !windows
+//go:build !darwin && !windows && !linux
 
 package main
 
-// O lançador só existe para Windows e Mac; isto só deixa o pacote compilar
+// O lançador existe para Windows, Mac e Linux; isto só deixa o pacote compilar
 // (go vet, go test) em outros sistemas.
 
 const (

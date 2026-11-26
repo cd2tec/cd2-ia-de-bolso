@@ -32,6 +32,13 @@ func DoExecutavel(exe string, goos string) (string, error) {
 		}
 		app := exe[:i+len(".app")]
 		return path.Dir(app), nil
+	case "linux":
+		// X/IA de Bolso.AppImage  ->  X. Quem chama passa o caminho da
+		// AppImage ($APPIMAGE), não o do executável montado em /tmp.
+		if !strings.HasPrefix(exe, "/") {
+			return "", fmt.Errorf("caminho não absoluto: %q", exe)
+		}
+		return path.Dir(exe), nil
 	}
 	return "", fmt.Errorf("sistema sem suporte: %q", goos)
 }

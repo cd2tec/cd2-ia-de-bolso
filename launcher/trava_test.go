@@ -145,9 +145,15 @@ func TestColarChaveSemCodigo(t *testing.T) {
 
 // Trancada, a tela pede o estado e recebe a fase Trancada.
 func TestEstadoTrancada(t *testing.T) {
-	a, _, _ := appTrancada(t, true, nil)
-	if got := a.Estado(); got != (estadoTela{Fase: "Trancada"}) {
-		t.Errorf("Estado = %+v, quer a fase Trancada", got)
+	antes := instalavel
+	t.Cleanup(func() { instalavel = antes })
+	for _, pode := range []bool{true, false} {
+		instalavel = pode
+		a, _, _ := appTrancada(t, true, nil)
+		// Sem a instalação no sistema (Linux), a tela só manda abrir pelo pen drive.
+		if got := a.Estado(); got != (estadoTela{Fase: "Trancada", SoPendrive: !pode}) {
+			t.Errorf("instalavel=%v: Estado = %+v, quer a fase Trancada", pode, got)
+		}
 	}
 }
 

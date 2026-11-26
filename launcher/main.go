@@ -18,6 +18,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
 	"github.com/cd2tec/cd2-ia-de-bolso/instalacao/webview2"
@@ -53,12 +54,17 @@ func lerVersao(ld, dir string) string {
 	return "dev"
 }
 
-// acharRaiz devolve a raiz do pen drive. Fora de um .app (go run, testes),
+// acharRaiz devolve a raiz do pen drive. Fora de um .app ou de uma AppImage (go run, testes),
 // cai na pasta do executável: a sessão então mostra o erro de modelo ausente.
 func acharRaiz() string {
 	exe, err := os.Executable()
 	if err != nil {
 		return "."
+	}
+	// No Linux o lançador é uma AppImage: o executável roda montado numa
+	// pasta temporária, e o caminho do arquivo no pen drive vem em $APPIMAGE.
+	if a := os.Getenv("APPIMAGE"); runtime.GOOS == "linux" && a != "" {
+		exe = a
 	}
 	if real, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = real
@@ -105,6 +111,8 @@ func main() {
 		OnBeforeClose:     app.antesDeFechar,
 		OnShutdown:        app.encerrar,
 		Bind:              []interface{}{app},
+		// No Linux o ícone da janela e o nome que casa com o atalho (.desktop) da AppImage.
+		Linux: &linux.Options{Icon: iconePNG(iconeAcorda, 256), ProgramName: "ia-de-bolso"},
 		Windows: &windows.Options{
 			Messages:            mensagensWebView2(),
 			WebviewUserDataPath: webview2.Pasta("lancador"),

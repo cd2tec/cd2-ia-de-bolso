@@ -30,9 +30,10 @@ const TELAS_MINHA_CHAVE = ['reinstalar', 'instalado'];
 const FALHAS_PARA_AVISAR = 5;
 
 // semAdmin: a janela foi reaberta sem administrador (Windows, --instalar) e não pode formatar.
+// soPendrive: o sistema não tem a instalação no computador (Linux): a escolha mostra só o pen drive.
 function inicial(opcoes){
   return {
-    tela: 'escolha', semAdmin: !!(opcoes && opcoes.semAdmin), avisoPendrive: false,
+    tela: 'escolha', semAdmin: !!(opcoes && opcoes.semAdmin), soPendrive: !!(opcoes && opcoes.soPendrive), avisoPendrive: false,
     // pen drive
     discos: [], escolhido: null, podeApagar: false, progresso: null, frase: '', falhas: 0,
     // instalar neste computador
@@ -79,7 +80,7 @@ function passo(estado, acao){
       if(estado.semAdmin) return { ...estado, avisoPendrive: true };
       return pendriveDoZero(estado);
     case 'escolherInstalar':
-      if(t !== 'escolha') return estado;
+      if(t !== 'escolha' || estado.soPendrive) return estado;
       if(acao.info) return depoisDaInfo({ ...estado, avisoPendrive: false }, acao.info);
       return { ...estado, tela: 'preparando', avisoPendrive: false, erro: '' };
     case 'info':

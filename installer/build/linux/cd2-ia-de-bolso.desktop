@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=CD2 IA de Bolso
+Comment=Grava o pen drive da CD2 IA de Bolso
+Exec=cd2-ia-de-bolso
+Icon=cd2-ia-de-bolso
+Categories=Utility;
+Terminal=false
+StartupWMClass=cd2-ia-de-bolso

@@ -223,3 +223,13 @@ test('trava: Desinstalar espera o próximo estado', () => {
   assert.equal(fn, null);
   assert.equal(t.travado, true);
 });
+
+test('render Trancada sem instalação no sistema (Linux): só abrir pelo pen drive e Fechar', () => {
+  for (const modo of ['normal', 'instalar', 'colar']) {
+    const r = render({ fase: 'Trancada', soPendrive: true }, modo);
+    assert.equal(r.titulo, 'Neste computador eu rodo só pelo pen drive');
+    assert.equal(r.linha, 'Espete o pen drive da IA de Bolso e abra a IA de Bolso.AppImage de lá.');
+    assert.deepEqual(r.botoes, ['Fechar']);
+    assert.equal(!!r.campo, false);
+  }
+});
