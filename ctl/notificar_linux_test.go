@@ -46,7 +46,12 @@ func TestNotificarSoOsNovos(t *testing.T) {
 	var mu sync.Mutex
 	var enviados []string
 	antes := enviarNotificacao
-	enviarNotificacao = func(titulo, texto string) error { mu.Lock(); enviados = append(enviados, titulo+"|"+texto); mu.Unlock(); return nil }
+	enviarNotificacao = func(titulo, texto string) error {
+		mu.Lock()
+		enviados = append(enviados, titulo+"|"+texto)
+		mu.Unlock()
+		return nil
+	}
 	defer func() { enviarNotificacao = antes }()
 
 	ctx, cancel := context.WithCancel(context.Background())

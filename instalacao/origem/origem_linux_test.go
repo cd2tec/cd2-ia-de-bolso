@@ -56,8 +56,8 @@ func TestLinuxOrigem(t *testing.T) {
 		quer    Origem
 	}{
 		{"/home/ana/work/cd2-ia-de-bolso", Instalada}, // /home: outra partição do disco do sistema
-		{"/opt/cd2", Instalada},                        // a própria raiz
-		{"/media/ana/CD2 IA", Pendrive},                // pen drive USB com espaço no nome
+		{"/opt/cd2", Instalada},                       // a própria raiz
+		{"/media/ana/CD2 IA", Pendrive},               // pen drive USB com espaço no nome
 		{"/media/ana/CD2 IA/core", Pendrive},
 		{"/mnt/dados/ia", Instalada}, // segundo disco interno, como no Windows e no Mac
 	}
