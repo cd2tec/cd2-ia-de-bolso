@@ -311,13 +311,15 @@ jobs:
         run: sh .github/scripts/ferramentas-appimage.sh
       - name: Compilar e montar a AppImage
         run: sh installer/build-linux.sh
-      - name: Publicar na release iadebolso
-        if: github.ref == 'refs/heads/main'
+      # Publica na release do canal (RELEASE e PUBLICA vêm do env do workflow: iadebolso na main,
+      # iadebolso-homolog na homolog). O build-linux.sh lê o URL_MANIFESTO do mesmo env.
+      - name: Publicar na release do canal
+        if: env.PUBLICA == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload iadebolso installer/build/bin/CD2-IA-de-Bolso-Linux.AppImage --clobber -R "$GITHUB_REPOSITORY"
-      - name: Guardar a AppImage como artefato (fora do main)
-        if: github.ref != 'refs/heads/main'
+        run: gh release upload "$RELEASE" installer/build/bin/CD2-IA-de-Bolso-Linux.AppImage --clobber -R "$GITHUB_REPOSITORY"
+      - name: Guardar a AppImage como artefato (fora da main e da homolog)
+        if: env.PUBLICA != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: instalador-linux
