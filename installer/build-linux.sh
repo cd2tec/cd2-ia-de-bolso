@@ -9,8 +9,10 @@ set -eu
 cd "$(dirname "$0")"
 VERSAO="${VERSAO:-$(tr -d ' \r\n' < ../VERSION)}"
 mkdir -p build/bin
-go build -tags desktop,production,webkit2_41 -trimpath \
-  -ldflags "-s -w -X main.versao=$VERSAO" \
+# URL_MANIFESTO (o CI da homolog define): o manifesto que o instalador lê; sem ele, o da release do site.
+LDFLAGS="-s -w -X main.versao=$VERSAO"
+[ -n "${URL_MANIFESTO:-}" ] && LDFLAGS="$LDFLAGS -X github.com/cd2tec/cd2-ia-de-bolso/installer/internal/gravar.URLManifesto=$URL_MANIFESTO"
+go build -tags desktop,production,webkit2_41 -trimpath -ldflags "$LDFLAGS" \
   -o build/bin/cd2-ia-de-bolso .
 [ "${CD2_SEM_APPIMAGE:-0}" = 1 ] && { echo "Pronto: $(pwd)/build/bin/cd2-ia-de-bolso"; exit 0; }
 sh ../launcher/build/linux/appimage.sh build/bin/cd2-ia-de-bolso cd2-ia-de-bolso build/linux/cd2-ia-de-bolso.desktop \
